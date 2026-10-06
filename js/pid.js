@@ -68,6 +68,7 @@ const PID = (() => {
     grad(d, 'gBlueV', [[0, '#d6f2fd'], [0.45, '#5cc6ef'], [1, '#1572a8']], { attrs: { x1: 0, y1: 0, x2: 0, y2: 1 } });
     grad(d, 'gDark', [[0, '#5a6672'], [1, '#1d262e']], { attrs: { x1: 0, y1: 0, x2: 0, y2: 1 } });
     grad(d, 'gLiquid', [[0, '#8fdcf7', 0.55], [1, '#1572a8', 0.72]], { attrs: { x1: 0, y1: 0, x2: 0, y2: 1 } });
+    grad(d, 'gBulk', [[0, '#e8cf8f', 0.85], [1, '#b8914a', 0.9]], { attrs: { x1: 0, y1: 0, x2: 0, y2: 1 } });
     grad(d, 'gBubble', [[0, '#ffffff'], [0.55, '#e4e9ed'], [1, '#9ba7b2']], { radial: true, attrs: { cx: 0.35, cy: 0.3, r: 0.85 } });
     grad(d, 'gFlame', [[0, '#ff3d00'], [0.55, '#ff9100'], [1, '#ffee58']], { attrs: { x1: 0, y1: 1, x2: 0, y2: 0 } });
     grad(d, 'gMuster', [[0, '#e8f5e9'], [0.5, '#66bb6a'], [1, '#2e7d32']], { attrs: { x1: 0, y1: 0, x2: 0, y2: 1 } });
@@ -110,8 +111,9 @@ const PID = (() => {
     const cp = el('clipPath', { id }, ctx.defs);
     el(shapeTag, shapeAttrs, cp);
     const lg = el('g', { 'clip-path': `url(#${id})`, class: 'liquid' }, g);
-    const rect = el('rect', { x: e.x - 2, y: e.y + e.h, width: e.w + 4, height: 0, fill: 'url(#gLiquid)' }, lg);
-    const surf = el('rect', { x: e.x - 2, y: e.y + e.h, width: e.w + 4, height: 2, fill: '#e8f8ff', opacity: 0.85 }, lg);
+    const bulk = e.levelFill === 'bulk';
+    const rect = el('rect', { x: e.x - 2, y: e.y + e.h, width: e.w + 4, height: 0, fill: bulk ? 'url(#gBulk)' : 'url(#gLiquid)' }, lg);
+    const surf = el('rect', { x: e.x - 2, y: e.y + e.h, width: e.w + 4, height: 2, fill: bulk ? '#f6e7bf' : '#e8f8ff', opacity: 0.85 }, lg);
     ctx.levels[e.id] = { rect, surf, y0: e.y, h: e.h, extra: extra || 0 };
   }
 
