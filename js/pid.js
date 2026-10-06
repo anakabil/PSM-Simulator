@@ -381,7 +381,9 @@ const PID = (() => {
     el('path', { d: `M${x1} ${y1} L${x2} ${y2}`, stroke: '#1d262e', 'stroke-width': 9, 'stroke-linecap': 'round' }, g);
     el('path', { class: 'flow', d: `M${x1} ${y1} L${x2} ${y2}`, fill: 'none', stroke: '#c8a165', 'stroke-width': 3, 'stroke-dasharray': '6 8', 'stroke-linecap': 'round' }, g);
     [[x1, y1], [x2, y2]].forEach(pt => el('circle', { cx: pt[0], cy: pt[1], r: 7, fill: 'url(#gSteelR)', stroke: '#3b4651', 'stroke-width': 1.4 }, g));
-    label(g, (x1 + x2) / 2 + uy * 14, (y1 + y2) / 2 - 14, e.id, 10.5, { 'font-weight': 700 });
+    /* konveyor curam: label rata kanan di sisi atas agar tidak menimpa sabuk */
+    if (uy < -0.3) label(g, (x1 + x2) / 2 - 12, (y1 + y2) / 2 - 8, e.id, 10.5, { 'font-weight': 700, 'text-anchor': 'end' });
+    else label(g, (x1 + x2) / 2 + uy * 14, (y1 + y2) / 2 - 14, e.id, 10.5, { 'font-weight': 700 });
   }
   function drawMill(g, e) {
     el('rect', { x: e.x - 18, y: e.y + 20, width: 36, height: 8, rx: 2, fill: 'url(#gDark)' }, g);
