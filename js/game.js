@@ -591,7 +591,10 @@ const Game = (() => {
   }
   function renderPlant() {
     Object.keys(scn.vars).forEach(id => pid.setReadout(id, sim.format(id), sim.status(id)));
-    scn.equipment.forEach(e => { if (e.level) pid.setLevel(e.id, sim.vars[e.level] / 100); });
+    scn.equipment.forEach(e => {
+      if (e.level) pid.setLevel(e.id, sim.vars[e.level] / 100);
+      if (e.flameVar) pid.setFlame(e.id, sim.vars[e.flameVar] / scn.vars[e.flameVar].normal);
+    });
   }
   function onSimTick(s) {
     renderPlant();

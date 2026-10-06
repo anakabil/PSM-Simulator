@@ -165,7 +165,8 @@ const PID = (() => {
   function drawPump(g, e) {
     el('rect', { x: e.x - 16, y: e.y + 14, width: 32, height: 12, rx: 2, fill: 'url(#gDark)' }, g);
     el('circle', { cx: e.x, cy: e.y, r: 22, fill: 'url(#gSteelR)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
-    el('path', { d: `M${e.x - 10} ${e.y - 12} L${e.x + 15} ${e.y} L${e.x - 10} ${e.y + 12} Z`, fill: '#29abe2', stroke: '#1572a8', 'stroke-width': 1.2 }, g);
+    const sd = e.dir === 'left' ? -1 : 1;
+    el('path', { d: `M${e.x - 10 * sd} ${e.y - 12} L${e.x + 15 * sd} ${e.y} L${e.x - 10 * sd} ${e.y + 12} Z`, fill: '#29abe2', stroke: '#1572a8', 'stroke-width': 1.2 }, g);
     el('circle', { cx: e.x - 7, cy: e.y - 8, r: 6, fill: '#fff', opacity: 0.55 }, g);
     label(g, e.x, e.y + 40, e.id, 12);
   }
@@ -704,7 +705,7 @@ const PID = (() => {
         return;
       }
       el('rect', { x: z.x, y: z.y, width: z.w, height: z.h, rx: 10, fill: z.fill || 'rgba(41,171,226,0.05)', stroke: '#8fb3c9', 'stroke-width': 1.6, 'stroke-dasharray': '7 5' }, gZones);
-      if (z.label) text(gZones, z.x + 10, z.y + 13, z.label, { 'text-anchor': 'start', 'font-size': 10.5, 'font-weight': 800, fill: '#4a6275' });
+      if (z.label) text(gZones, z.x + 10, z.labelPos === 'bottom' ? z.y + z.h - 10 : z.y + 13, z.label, { 'text-anchor': 'start', 'font-size': 10.5, 'font-weight': 800, fill: '#4a6275' });
     });
     scn.pipes.forEach(p => drawPipe(gPipes, p));
     const eqGroups = {}, eqById = {};
@@ -855,6 +856,11 @@ const PID = (() => {
         r.setAttribute('data-state', state || 'normal');
       },
       showReadouts(on) { gRead.style.display = on ? '' : 'none'; },
+      setFlame(id, frac) {
+        const g = eqGroups[id]; if (!g) return;
+        const f = Math.max(0, Math.min(1, frac));
+        g.querySelectorAll('.flame, .hflame').forEach(n => { n.style.opacity = f < 0.08 ? 0 : (0.25 + 0.75 * f).toFixed(2); });
+      },
       setLevel(id, frac) {
         const L = ctx.levels[id]; if (!L) return;
         const f = Math.max(0, Math.min(1, frac));
@@ -895,7 +901,7 @@ const PID = (() => {
           const e = eqById[id]; const it = ITPM[map[id]];
           if (!e || !it) return;
           const b = eqBounds(e);
-          const cands = [[b.x + b.w - 6, b.y - 2], [b.x + 8, b.y - 2], [b.x + b.w - 6, b.y + b.h + 4], [b.x + 8, b.y + b.h + 4]];
+          const cands = [[b.x + b.w - 6, b.y - 2], [b.x + 8, b.y - 2], [b.x + b.w + 22, b.y + b.h / 2], [b.x - 22, b.y + b.h / 2], [b.x + b.w - 6, b.y + b.h + 4], [b.x + 8, b.y + b.h + 4]];
           const free = c => !hs.some(h => Math.abs(h.x - c[0]) < 44 && Math.abs(h.y - c[1]) < 28) && !taken.some(t => Math.abs(t[0] - c[0]) < 50 && Math.abs(t[1] - c[1]) < 24);
           const pos = cands.find(free) || cands[0];
           taken.push(pos);
