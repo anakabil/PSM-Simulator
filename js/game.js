@@ -8,7 +8,7 @@ const Game = (() => {
   const CFG_KEY = 'psm_sim_cfg_v1';
   const HIST_KEY = 'psm_sim_hist_v1';
   const HINT_COST = 5;
-  const DEFAULT_CFG = { sound: true, music: true, musicVol: 45, speed: 1, difficulty: 'normal', hints: true, anim: true, fx: true, name: '' };
+  const DEFAULT_CFG = { sound: true, music: true, musicVol: 45, speed: 1, difficulty: 'normal', hints: true, anim: true, fx: true, name: '', currency: 'IDR', rate: COST_MODEL.idrPerUsd };
 
   const app = document.getElementById('app');
   let cfg = Object.assign({}, DEFAULT_CFG, loadJSON(CFG_KEY) || {});
@@ -31,6 +31,21 @@ const Game = (() => {
   function clearTimers() { timers.forEach(t => clearTimeout(t)); timers.clear(); }
   function num(x, dec) { return Number(x).toLocaleString('id-ID', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 }); }
   function pct(x) { return Math.round(x * 100) + '%'; }
+  /* Biaya disimpan dalam satuan anggaran, ditampilkan dalam Rupiah atau USD. */
+  function money(units, full) {
+    const usd = units * COST_MODEL.usdPerUnit;
+    const sym = cfg.currency === 'USD' ? 'USD' : 'Rp';
+    const v = cfg.currency === 'USD' ? usd : usd * (cfg.rate || COST_MODEL.idrPerUsd);
+    if (full) return sym + ' ' + num(Math.round(v));
+    const short = (x, unit) => sym + ' ' + Number(x.toFixed(x >= 100 ? 0 : x >= 10 ? 1 : 2)).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' ' + unit;
+    if (v >= 1e9) return short(v / 1e9, 'M');
+    if (v >= 1e6) return short(v / 1e6, 'jt');
+    if (v >= 1e3) return short(v / 1e3, 'rb');
+    return sym + ' ' + num(v);
+  }
+  function costNote() {
+    return `Nilai indikatif: 1 satuan biaya setara USD ${num(COST_MODEL.usdPerUnit)}${cfg.currency === 'USD' ? '' : `, kurs Rp ${num(cfg.rate || COST_MODEL.idrPerUsd)} per USD`}.`;
+  }
   function grade(score) { return score >= 85 ? 'A' : score >= 70 ? 'B' : score >= 55 ? 'C' : 'D'; }
   function gradeLabel(g) { return { A: 'Sangat Baik', B: 'Baik', C: 'Cukup', D: 'Perlu Pelatihan Ulang' }[g]; }
   function fxOn() { return cfg.fx && cfg.anim; }
@@ -194,14 +209,16 @@ const Game = (() => {
     if (pop.eqId && pid) pid.highlight(pop.eqId, false);
     pop = null;
   }
-  function openPopover(anchor, html, meta) {
+  function openPopover(anchor, html, meta, opts) {
     closePopover();
+    const o = opts || {};
     const area = $('#pid-area');
     if (!area || !anchor) return null;
     const el = document.createElement('div');
-    el.className = 'pop';
+    el.className = 'pop' + (o.cls ? ' ' + o.cls : '');
     el.setAttribute('role', 'dialog');
-    el.innerHTML = `<button class="pop-x" aria-label="Tutup">${ICON.x}</button>${html}<span class="pop-arrow" aria-hidden="true"></span>`;
+    el.innerHTML = `<button class="pop-x" aria-label="Tutup">${ICON.x}</button><div class="pop-body">${html}</div>${o.foot || ''}<span class="pop-arrow" aria-hidden="true"></span>`;
+    el.style.setProperty('--pop-max', Math.max(200, area.clientHeight - 16) + 'px');
     area.appendChild(el);
     placePopover(el, anchor, area);
     el.addEventListener('click', ev => ev.stopPropagation());
@@ -378,6 +395,8 @@ const Game = (() => {
         <div class="cfg-row"><label>Efek kilatan dan guncangan saat insiden<small>Matikan bila sensitif terhadap cahaya berkedip</small></label><label class="switch"><input type="checkbox" id="cfg-fx" ${cfg.fx ? 'checked' : ''}><span></span></label></div>
         <div class="cfg-row"><label>Petunjuk titik pemasangan dan penanda barier belum diuji</label><label class="switch"><input type="checkbox" id="cfg-hints" ${cfg.hints ? 'checked' : ''}><span></span></label></div>
         <div class="cfg-row"><label for="cfg-speed">Kecepatan simulasi</label><select id="cfg-speed"><option value="0.5" ${cfg.speed == 0.5 ? 'selected' : ''}>Lambat (0,5x)</option><option value="1" ${cfg.speed == 1 ? 'selected' : ''}>Normal (1x)</option><option value="2" ${cfg.speed == 2 ? 'selected' : ''}>Cepat (2x)</option></select></div>
+        <div class="cfg-row"><label for="cfg-cur">Mata uang anggaran<small>Biaya perangkat dan program ditampilkan sebagai nilai indikatif</small></label><select id="cfg-cur"><option value="IDR" ${cfg.currency !== 'USD' ? 'selected' : ''}>Rupiah (Rp)</option><option value="USD" ${cfg.currency === 'USD' ? 'selected' : ''}>Dolar AS (USD)</option></select></div>
+        <div class="cfg-row"><label for="cfg-rate">Kurs Rupiah per USD<small>1 satuan biaya setara USD ${num(COST_MODEL.usdPerUnit)} (pengadaan, pemasangan, rekayasa)</small></label><input type="number" id="cfg-rate" min="5000" max="50000" step="50" value="${cfg.rate || COST_MODEL.idrPerUsd}"></div>
         <div class="cfg-row"><label for="cfg-diff">Tingkat kesulitan</label><select id="cfg-diff"><option value="mudah" ${cfg.difficulty === 'mudah' ? 'selected' : ''}>Mudah (anggaran +3, petunjuk lengkap)</option><option value="normal" ${cfg.difficulty === 'normal' ? 'selected' : ''}>Normal</option><option value="sulit" ${cfg.difficulty === 'sulit' ? 'selected' : ''}>Sulit (anggaran -2, tanpa penjelasan kuis)</option></select></div>
         <div class="cfg-actions">
           <button class="btn3d primary" data-act="save">${ICON.check}<span>Simpan</span></button>
@@ -393,6 +412,9 @@ const Game = (() => {
       cfg.music = $('#cfg-music').checked; cfg.musicVol = +$('#cfg-mvol').value;
       cfg.sound = $('#cfg-sound').checked; cfg.anim = $('#cfg-anim').checked; cfg.fx = $('#cfg-fx').checked; cfg.hints = $('#cfg-hints').checked;
       cfg.speed = parseFloat($('#cfg-speed').value); cfg.difficulty = $('#cfg-diff').value;
+      cfg.currency = $('#cfg-cur').value === 'USD' ? 'USD' : 'IDR';
+      const rate = parseFloat($('#cfg-rate').value);
+      cfg.rate = rate >= 5000 && rate <= 50000 ? Math.round(rate) : COST_MODEL.idrPerUsd;
       saveJSON(CFG_KEY, cfg); applyCfg(); Sfx.success();
       showModal({ title: 'Tersimpan', body: '<p>Konfigurasi telah disimpan.</p>', buttons: [{ label: 'OK', cls: 'btn3d primary', onClick: showMenu }] });
     });
@@ -586,8 +608,8 @@ const Game = (() => {
     const tips = {
       1: ['Klik setiap peralatan pada P&ID atau daftar di panel kanan untuk membaca fungsinya.', 'Tekan Jalankan Proses Produksi dan ubah set point untuk melihat respons proses serta isi cairan di bejana.', 'Setelah semua peralatan dipelajari, kerjakan kuis pemahaman proses.'],
       2: ['Tekan Jalankan Proses Produksi, lalu amati tren, pembacaan, dan isi bejana di P&ID.', 'Saat terjadi kegagalan, peringatan lapangan muncul bertahap: getaran, kebocoran gas, gas beracun, panas berlebih, hingga ledakan.', 'Laporkan sedini mungkin. Laporan sebelum peringatan kritis mendapat bonus, sedangkan laporan setelah insiden terjadi mendapat penalti.'],
-      3: ['Tab Perangkat Barier: pilih perangkat, lalu klik titik pemasangan (lingkaran biru) pada P&ID.', 'Tab Inspeksi & Pengujian: pilih program, lalu klik perangkat terpasang atau peralatan seperti bejana, tangki, pompa, dan kompresor.', 'Barier tanpa pengujian berkala tidak dapat diandalkan. Pantau indikator keandalan dan anggaran.', 'Klik perangkat atau peralatan tanpa memilih alat untuk melihat detail atau melepasnya.'],
-      4: ['Pikirkan apa yang terjadi bila pencegahan gagal: deteksi, isolasi, proteksi kebakaran, dan tanggap darurat.', 'Perhatikan sifat bahan, karena tidak semua media pemadam cocok untuk semua bahan.', 'Lengkapi setiap barier mitigasi dengan program uji: bump test detektor, uji sistem pemadam, uji fungsi ESD, dan latihan tanggap darurat.'],
+      3: ['Klik titik pemasangan (+) pada P&ID untuk memilih perangkat barier langsung dari pop-up. Cara lain, pilih perangkat di Kotak Alat lalu klik titiknya.', 'Setelah perangkat terpasang, pop-up perangkat menampilkan program inspeksi dan pengujian yang dapat langsung diterapkan. Klik bejana, tangki, atau mesin berputar untuk menerapkan program inspeksi peralatan.', 'Barier tanpa pengujian berkala tidak dapat diandalkan. Pantau indikator keandalan dan sisa anggaran, yang ditampilkan dalam mata uang pilihan Anda di Configuration.', 'Klik perangkat atau peralatan untuk melihat detail, mengganti, atau melepasnya.'],
+      4: ['Pikirkan apa yang terjadi bila pencegahan gagal: deteksi, isolasi, proteksi kebakaran, dan tanggap darurat.', 'Perhatikan sifat bahan, karena tidak semua media pemadam cocok untuk semua bahan.', 'Klik titik (+) untuk memilih perangkat mitigasi, lalu lengkapi dengan program uji yang sesuai, misalnya bump test detektor, uji sistem pemadam, uji fungsi ESD, dan latihan tanggap darurat.'],
     };
     return `<ul class="tips">${tips[n].map(t => `<li>${esc(t)}</li>`).join('')}</ul>`;
   }
@@ -956,15 +978,14 @@ const Game = (() => {
     return scn.equipment.filter(e => types.has(e.type));
   }
   function renderStageBarrier(stage) {
-    const cat = stage === 3 ? 'prevent' : 'mitigate';
-    const devs = Object.keys(DEVICES).filter(k => DEVICES[k].cat === cat);
-    const progs = Object.keys(ITPM).filter(k => ITPM[k].stage === stage);
+    const devs = stageDevices(stage);
+    const progs = stagePrograms(stage);
     const hs = scn.hotspots.filter(h => h.stage === stage);
     const insp = eqInspectable(stage);
     const done = S.evalDone[stage];
     const side = $('#side');
     side.innerHTML = `<div class="side-head"><h2>${ICON[stage === 3 ? 'shield' : 'fire']}<span>Tahap ${stage}: Barier ${stage === 3 ? 'Pencegahan' : 'Mitigasi'}</span></h2></div>
-      <div class="card budget"><div class="budget-row"><span>${ICON.coin} Anggaran</span><b id="budget-val"></b></div><div class="budget-bar"><div id="budget-fill"></div></div><p class="muted small">${stage === 3 ? 'Pasang instrumen deteksi dan proteksi yang memutus rantai kejadian sebelum kehilangan kontainmen, lalu jaga keandalannya.' : 'Pasang perangkat yang membatasi dampak bila kehilangan kontainmen tetap terjadi, lalu jaga keandalannya.'}</p></div>
+      <div class="card budget"><div class="budget-row"><span>${ICON.coin} Anggaran</span><b id="budget-val"></b></div><div class="budget-bar"><div id="budget-fill"></div></div><p class="muted small budget-note" id="budget-note"></p><p class="muted small">${stage === 3 ? 'Pasang instrumen deteksi dan proteksi yang memutus rantai kejadian sebelum kehilangan kontainmen, lalu jaga keandalannya.' : 'Pasang perangkat yang membatasi dampak bila kehilangan kontainmen tetap terjadi, lalu jaga keandalannya.'}</p></div>
       <div class="card rel"><h4>${ICON.gauge}<span>Keandalan Sistem Proteksi</span></h4>
         <div class="rel-row"><b id="rel-val">0%</b><span id="rel-sub">Belum ada barier terpasang</span></div>
         <div class="rel-bar"><div id="rel-fill"></div></div>
@@ -972,9 +993,9 @@ const Game = (() => {
       </div>
       <div class="card"><h4>Kotak Alat</h4>
         <div class="tabs" role="tablist"><button class="tab" data-tab="dev">${ICON.shield}<span>Perangkat Barier</span></button><button class="tab" data-tab="itpm">${ICON.wrench}<span>Inspeksi &amp; Pengujian</span></button></div>
-        <div class="toolbox" id="tb-dev">${devs.map(k => `<button class="tool" data-kind="dev" data-id="${k}" style="--c:${DEVICES[k].color}"><span class="tcode">${esc(DEVICES[k].code)}</span><span class="tname">${esc(DEVICES[k].name)}</span><span class="tcost">${DEVICES[k].cost}</span></button>`).join('')}</div>
-        <div class="toolbox" id="tb-itpm">${progs.map(k => `<button class="tool itpm" data-kind="itpm" data-id="${k}"><span class="tcode">${esc(ITPM[k].code)}</span><span class="tname">${esc(ITPM[k].name)}</span><span class="tcost">${ITPM[k].cost}</span></button>`).join('')}</div>
-        <div class="tool-desc" id="tool-desc">Pilih alat untuk membaca fungsinya.</div>
+        <div class="toolbox" id="tb-dev">${devs.map(k => `<button class="tool" data-kind="dev" data-id="${k}" style="--c:${DEVICES[k].color}"><span class="tcode">${esc(DEVICES[k].code)}</span><span class="tname">${esc(DEVICES[k].name)}</span><span class="tcost">${money(DEVICES[k].cost)}</span></button>`).join('')}</div>
+        <div class="toolbox" id="tb-itpm">${progs.map(k => `<button class="tool itpm" data-kind="itpm" data-id="${k}"><span class="tcode">${esc(ITPM[k].code)}</span><span class="tname">${esc(ITPM[k].name)}</span><span class="tcost">${money(ITPM[k].cost)}</span></button>`).join('')}</div>
+        <div class="tool-desc" id="tool-desc">Pilih alat untuk membaca fungsinya, atau klik titik (+) pada P&amp;ID untuk memilih perangkat lewat pop-up.</div>
       </div>
       <div class="card"><h4>Titik Pemasangan <span class="pill" id="hs-count"></span></h4>
         <ul class="hs-list" id="hs-list">${hs.map(h => `<li data-hs="${h.id}"><span class="dot"></span><div><b>${cfg.hints || cfg.difficulty === 'mudah' ? esc(h.label) : 'Titik ' + esc(h.id.toUpperCase())}</b><small class="placed"></small></div></li>`).join('')}</ul>
@@ -1007,15 +1028,15 @@ const Game = (() => {
     $$('.tool').forEach(b => b.classList.toggle('sel', !!tool && b.dataset.kind === tool.kind && b.dataset.id === tool.id));
     $('#pid').classList.toggle('placing', !!tool);
     const desc = $('#tool-desc');
-    if (!tool) { desc.innerHTML = 'Pilih alat untuk membaca fungsinya.'; pid.setTargets(null); return; }
+    if (!tool) { desc.innerHTML = 'Pilih alat untuk membaca fungsinya, atau klik titik (+) pada P&amp;ID untuk memilih perangkat lewat pop-up.'; pid.setTargets(null); return; }
     if (tool.kind === 'dev') {
       const d = DEVICES[tool.id];
-      desc.innerHTML = `<b>${esc(d.name)}</b><br>${esc(d.desc)}<div class="meta"><span>Biaya ${d.cost}</span><span>PFD desain ${String(d.pfd).replace('.', ',')}</span><span>Program uji: ${esc(ITPM[d.itpm].name)}</span></div>`;
+      desc.innerHTML = `<b>${esc(d.name)}</b><br>${esc(d.desc)}<div class="meta"><span>Biaya ${money(d.cost)}</span><span>PFD desain ${String(d.pfd).replace('.', ',')}</span><span>Program uji: ${esc(ITPM[d.itpm].name)}</span></div>`;
       pid.setTargets(null);
     } else {
       const t = ITPM[tool.id];
       const fitTxt = t.target === 'device' ? t.fits.map(k => DEVICES[k].code).join(', ') : t.fitsEq.map(x => ({ vessel: 'bejana tekan', reactor: 'reaktor', tank: 'tangki', truck: 'truk tangki', hx: 'penukar panas', pump: 'pompa', compressor: 'kompresor', motor: 'motor/agitator' }[x])).join(', ');
-      desc.innerHTML = `<b>${esc(t.name)}</b><br>${esc(t.desc)}<div class="meta"><span>Biaya ${t.cost}</span><span>Berlaku untuk: ${esc(fitTxt)}</span></div><p class="muted small">${t.target === 'device' ? 'Klik perangkat terpasang yang berbingkai biru di P&amp;ID.' : 'Klik peralatan yang berbingkai biru di P&amp;ID.'}</p>`;
+      desc.innerHTML = `<b>${esc(t.name)}</b><br>${esc(t.desc)}<div class="meta"><span>Biaya ${money(t.cost)}</span><span>Berlaku untuk: ${esc(fitTxt)}</span></div><p class="muted small">${t.target === 'device' ? 'Klik perangkat terpasang yang berbingkai biru di P&amp;ID.' : 'Klik peralatan yang berbingkai biru di P&amp;ID.'}</p>`;
       updateTargets();
     }
   }
@@ -1028,7 +1049,8 @@ const Game = (() => {
   function refreshBarrierUI(stage) {
     closePopover();
     const b = budgetFor(stage), sp = spent(stage);
-    const bv = $('#budget-val'); if (bv) bv.textContent = `${b - sp} / ${b}`;
+    const bv = $('#budget-val'); if (bv) bv.textContent = `${money(b - sp)} / ${money(b)}`;
+    const bn = $('#budget-note'); if (bn) bn.textContent = `Terpakai ${money(sp)}. ${costNote()}`;
     const bf = $('#budget-fill'); if (bf) { bf.style.width = Math.min(100, sp / b * 100) + '%'; bf.classList.toggle('low', b - sp <= 2); }
     const r = reliability(stage);
     const rv = $('#rel-val'); if (rv) rv.textContent = r.n ? pct(r.avg) : '0%';
@@ -1054,86 +1076,165 @@ const Game = (() => {
     pid.setEqBadges(eqm, stage);
     updateTargets();
   }
+  function remaining(stage) { return budgetFor(stage) - spent(stage); }
+  function hsLabel(h) { return cfg.hints || cfg.difficulty === 'mudah' ? h.label : 'Titik ' + h.id.toUpperCase(); }
+  /* Kit perangkat: setiap skenario hanya menampilkan perangkat yang relevan
+     dengan sektornya, termasuk pengecoh yang masuk akal. */
+  function kitOk(d) { const ks = scn.kits || ['proses']; return (d.kit || ['proses']).some(k => ks.includes(k)); }
+  function stageDevices(stage) {
+    const cat = stage === 3 ? 'prevent' : 'mitigate';
+    return Object.keys(DEVICES).filter(k => DEVICES[k].cat === cat && kitOk(DEVICES[k]));
+  }
+  function stagePrograms(stage, target) {
+    const devs = stageDevices(stage);
+    return Object.keys(ITPM).filter(k => {
+      const t = ITPM[k];
+      if (t.stage !== stage || (target && t.target !== target)) return false;
+      return t.target === 'device' ? t.fits.some(f => devs.includes(f)) : scn.equipment.some(e => t.fitsEq.includes(e.type));
+    });
+  }
   function placeDevice(stage, h, devId) {
     const cur = devState(stage, h.id);
     const refund = cur ? cur.d.cost + (S.itpm[stage][h.id] ? ITPM[S.itpm[stage][h.id]].cost : 0) : 0;
     const d = DEVICES[devId];
-    if (cur && cur.dev === devId) { showToast(`${d.name} sudah terpasang di titik ini.`); return; }
-    if (spent(stage) - refund + d.cost > budgetFor(stage)) { Sfx.fail(); showToast('Anggaran tidak cukup untuk ' + d.name + '.'); return; }
+    if (cur && cur.dev === devId) { showToast(`${d.name} sudah terpasang di titik ini.`); return false; }
+    if (d.cost - refund > remaining(stage)) { Sfx.fail(); showToast(`Anggaran tidak cukup untuk ${d.name}. Sisa ${money(remaining(stage) + refund)}.`); return false; }
     S.placements[stage][h.id] = devId;
     delete S.itpm[stage][h.id];
     Sfx.place(); save(); refreshBarrierUI(stage);
     if (cur) showToast(`${cur.d.name} diganti dengan ${d.name}. Program uji sebelumnya dilepas.`);
+    return true;
   }
-  function applyItpmToDevice(stage, h) {
+  function applyProgram(stage, h, progId) {
     const st = devState(stage, h.id);
-    const t = ITPM[tool.id];
-    if (t.target !== 'device') { showToast(`${t.name} diterapkan pada peralatan proses, bukan pada perangkat barier.`); return; }
-    if (!t.fits.includes(st.dev)) { Sfx.fail(); showToast(`${t.name} tidak sesuai untuk ${st.d.name}.`); return; }
-    if (st.tested) { showToast('Program ini sudah diterapkan pada perangkat tersebut.'); return; }
-    if (spent(stage) + t.cost > budgetFor(stage)) { Sfx.fail(); showToast('Anggaran tidak cukup untuk ' + t.name + '.'); return; }
-    S.itpm[stage][h.id] = tool.id;
+    const t = ITPM[progId];
+    if (!st || !t) return false;
+    if (t.target !== 'device') { showToast(`${t.name} diterapkan pada peralatan proses, bukan pada perangkat barier.`); return false; }
+    if (!t.fits.includes(st.dev)) { Sfx.fail(); showToast(`${t.name} tidak sesuai untuk ${st.d.name}.`); return false; }
+    if (st.tested) { showToast('Program ini sudah diterapkan pada perangkat tersebut.'); return false; }
+    if (t.cost > remaining(stage)) { Sfx.fail(); showToast(`Anggaran tidak cukup untuk ${t.name}. Sisa ${money(remaining(stage))}.`); return false; }
+    S.itpm[stage][h.id] = progId;
     Sfx.test(); save(); refreshBarrierUI(stage);
+    return true;
+  }
+  function applyEqProgram(stage, e, progId) {
+    const eqm = (S.eqItpm && S.eqItpm[stage]) || null;
+    const t = ITPM[progId];
+    if (S.evalDone[stage]) { showToast('Tahap ini sudah dievaluasi.'); return false; }
+    if (t.target !== 'equipment' || !eqm) { showToast(`${t.name} diterapkan pada perangkat barier terpasang.`); return false; }
+    if (!t.fitsEq.includes(e.type)) { Sfx.fail(); showToast(`${t.name} tidak sesuai untuk ${e.name}.`); return false; }
+    const cur = eqm[e.id];
+    if (cur === progId) { showToast('Program ini sudah diterapkan pada peralatan tersebut.'); return false; }
+    const refund = cur ? ITPM[cur].cost : 0;
+    if (t.cost - refund > remaining(stage)) { Sfx.fail(); showToast(`Anggaran tidak cukup untuk ${t.name}. Sisa ${money(remaining(stage) + refund)}.`); return false; }
+    eqm[e.id] = progId;
+    Sfx.test(); save(); refreshBarrierUI(stage);
+    return true;
   }
   function onHotspotClick(h) {
     const stage = S.stage;
     if (S.evalDone[stage]) { showToast(h.label + ': ' + h.why); return; }
-    if (!tool) { Sfx.click(); showToast('Pilih perangkat dari kotak alat terlebih dahulu. Titik: ' + h.label); return; }
-    if (tool.kind === 'itpm') { showToast('Pasang perangkat barier di titik ini terlebih dahulu, lalu terapkan program pengujiannya.'); return; }
-    placeDevice(stage, h, tool.id);
+    if (tool && tool.kind === 'itpm') { showToast('Pasang perangkat barier di titik ini terlebih dahulu, lalu terapkan program pengujiannya.'); return; }
+    if (tool) { placeDevice(stage, h, tool.id); return; }
+    if (pop && pop.pickHs === h.id) { closePopover(); return; }
+    Sfx.click();
+    openPicker(stage, h, pid.hsNode(h.id));
   }
   function onDeviceClick(h, devId) {
     const stage = S.stage;
     if (S.evalDone[stage]) { showToast(h.label + ': ' + h.why); return; }
-    if (tool && tool.kind === 'itpm') { applyItpmToDevice(stage, h); return; }
+    if (tool && tool.kind === 'itpm') { applyProgram(stage, h, tool.id); return; }
     if (tool && tool.kind === 'dev') { placeDevice(stage, h, tool.id); return; }
-    const st = devState(stage, h.id);
-    const it = S.itpm[stage][h.id];
     if (pop && pop.devHs === h.id) { closePopover(); return; }
     Sfx.click();
+    openDevicePop(stage, h);
+  }
+
+  /* ---------- pop-up pemilih perangkat dan program ---------- */
+  function progBtn(k, fit, left) {
+    const t = ITPM[k];
+    return `<button class="prog${fit ? ' fit' : ''}${t.cost > left ? ' poor' : ''}" data-prog="${k}"><span class="pcode">${esc(t.code)}</span><span class="pname">${esc(t.name)}${fit ? '<em>sesuai</em>' : ''}</span><span class="tcost">${money(t.cost)}</span></button>`;
+  }
+  function openPicker(stage, h, anchor) {
+    const cur = S.placements[stage][h.id];
+    const refund = cur ? DEVICES[cur].cost + (S.itpm[stage][h.id] ? ITPM[S.itpm[stage][h.id]].cost : 0) : 0;
+    const left = remaining(stage) + refund;
+    const groups = [];
+    stageDevices(stage).forEach(k => {
+      const name = ITPM[DEVICES[k].itpm].grp || 'Perangkat Lain';
+      let g = groups.find(x => x.name === name);
+      if (!g) groups.push(g = { name, items: [] });
+      g.items.push(k);
+    });
+    const html = `<div class="pop-head"><b>${cur ? 'Ganti Perangkat' : 'Pasang Perangkat'}</b><span>${esc(hsLabel(h))}</span></div>
+      <p class="pick-budget">${ICON.coin}<span>Sisa anggaran <b>${money(remaining(stage))}</b></span></p>
+      ${groups.map(g => `<div class="pick-grp"><h5>${esc(g.name)}</h5><div class="pick-grid">${g.items.map(k => {
+        const d = DEVICES[k];
+        return `<button class="pick${k === cur ? ' current' : ''}${d.cost > left ? ' poor' : ''}" data-dev="${k}" style="--c:${d.color}"><span class="tcode">${esc(d.code)}</span><span class="tname">${esc(d.name)}</span><span class="tcost">${money(d.cost)}</span></button>`;
+      }).join('')}</div></div>`).join('')}`;
+    const el = openPopover(anchor, html, { pickHs: h.id }, { cls: 'picker', foot: '<div class="pick-desc">Arahkan kursor ke perangkat untuk membaca fungsinya, lalu klik untuk memasang.</div>' });
+    if (!el) return;
+    const desc = el.querySelector('.pick-desc');
+    $$('.pick', el).forEach(b => {
+      const k = b.dataset.dev, d = DEVICES[k];
+      const show = () => { desc.innerHTML = `<b>${esc(d.name)}</b>. ${esc(d.desc)}`; };
+      b.addEventListener('mouseenter', show);
+      b.addEventListener('focus', show);
+      b.addEventListener('click', () => {
+        if (k === cur) { showToast(`${d.name} sudah terpasang di titik ini.`); return; }
+        if (placeDevice(stage, h, k)) openDevicePop(stage, h);
+      });
+    });
+  }
+  function openDevicePop(stage, h) {
+    const st = devState(stage, h.id);
+    if (!st) return;
+    const it = S.itpm[stage][h.id];
+    const easy = cfg.difficulty === 'mudah';
+    const progs = stagePrograms(stage, 'device');
     const el = openPopover(pid.devNode(h.id), `<div class="pop-head"><b>${esc(st.d.code)}</b><span>${esc(st.d.name)}</span></div>
         <p>${esc(st.d.desc)}</p>
-        <table class="kv"><tr><th>Lokasi</th><td>${esc(h.label)}</td></tr>
+        <table class="kv"><tr><th>Lokasi</th><td>${esc(hsLabel(h))}</td></tr>
+        <tr><th>Biaya</th><td>${money(st.d.cost)}${it ? ` + program ${money(ITPM[it].cost)}` : ''}</td></tr>
         <tr><th>PFD desain</th><td>${String(st.d.pfd).replace('.', ',')} (faktor pengurangan risiko ${num(1 / st.d.pfd)})</td></tr>
         <tr><th>Program uji</th><td>${it ? esc(ITPM[it].name) : '<span class="bad">Belum ada</span>'}</td></tr>
         <tr><th>PFD efektif</th><td>${String(+st.pfd.toFixed(3)).replace('.', ',')}${st.tested ? '' : ' (naik karena tidak diuji)'}</td></tr>
         <tr><th>Keandalan yang dapat dikreditkan</th><td><b>${pct(st.rel)}</b></td></tr></table>
-        ${st.tested ? '' : `<p class="note">Dalam LOPA, barier yang tidak diuji secara berkala tidak dapat dikreditkan sepenuhnya karena kegagalan tersembunyinya tidak pernah terungkap. Terapkan <b>${esc(ITPM[st.d.itpm].name)}</b> agar barier ini dapat diklaim sebagai lapisan proteksi independen.</p>`}
-        <div class="pop-actions"><button class="btn3d red small" data-pop="rm-dev">Lepas Perangkat</button>${it ? '<button class="btn3d silver small" data-pop="rm-test">Lepas Program Uji</button>' : ''}</div>`, { devHs: h.id });
+        ${st.tested ? '' : `<div class="pick-grp"><h5>Terapkan program inspeksi &amp; pengujian</h5><p class="note">Barier yang tidak diuji berkala tidak dapat dikreditkan penuh dalam LOPA karena kegagalan tersembunyinya tidak pernah terungkap. Pilih program yang sesuai untuk perangkat ini.</p><div class="prog-list">${progs.map(k => progBtn(k, easy && ITPM[k].fits.includes(st.dev), remaining(stage))).join('')}</div></div>`}
+        <div class="pop-actions"><button class="btn3d silver small" data-pop="swap">Ganti Perangkat</button><button class="btn3d red small" data-pop="rm-dev">Lepas Perangkat</button>${it ? '<button class="btn3d silver small" data-pop="rm-test">Lepas Program Uji</button>' : ''}</div>`, { devHs: h.id });
     if (!el) return;
+    $$('.prog', el).forEach(b => b.addEventListener('click', () => { if (applyProgram(stage, h, b.dataset.prog)) openDevicePop(stage, h); }));
+    el.querySelector('[data-pop="swap"]').addEventListener('click', () => { Sfx.click(); openPicker(stage, h, pid.devNode(h.id)); });
     el.querySelector('[data-pop="rm-dev"]').addEventListener('click', () => { delete S.placements[stage][h.id]; delete S.itpm[stage][h.id]; Sfx.remove(); save(); refreshBarrierUI(stage); });
     const rt = el.querySelector('[data-pop="rm-test"]');
-    if (rt) rt.addEventListener('click', () => { delete S.itpm[stage][h.id]; Sfx.remove(); save(); refreshBarrierUI(stage); });
+    if (rt) rt.addEventListener('click', () => { delete S.itpm[stage][h.id]; Sfx.remove(); save(); refreshBarrierUI(stage); openDevicePop(stage, h); });
   }
   function onEquipmentBarrier(e) {
     const stage = S.stage;
     if (!e) return;
-    const eqm = (S.eqItpm && S.eqItpm[stage]) || null;
     if (tool && tool.kind === 'dev') { showToast('Perangkat barier dipasang pada titik pemasangan (lingkaran biru), bukan langsung pada peralatan.'); return; }
-    if (tool && tool.kind === 'itpm') {
-      const t = ITPM[tool.id];
-      if (S.evalDone[stage]) { showToast('Tahap ini sudah dievaluasi.'); return; }
-      if (t.target !== 'equipment' || !eqm) { showToast(`${t.name} diterapkan pada perangkat barier terpasang.`); return; }
-      if (!t.fitsEq.includes(e.type)) { Sfx.fail(); showToast(`${t.name} tidak sesuai untuk ${e.name}.`); return; }
-      const cur = eqm[e.id];
-      if (cur === tool.id) { showToast('Program ini sudah diterapkan pada peralatan tersebut.'); return; }
-      const refund = cur ? ITPM[cur].cost : 0;
-      if (spent(stage) - refund + t.cost > budgetFor(stage)) { Sfx.fail(); showToast('Anggaran tidak cukup untuk ' + t.name + '.'); return; }
-      eqm[e.id] = tool.id;
-      Sfx.test(); save(); refreshBarrierUI(stage);
-      return;
-    }
+    if (tool && tool.kind === 'itpm') { applyEqProgram(stage, e, tool.id); return; }
     Sfx.click();
     if (pop && pop.eqId === e.id) { closePopover(); return; }
+    openEqPop(stage, e);
+  }
+  function openEqPop(stage, e) {
+    const eqm = (S.eqItpm && S.eqItpm[stage]) || null;
     const cur = eqm && eqm[e.id];
     const inspectable = eqm && eqInspectable(stage).some(x => x.id === e.id);
+    const open = inspectable && !S.evalDone[stage];
+    const easy = cfg.difficulty === 'mudah';
+    const left = remaining(stage) + (cur ? ITPM[cur].cost : 0);
     scn.equipment.forEach(x => pid.highlight(x.id, false));
     pid.highlight(e.id, true);
     const el = openPopover(pid.eqNode(e.id), eqPopHTML(e, false)
-      + (inspectable ? `<table class="kv"><tr><th>Program inspeksi</th><td>${cur ? esc(ITPM[cur].name) : '<span class="bad">Belum ada</span>'}</td></tr></table>` : '')
-      + (cur && !S.evalDone[stage] ? '<div class="pop-actions"><button class="btn3d red small" data-pop="rm-eq">Lepas Program</button></div>' : ''), { eqId: e.id });
-    const rb = el && el.querySelector('[data-pop="rm-eq"]');
-    if (rb) rb.addEventListener('click', () => { delete eqm[e.id]; Sfx.remove(); save(); refreshBarrierUI(stage); });
+      + (inspectable ? `<table class="kv"><tr><th>Program inspeksi</th><td>${cur ? esc(ITPM[cur].name) + ' (' + money(ITPM[cur].cost) + ')' : '<span class="bad">Belum ada</span>'}</td></tr></table>` : '')
+      + (open ? `<div class="pick-grp"><h5>${cur ? 'Ganti program inspeksi' : 'Terapkan program inspeksi peralatan'}</h5><div class="prog-list">${stagePrograms(stage, 'equipment').filter(k => k !== cur).map(k => progBtn(k, easy && ITPM[k].fitsEq.includes(e.type), left)).join('')}</div></div>` : '')
+      + (cur && open ? '<div class="pop-actions"><button class="btn3d red small" data-pop="rm-eq">Lepas Program</button></div>' : ''), { eqId: e.id });
+    if (!el) return;
+    $$('.prog', el).forEach(b => b.addEventListener('click', () => { if (applyEqProgram(stage, e, b.dataset.prog)) openEqPop(stage, e); }));
+    const rb = el.querySelector('[data-pop="rm-eq"]');
+    if (rb) rb.addEventListener('click', () => { delete eqm[e.id]; Sfx.remove(); save(); refreshBarrierUI(stage); openEqPop(stage, e); });
   }
   function confirmEvaluate(stage) {
     const untested = Object.keys(S.placements[stage]).filter(h => !devState(stage, h).tested).length;
@@ -1188,7 +1289,7 @@ const Game = (() => {
           ${stage === 3 ? `<div><span>Inspeksi peralatan kritis</span><b>${eqOk}/${targets.length}</b></div>` : ''}
           <div><span>Keliru / tidak perlu</span><b>${wrong + unnecessary}</b></div>
           <div><span>Keandalan rata-rata</span><b>${rel.n ? pct(rel.avg) : '0%'}</b></div>
-          <div><span>Anggaran terpakai</span><b>${spent(stage)}/${budgetFor(stage)}</b></div>
+          <div><span>Anggaran terpakai</span><b>${money(spent(stage))} dari ${money(budgetFor(stage))}</b></div>
         </div>
         <p class="muted small">Bobot nilai: ${stage === 3 ? 'ketepatan barier 55%, pengujian barier 25%, inspeksi peralatan 20%' : 'ketepatan barier 65%, pengujian barier 35%'}, dikurangi 8 poin untuk setiap pemasangan keliru atau tidak perlu.</p>
         <ul class="eval-list">${rows.map(r => `<li class="${r.st}"><b>${esc(r.h.label)}</b><span>${esc(r.msg)}</span><em>${esc(r.h.why)}</em></li>`).join('')}</ul>
@@ -1261,6 +1362,7 @@ const Game = (() => {
         <ul class="notes">
           <li>Barier pencegahan yang terpasang: ${prev.length ? prev.map(x => esc(x.d.name) + (x.tested ? '' : ' (belum diuji)')).join('; ') : 'tidak ada'}.</li>
           <li>Barier mitigasi yang terpasang: ${mit.length ? mit.map(x => esc(x.d.name) + (x.tested ? '' : ' (belum diuji)')).join('; ') : 'tidak ada'}.</li>
+          <li>Investasi barier dan program pengujian: pencegahan ${money(spent(3))}, mitigasi ${money(spent(4))}, total ${money(spent(3) + spent(4))}. ${esc(costNote())}</li>
           <li>Lapisan proteksi harus independen, efektif, dan dapat diaudit. Setiap ancaman pada bow-tie idealnya dipotong oleh lebih dari satu barier dengan mekanisme berbeda (instrumen, mekanis, dan prosedural).</li>
           <li>Barier hanya seandal program inspeksi dan pengujiannya. Tanpa pengujian berkala, kegagalan tersembunyi baru diketahui saat barier dibutuhkan.</li>
         </ul>

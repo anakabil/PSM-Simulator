@@ -143,6 +143,17 @@ const DEVICES = {
            desc: 'Sirene, titik kumpul, dan prosedur evakuasi untuk melindungi pekerja dan masyarakat sekitar.' },
 };
 
+/* ---------------------------------------------------------------------
+   Model biaya indikatif. Biaya perangkat dan program disimpan dalam
+   satuan anggaran agar penilaian tidak bergantung pada kurs. Satu satuan
+   setara USD 25.000 yang mencakup pengadaan, pemasangan, dan rekayasa;
+   untuk program inspeksi dan pengujian, satu satuan mewakili biaya
+   pelaksanaan selama satu siklus 5 tahun. Angka ini kasar, hanya untuk
+   pelatihan, dan bukan acuan pengadaan. Kurs dapat diubah pemain di
+   layar Configuration.
+   --------------------------------------------------------------------- */
+const COST_MODEL = { usdPerUnit: 25000, idrPerUsd: 16000 };
+
 /* Faktor penurunan keandalan barier yang tidak diuji. Tanpa pengujian
    berkala, kegagalan tersembunyi (dangerous undetected) menumpuk dan
    PFDavg yang mendekati lambda_DU x interval uji / 2 terus naik. */
@@ -154,16 +165,16 @@ const UNTESTED_FACTOR = 10;
    target 'equipment' : diterapkan pada peralatan proses (Tahap 3).
    --------------------------------------------------------------------- */
 const ITPM = {
-  CAL:     { code: 'KAL', stage: 3, cost: 1, target: 'device', fits: ['PT', 'LT', 'TT', 'FT'],
+  CAL:     { code: 'KAL', stage: 3, cost: 1, target: 'device', grp: 'Instrumen & Alarm', fits: ['PT', 'LT', 'TT', 'FT'],
              name: 'Kalibrasi Transmitter & Uji Alarm',
              desc: 'Kalibrasi berkala transmitter dan uji fungsi alarm memastikan pembacaan akurat dan alarm aktif pada set point. Transmitter yang menyimpang (drift) dapat membaca normal saat proses sebenarnya abnormal. Pengelolaan alarm mengacu ANSI/ISA-18.2.' },
-  SIF:     { code: 'PRF', stage: 3, cost: 1, target: 'device', fits: ['SIS', 'LSHH', 'LSLL', 'TSHH', 'FSLL', 'AGI'],
+  SIF:     { code: 'PRF', stage: 3, cost: 1, target: 'device', grp: 'Trip Otomatis & Interlock', fits: ['SIS', 'LSHH', 'LSLL', 'TSHH', 'FSLL', 'AGI'],
              name: 'Proof Test SIF & Interlock',
              desc: 'Pengujian berkala seluruh rangkaian SIF, mulai dari sensor, logic solver, hingga elemen akhir (katup), untuk menemukan kegagalan tersembunyi. Interval proof test menentukan PFDavg sesuai IEC 61511.' },
-  RELIEF:  { code: 'UJR', stage: 3, cost: 1, target: 'device', fits: ['PSV', 'RD'],
+  RELIEF:  { code: 'UJR', stage: 3, cost: 1, target: 'device', grp: 'Pelepas Tekanan', fits: ['PSV', 'RD'],
              name: 'Uji Bangku & Sertifikasi PSV / Rupture Disc',
              desc: 'Pelepasan, uji bangku (pop test), perbaikan, dan sertifikasi ulang PSV secara berkala, serta inspeksi rupture disc dan holder. Mengacu API RP 576 dan pemeriksaan keselamatan peralatan migas.' },
-  MECH:    { code: 'MEK', stage: 3, cost: 1, target: 'device', fits: ['NRV', 'EFV', 'BRK', 'GRND', 'N2'],
+  MECH:    { code: 'MEK', stage: 3, cost: 1, target: 'device', grp: 'Perangkat Mekanis', fits: ['NRV', 'EFV', 'BRK', 'GRND', 'N2'],
              name: 'Inspeksi & Uji Fungsi Perangkat Mekanis',
              desc: 'Uji kebocoran balik check valve, uji fungsi excess flow valve dan breakaway coupling, uji hidrostatik selang, uji tahanan grounding, dan pemeriksaan regulator nitrogen.' },
   VESSEL:  { code: 'BTK', stage: 3, cost: 2, target: 'equipment', fitsEq: ['vessel', 'reactor', 'tank', 'truck', 'hx'],
@@ -172,19 +183,19 @@ const ITPM = {
   ROT:     { code: 'VIB', stage: 3, cost: 1, target: 'equipment', fitsEq: ['pump', 'compressor', 'motor'],
              name: 'Pemantauan Getaran & Perawatan Prediktif',
              desc: 'Pemantauan getaran dan suhu bantalan, inspeksi seal mekanis, serta analisis tren untuk mendeteksi kerusakan mesin berputar sebelum seal bocor atau mesin terlalu panas. Mengacu ISO 20816.' },
-  DET:     { code: 'BMP', stage: 4, cost: 1, target: 'device', fits: ['GD', 'FD'],
+  DET:     { code: 'BMP', stage: 4, cost: 1, target: 'device', grp: 'Deteksi', fits: ['GD', 'FD'],
              name: 'Bump Test & Kalibrasi Detektor',
              desc: 'Bump test berkala dengan gas uji dan kalibrasi sensor detektor gas, serta uji fungsi detektor api dengan lampu uji. Mengacu IEC 60079-29-2.' },
-  FIRE:    { code: 'FPS', stage: 4, cost: 1, target: 'device', fits: ['DELUGE', 'FOAM', 'FW'],
+  FIRE:    { code: 'FPS', stage: 4, cost: 1, target: 'device', grp: 'Proteksi Kebakaran Aktif', fits: ['DELUGE', 'FOAM', 'FW'],
              name: 'Inspeksi & Uji Sistem Proteksi Kebakaran',
              desc: 'Uji aliran (flow test) deluge, uji konsentrat busa, uji pompa pemadam, dan pemeriksaan nozel tersumbat. Mengacu NFPA 25.' },
-  EMER:    { code: 'UFD', stage: 4, cost: 1, target: 'device', fits: ['ESD', 'BDV', 'EIV', 'QUENCH', 'SCRUB'],
+  EMER:    { code: 'UFD', stage: 4, cost: 1, target: 'device', grp: 'Isolasi & Sistem Darurat', fits: ['ESD', 'BDV', 'EIV', 'QUENCH', 'SCRUB'],
              name: 'Uji Fungsi Sistem Darurat & Partial Stroke Test',
              desc: 'Uji fungsi logika ESD, partial dan full stroke test katup darurat, pengukuran waktu tutup katup, serta uji sirkulasi scrubber atau injeksi quench.' },
-  PASSIVE: { code: 'PSF', stage: 4, cost: 1, target: 'device', fits: ['DIKE'],
+  PASSIVE: { code: 'PSF', stage: 4, cost: 1, target: 'device', grp: 'Barier Pasif', fits: ['DIKE'],
              name: 'Inspeksi Barier Pasif',
              desc: 'Inspeksi retak dan kebocoran tanggul, kondisi katup drainase tanggul yang harus normal tertutup, dan kapasitas tampung.' },
-  DRILL:   { code: 'DRL', stage: 4, cost: 1, target: 'device', fits: ['ALARM'],
+  DRILL:   { code: 'DRL', stage: 4, cost: 1, target: 'device', grp: 'Tanggap Darurat', fits: ['ALARM'],
              name: 'Latihan Tanggap Darurat Berkala',
              desc: 'Uji sirene, simulasi evakuasi, dan latihan gabungan dengan tim pemadam. PP No. 50 Tahun 2012 mensyaratkan prosedur keadaan darurat diuji secara berkala.' },
 };

@@ -485,6 +485,7 @@ const PID = (() => {
       },
       eqNode: id => eqGroups[id] || null,
       devNode: hsId => gDev.querySelector(`[data-hs="${hsId}"]`),
+      hsNode: hsId => gHs.querySelector(`[data-hs="${hsId}"]`),
       setFlow(on) { svg.classList.toggle('flowing', !!on); },
       highlight(id, on) {
         const g = eqGroups[id]; if (!g) return;

@@ -30,6 +30,14 @@ Setiap laporan bernilai 100 poin (node, parameter, guideword, penyebab, konsekue
 
 Formulir laporan dapat diperkecil lewat tombol di kanan atas. Selama diperkecil, pemain bisa kembali membaca P&ID, tren, peringatan lapangan, dan pop-up peralatan, lalu melanjutkan isian tanpa kehilangan jawaban. Formulir juga menyediakan tiga petunjuk berurutan, yaitu variabel proses yang paling awal menyimpang, gambaran mekanisme kegagalan, dan lokasi node. Setiap petunjuk mengurangi 5 poin dari laporan tersebut, kecuali pada Mode Mudah yang membebaskan biaya petunjuk.
 
+### Pemasangan barier lewat pop-up
+
+Pada Tahap 3 dan 4, titik pemasangan (+) pada P&ID dapat diklik langsung tanpa memilih alat terlebih dahulu. Pop-up pemilih menampilkan perangkat yang sesuai untuk tahap tersebut, dikelompokkan menurut fungsinya, lengkap dengan biaya dan sisa anggaran. Setelah perangkat dipasang, pop-up perangkat menawarkan daftar program inspeksi dan pengujian yang dapat langsung diterapkan, serta tombol untuk mengganti atau melepas perangkat. Pop-up peralatan pada Tahap 3 juga menawarkan program inspeksi peralatan. Kotak Alat di panel kanan tetap tersedia sebagai cara alternatif.
+
+### Anggaran dalam Rupiah atau USD
+
+Biaya perangkat dan program disimpan dalam satuan anggaran agar penilaian tidak bergantung pada kurs. Untuk tampilan, satu satuan dianggap setara USD 25.000, mencakup pengadaan, pemasangan, dan rekayasa. Untuk program inspeksi dan pengujian, satu satuan mewakili biaya pelaksanaan selama satu siklus 5 tahun. Mata uang tampilan (Rupiah atau USD) dan kurs Rupiah per USD (bawaan Rp 16.000) dapat diubah di Configuration. Nilai ini bersifat indikatif untuk pelatihan dan bukan acuan pengadaan.
+
 ### Inspeksi, pengujian, dan keandalan barier
 
 Setiap perangkat memiliki PFD desain indikatif mengikuti rentang tipikal CCPS (2001). Barier tanpa program pengujian dianggap menyimpan kegagalan tersembunyi sehingga PFD-nya dinaikkan 10 kali. Hal ini mencerminkan kriteria IPL pada LOPA, yaitu barier harus dapat diaudit melalui pengujian. Panel Keandalan Sistem Proteksi menampilkan keandalan rata-rata yang dapat dikreditkan. Bobot nilai Tahap 3 terdiri dari ketepatan barier 55 %, pengujian barier 25 %, dan inspeksi peralatan kritis 20 %. Bobot nilai Tahap 4 terdiri dari ketepatan barier 65 % dan pengujian barier 35 %. Setiap pemasangan keliru atau tidak perlu dikurangi 8 poin.
