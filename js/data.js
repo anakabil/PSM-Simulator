@@ -26,12 +26,14 @@ const CREDITS = {
   musik: 'Measured Flow',
   referensi: [
     'Undang-Undang No. 1 Tahun 1970 tentang Keselamatan Kerja.',
+    'Undang-Undang No. 30 Tahun 2009 tentang Ketenagalistrikan beserta perubahannya.',
     'Peraturan Pemerintah No. 50 Tahun 2012 tentang Penerapan Sistem Manajemen Keselamatan dan Kesehatan Kerja (SMK3).',
     'Keputusan Menteri Tenaga Kerja No. KEP.187/MEN/1999 tentang Pengendalian Bahan Kimia Berbahaya di Tempat Kerja.',
     'Peraturan Menteri Ketenagakerjaan No. 37 Tahun 2016 tentang Keselamatan dan Kesehatan Kerja Bejana Tekanan dan Tangki Timbun.',
     'Peraturan Menteri ESDM No. 18 Tahun 2018 tentang Pemeriksaan Keselamatan Instalasi dan Peralatan pada Kegiatan Usaha Minyak dan Gas Bumi.',
     'Peraturan Menteri ESDM No. 10 Tahun 2021 tentang Keselamatan Ketenagalistrikan.',
     'Undang-Undang Uap Tahun 1930 (Stoom Ordonnantie) dan Peraturan Uap Tahun 1930 (Stoom Verordening).',
+    'Peraturan Menteri Ketenagakerjaan No. 4 Tahun 2025 tentang Operator Pesawat Uap.',
     'Peraturan Menteri Ketenagakerjaan No. 12 Tahun 2015 tentang Keselamatan dan Kesehatan Kerja Listrik di Tempat Kerja.',
     'Peraturan Menteri Ketenagakerjaan No. 5 Tahun 2018 tentang Keselamatan dan Kesehatan Kerja Lingkungan Kerja.',
     'Peraturan Menteri Tenaga Kerja dan Transmigrasi No. Per.04/MEN/1980 tentang Syarat-syarat Pemasangan dan Pemeliharaan Alat Pemadam Api Ringan.',
@@ -46,7 +48,11 @@ const CREDITS = {
     'OSHA 29 CFR 1910.119, Process Safety Management of Highly Hazardous Chemicals.',
     'CCPS (2001). Layer of Protection Analysis: Simplified Process Risk Assessment. AIChE.',
     'CCPS (2007). Guidelines for Risk Based Process Safety. AIChE/Wiley.',
+    'CCPS (2008). Guidelines for the Management of Change for Process Safety. AIChE/Wiley.',
     'CCPS & Energy Institute (2018). Bow Ties in Risk Management. AIChE/Wiley.',
+    'Reason, J. (1990). Human Error. Cambridge University Press.',
+    'Health and Safety Executive (1999). Reducing Error and Influencing Behaviour (HSG48, edisi kedua). HSE Books.',
+    'Vaughan, D. (1996). The Challenger Launch Decision: Risky Technology, Culture, and Deviance at NASA. University of Chicago Press.',
     'IEC 61511-1 (2016). Functional safety: Safety instrumented systems for the process industry sector.',
     'IEC 61882 (2016). Hazard and operability studies (HAZOP studies), Application guide.',
     'IEC 60079-29-2 (2015). Gas detectors: Selection, installation, use and maintenance of detectors for flammable gases and oxygen.',
@@ -65,6 +71,7 @@ const CREDITS = {
     'NFPA 850, Recommended Practice for Fire Protection for Electric Generating Plants and High Voltage Direct Current Converter Stations; NFPA 855, Standard for the Installation of Stationary Energy Storage Systems; NFPA 70B, Standard for Electrical Equipment Maintenance.',
     'NFPA 652, Standard on the Fundamentals of Combustible Dust; NFPA 61, Standard for the Prevention of Fires and Dust Explosions in Agricultural and Food Processing Facilities; NFPA 68, Standard on Explosion Protection by Deflagration Venting; NFPA 69, Standard on Explosion Prevention Systems.',
     'NFPA 13, Standard for the Installation of Sprinkler Systems; NFPA 15, Standard for Water Spray Fixed Systems for Fire Protection; NFPA 2001, Standard on Clean Agent Fire Extinguishing Systems; NFPA 96, Standard for Ventilation Control and Fire Protection of Commercial Cooking Operations; NFPA 17A, Standard for Wet Chemical Extinguishing Systems.',
+    'NFPA 51B, Standard for Fire Prevention During Welding, Cutting, and Other Hot Work.',
     'IIAR 2, Standard for Safe Design of Closed-Circuit Ammonia Refrigeration Systems; ASHRAE 15, Safety Standard for Refrigeration Systems.',
     'NIOSH. Pocket Guide to Chemical Hazards: Ammonia (nilai IDLH 300 ppm).',
     'U.S. Chemical Safety Board (2009). Investigation Report: Sugar Dust Explosion and Fire, Imperial Sugar Company, Port Wentworth, Georgia.',
@@ -367,6 +374,44 @@ const SECTORS = [
   { key: 'manufaktur', name: 'Manufaktur' },
   { key: 'properti', name: 'Properti & Konstruksi EPC' },
 ];
+
+/* ---------------------------------------------------------------------
+   Kasus faktor manusia pada Tahap 2. Satu kejadian per skenario dipicu
+   tindakan manusia dan disampaikan melalui obrolan antartim bergaya komik.
+   Semua tokoh adalah fiksi.
+   team : ops = operasi, mtc = maintenance, mgmt = pengawas, hse = HSE,
+          ktr = kontraktor, ext = pihak luar.
+   hat  : helmet, cap, hijab, hair, short (penutup kepala atau rambut pada avatar).
+   --------------------------------------------------------------------- */
+const TEAMS = {
+  ops: { name: 'Tim Operasi', color: '#1565a6' },
+  mtc: { name: 'Tim Maintenance', color: '#00838f' },
+  mgmt: { name: 'Pengawas', color: '#455a64' },
+  hse: { name: 'Tim HSE', color: '#2e7d32' },
+  ktr: { name: 'Kontraktor', color: '#e65100' },
+  ext: { name: 'Pihak Luar', color: '#6d4c41' },
+};
+const CAST = {
+  raka:   { name: 'Raka',   role: 'Operator Panel',            team: 'ops',  hat: 'short',  helmet: '#2b2622', suit: '#0d47a1', skin: '#e9b98f', headset: true },
+  dimas:  { name: 'Dimas',  role: 'Operator Lapangan',         team: 'ops',  hat: 'helmet', helmet: '#fdd835', suit: '#1565c0', skin: '#c68d62' },
+  tono:   { name: 'Tono',   role: 'Helper Lapangan',           team: 'ops',  hat: 'helmet', helmet: '#fdd835', suit: '#5c6bc0', skin: '#a8714a' },
+  joko:   { name: 'Joko',   role: 'Teknisi Mekanikal',         team: 'mtc',  hat: 'helmet', helmet: '#1e88e5', suit: '#37474f', skin: '#b67b52' },
+  wawan:  { name: 'Wawan',  role: 'Teknisi Instrumen & Listrik', team: 'mtc', hat: 'helmet', helmet: '#1e88e5', suit: '#455a64', skin: '#dba67a' },
+  rudi:   { name: 'Rudi',   role: 'Teknisi Gedung',            team: 'mtc',  hat: 'cap',    helmet: '#0277bd', suit: '#0277bd', skin: '#c99068' },
+  hendra: { name: 'Hendra', role: 'Supervisor Shift',          team: 'mgmt', hat: 'helmet', helmet: '#fafafa', suit: '#546e7a', skin: '#e0ae85', glasses: true },
+  sari:   { name: 'Sari',   role: 'Petugas HSE',               team: 'hse',  hat: 'hijab',  helmet: '#43a047', suit: '#2e7d32', skin: '#e3b089', scarf: '#26a69a' },
+  bayu:   { name: 'Bayu',   role: 'Kontraktor',                team: 'ktr',  hat: 'helmet', helmet: '#fb8c00', suit: '#6d4c41', skin: '#b5784c' },
+  agus:   { name: 'Agus',   role: 'Sopir Truk Tangki',         team: 'ext',  hat: 'cap',    helmet: '#757575', suit: '#8d6e63', skin: '#a66b42' },
+  lina:   { name: 'Lina',   role: 'Manajer Restoran (Tenant)', team: 'ext',  hat: 'hair',   helmet: '#4e342e', suit: '#ad1457', skin: '#eac09a' },
+  yanto:  { name: 'Yanto',  role: 'Petugas Security',          team: 'ext',  hat: 'cap',    helmet: '#283593', suit: '#283593', skin: '#be8459' },
+};
+/* Klasifikasi kesalahan manusia mengikuti Reason (1990) dan HSE UK HSG48 (1999). */
+const HF_TYPES = {
+  slip: { name: 'Slip', desc: 'Tindakan tidak sesuai niat, misalnya salah memilih katup atau tombol yang mirip.' },
+  lapse: { name: 'Lapse', desc: 'Lupa melakukan langkah yang seharusnya, misalnya lupa memasang kembali atau menutup kembali.' },
+  mistake: { name: 'Mistake', desc: 'Keputusan keliru karena salah memahami situasi atau kurang pengetahuan, walaupun tindakannya sesuai niat.' },
+  violation: { name: 'Violation', desc: 'Sengaja menyimpang dari aturan atau prosedur yang diketahui, misalnya demi mengejar waktu atau target.' },
+};
 
 /* Skenario didefinisikan di js/scenarios/*.js dan ditambahkan ke sini. */
 const SCENARIOS = [];

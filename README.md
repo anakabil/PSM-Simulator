@@ -19,8 +19,8 @@ Progres permainan, riwayat skor, dan konfigurasi disimpan di `localStorage` pera
 
 | Tahap | Tujuan | Mekanik |
 |---|---|---|
-| 1. Kondisi Normal | Memahami proses produksi | Klik tiap peralatan di P&ID, tekan tombol Jalankan (misalnya Jalankan Proses Produksi, Jalankan Operasi Gedung, atau Jalankan Operasi AMP sesuai fasilitas), ubah set point, amati isi bejana dan tren, lalu kuis |
-| 2. Abnormalitas | Mengenali deviasi (HAZOP) | Tekan tombol Jalankan; saat terjadi kegagalan muncul peringatan lapangan bertahap (getaran, kebocoran gas, gas beracun, panas berlebih, tumpahan, asap, busur listrik, awan debu, kebakaran, ledakan); hentikan dan laporkan node, parameter, guideword, penyebab, konsekuensi |
+| 1. Kondisi Normal | Memahami proses produksi | Klik tiap peralatan di P&ID, tekan tombol Jalankan (misalnya Jalankan Proses Produksi, Jalankan Operasi Gedung, atau Jalankan Operasi AMP sesuai fasilitas), ubah set point, amati isi bejana dan tren, lalu kuis lima soal dengan urutan pilihan diacak |
+| 2. Abnormalitas | Mengenali deviasi (HAZOP) | Tekan tombol Jalankan; saat terjadi kegagalan muncul peringatan lapangan bertahap (getaran, kebocoran gas, gas beracun, panas berlebih, tumpahan, asap, busur listrik, awan debu, kebakaran, ledakan); hentikan dan laporkan node, parameter, guideword, penyebab, konsekuensi; satu kejadian berawal dari obrolan tim yang memuat kesalahan manusia, sehingga laporan juga meminta jenis kesalahannya |
 | 3. Barier Pencegahan | Mencegah kehilangan kontainmen atau kehilangan kendali energi | Pasang perangkat yang sesuai sektor, misalnya PT/LT/TT/FT, PSV, SIF, trip level/suhu/aliran, BMS, interlock draft, relai proteksi, BMS baterai, monitor sabuk elevator, sakelar tekanan tinggi kompresor, atau detektor LPG dengan katup solenoid; terapkan program uji (kalibrasi, proof test, uji PSV, uji relai, uji perangkat mekanis) serta inspeksi peralatan (bejana tekan/tangki, pemantauan getaran, termografi panel, pembersihan ducting dapur) |
 | 4. Barier Mitigasi | Mencegah eskalasi menjadi bencana | Pasang detektor gas/api/asap, ESD, deluge, sprinkler, hidran, pemadam gas bersih, wet chemical, tanggul, venting dan isolasi ledakan, ventilasi darurat, tirai air, presurisasi tangga, alarm umum; terapkan bump test detektor, uji sistem pemadam, uji fungsi sistem darurat, inspeksi barier pasif, dan latihan tanggap darurat |
 
@@ -28,9 +28,32 @@ Menu awal: New Game, Continue, Configuration, Credit.
 
 ### Penilaian Tahap 2
 
-Setiap laporan bernilai 100 poin (node, parameter, guideword, penyebab, konsekuensi masing-masing 20). Laporan yang tepat dan dikirim sebelum peringatan kritis mendapat bonus deteksi dini +10. Laporan yang baru dikirim setelah insiden terjadi mendapat penalti -20.
+Setiap laporan bernilai 100 poin (node, parameter, guideword, penyebab, konsekuensi masing-masing 20). Pada kasus faktor manusia, bobotnya menjadi node, parameter, guideword, dan konsekuensi masing-masing 15, penyebab 20, serta jenis kesalahan manusia 20. Laporan yang tepat dan dikirim sebelum peringatan kritis mendapat bonus deteksi dini +10. Laporan yang baru dikirim setelah insiden terjadi mendapat penalti -20.
 
 Formulir laporan dapat diperkecil lewat tombol di kanan atas. Selama diperkecil, pemain bisa kembali membaca P&ID, tren, peringatan lapangan, dan pop-up peralatan, lalu melanjutkan isian tanpa kehilangan jawaban. Formulir juga menyediakan tiga petunjuk berurutan, yaitu variabel proses yang paling awal menyimpang, gambaran mekanisme kegagalan, dan lokasi node. Setiap petunjuk mengurangi 5 poin dari laporan tersebut, kecuali pada Mode Mudah yang membebaskan biaya petunjuk.
+
+### Kasus faktor manusia dalam obrolan tim
+
+Setiap skenario memiliki satu kejadian tambahan yang berawal dari tindakan manusia, misalnya pekerjaan di luar kewenangan, bypass tanpa izin, perubahan tanpa MOC, atau langkah yang terlupa. Kasus ini disampaikan sebagai obrolan antara tim operasi, tim maintenance, pengawas, kontraktor, atau pihak luar. Selama operasi berjalan, pesan muncul sebagai balon obrolan di atas peralatan yang dibicarakan pada P&ID dan tercatat di kartu Obrolan Tim pada panel kanan. Tombol Lihat Komik membuka seluruh percakapan sebagai panel komik dan menjeda simulasi selama dibaca.
+
+Sebagian pesan muncul sebelum deviasi terlihat di tren, sehingga pemain yang membaca obrolan dengan cermat dapat mengenali pemicunya lebih awal. Pada formulir laporan, pemain memilih jenis kesalahan manusia menurut klasifikasi Reason (1990) dan HSE UK HSG48 (1999), yaitu slip, lapse, mistake, atau violation. Hasil laporan menampilkan pelajaran kasus, kendali yang seharusnya berlaku, dan komik lengkap dengan label kasusnya. Pada bow-tie hasil akhir, faktor manusia ditampilkan sebagai label kuning di bawah ancaman yang dipicunya.
+
+Tokoh yang tampil adalah Raka (operator panel), Dimas (operator lapangan), Tono (helper), Joko (teknisi mekanikal), Wawan (teknisi instrumen dan listrik), Rudi (teknisi gedung), Hendra (supervisor shift), Sari (petugas HSE), Bayu (kontraktor), Agus (sopir truk tangki), Lina (manajer restoran tenant), dan Yanto (petugas security). Jabatan tokoh dapat disesuaikan per skenario. Semua tokoh dan percakapan bersifat fiksi untuk pelatihan.
+
+| Skenario | Pelapor utama | Jenis | Kasus |
+|---|---|---|---|
+| Separator Produksi Migas | Tim Operasi | Violation | Bypass LCV-102 dibuka tanpa koordinasi lalu ditinggalkan |
+| Penyimpanan dan Pengisian LPG | Pihak Luar | Violation | Sopir mengisi sendiri dan melepas sensor overfill |
+| Reaktor Batch Eksotermik | Pengawas | Violation | Resep dan set trip diubah tanpa MOC |
+| Kolom Distilasi Aromatik | Tim Maintenance | Slip | Katup isolasi air pendingin tertukar karena label pudar |
+| Boiler PLTU Batu Bara | Tim Operasi | Mistake | Pesawat uap dijaga helper tanpa lisensi yang mematikan pompa air umpan |
+| Trafo Daya Gardu Induk | Tim Maintenance | Lapse | Fuse kipas pendingin dicabut dan lupa dipasang kembali |
+| PLT Biogas POME | Tim Operasi | Mistake | Injeksi udara scrubber dibuka melampaui batas |
+| PLTS dan BESS | Tim Maintenance | Violation | Proteksi tegangan sel BMS dimatikan dengan password vendor |
+| Lini Produksi Pakan Ternak | Pengawas | Violation | Sensor kecepatan sabuk elevator dijumper demi target produksi |
+| Refrigerasi Amonia Cold Storage | Tim Maintenance | Mistake | Teknisi baru membuka katup gas panas secara manual saat defrost |
+| Proteksi Kebakaran Gedung Komersial | Kontraktor | Violation | Pengelasan tenant tanpa izin kerja panas dan zona detektor dimatikan |
+| Asphalt Mixing Plant | Tim Operasi | Violation | Kunci override BMS dipakai helper untuk melewati purge |
 
 ### Pemasangan barier lewat pop-up
 
@@ -50,6 +73,10 @@ Palet mengikuti logo: silver, hitam, dan biru muda. Warna kuning dan merah hanya
 
 Ikon tombol menu digambar sebagai SVG bervolume dengan gradien, bevel, dan kilap, sehingga tetap tajam di layar beresolusi tinggi. Halaman menu memiliki animasi ringan berupa partikel cahaya, sinar latar yang berputar pelan, kilau yang melintas di logo, dan tombol yang muncul berurutan. Semua animasi ini ikut mati bila efek animasi dinonaktifkan atau sistem operasi meminta pengurangan gerak.
 
+Grafik tren memakai latar abu-abu terang dengan teks hitam dan biru tua, sesuai prinsip HMI berperforma tinggi. Setiap kartu tren menampilkan rentang 60 menit operasi, garis nilai normal, pita batas alarm L, LL, H, dan HH, serta indikator arah perubahan, misalnya naik 0,8 bar/mnt atau stabil. Arah perubahan dihitung dengan regresi linear atas 6 menit terakhir. Skala sumbu tegak menyesuaikan nilai yang tampil dengan rentang minimum tertentu, sehingga eskalasi kecil tetap terlihat tanpa membesar-besarkan derau. Simulasi menambahkan fluktuasi proses yang wajar dengan simpangan baku paling besar sepersepuluh jarak ke batas alarm terdekat, sehingga kondisi normal tidak memicu alarm palsu.
+
+Kuis pemahaman berisi lima soal per skenario. Urutan pilihan diacak setiap kali soal tampil, dan pengecoh disusun dari miskonsepsi yang lazim ditemui di lapangan dengan panjang kalimat yang seimbang, sehingga jawaban tidak dapat ditebak dari posisi atau panjangnya.
+
 Informasi peralatan dan perangkat tampil sebagai pop-up di dekat titik yang diklik pada P&ID. Pop-up memuat deskripsi, nilai proses terkini yang diperbarui langsung, serta status PFD dan program uji pada tahap barier. Pop-up ditutup dengan tombol silang di kanan atas, tombol Escape, klik area kosong, atau otomatis berganti saat peralatan lain diklik.
 
 ## Audio
@@ -62,7 +89,7 @@ Layar Credit hanya menampilkan identitas perusahaan, yaitu PT. Nusa Rendra Jayat
 
 ## Sektor dan skenario
 
-Layar New Game mengelompokkan skenario per sektor dan menyediakan filter sektor. Setiap skenario memiliki empat kejadian kegagalan, lima soal kuis, titik pemasangan barier pencegahan dan mitigasi, serta peralatan kritis untuk program inspeksi.
+Layar New Game mengelompokkan skenario per sektor dan menyediakan filter sektor. Setiap skenario memiliki lima kejadian, yaitu empat kegagalan teknis dan satu kasus faktor manusia, lima soal kuis, titik pemasangan barier pencegahan dan mitigasi, serta peralatan kritis untuk program inspeksi.
 
 | Sektor | Skenario | Tingkat | Ancaman utama yang dilatihkan |
 |---|---|---|---|
@@ -90,11 +117,11 @@ Pada skenario fasilitas non-produksi, label tombol menyesuaikan jenis operasinya
 ```
 index.html                  halaman utama
 css/style.css               gaya tampilan (tombol 3D, kartu, P&ID, efek insiden, modal)
-js/data.js                  katalog perangkat dan kit, program ITPM, model biaya, sektor, peringatan lapangan, credit
+js/data.js                  katalog perangkat dan kit, program ITPM, model biaya, sektor, peringatan lapangan, tim, tokoh, jenis kesalahan manusia, credit
 js/scenarios/*.js           satu berkas per skenario, dinamai <sektor>-<unit>.js (12 berkas)
 js/pid.js                   penggambar P&ID SVG (37 jenis simbol), isi cairan, efek insiden, lencana program uji
-js/sim.js                   mesin simulasi proses, jam operasi, produksi, grafik tren
-js/game.js                  alur permainan, pop-up, penilaian, simpan/lanjutkan, bow-tie
+js/sim.js                   mesin simulasi proses, fluktuasi proses, jam operasi, produksi, grafik tren eskalasi
+js/game.js                  alur permainan, pop-up, penilaian, obrolan tim dan komik, avatar tokoh, simpan/lanjutkan, bow-tie
 js/audio.js                 efek suara WebAudio dan pemutar musik latar
 tools/check-scenarios.js    validasi data skenario dengan Node.js tanpa peramban
 assets/psm-logo.png         logo PSM Simulator by Nusa Safety
@@ -109,8 +136,9 @@ assets/audio/measured-flow.mp3  musik latar
 
 1. Buat berkas baru di `js/scenarios/`, misalnya `manufaktur-boiler-pabrik.js`, berisi satu objek skenario yang diakhiri `SCENARIOS.push(...)`. Berkas yang sudah ada dapat dijadikan contoh.
 2. Daftarkan berkas tersebut di `index.html` sesudah `js/data.js` dan sebelum `js/audio.js`. Urutan baris menentukan urutan tampil di layar New Game.
-3. Isi struktur yang sama dengan skenario lain: `sector` (kunci dari `SECTORS`), `area`, `kits`, opsional `op` untuk label tombol Jalankan, `equipment` (opsional `level` untuk isi cairan, `levelFill: 'bulk'` untuk material curah, `flameVar` agar nyala padam mengikuti variabel), `pipes`, `zones` (opsional `style: 'building'` dengan `floors` untuk potongan gedung), opsional `ground` untuk garis permukaan tanah, `vars`, `controls`, `production`, `quiz`, `events` (dengan `warnings` bertahap yang diakhiri satu peringatan `final`, serta opsional `hintVar`), `hotspots`, `inspect`, `budget`, dan `bowtie`. Koordinat memakai viewBox 1000 x 560.
-4. Jalankan validasi berikut sebelum commit. Alat ini memeriksa rujukan variabel dan peralatan, kesesuaian perangkat dengan tahap dan kit, urutan peringatan, jarak antartitik pemasangan, kecukupan anggaran terhadap biaya ideal, serta larangan dash panjang dan tanda bintang ganda pada teks.
+3. Isi struktur yang sama dengan skenario lain: `sector` (kunci dari `SECTORS`), `area`, `kits`, opsional `op` untuk label tombol Jalankan, `equipment` (opsional `level` untuk isi cairan, `levelFill: 'bulk'` untuk material curah, `flameVar` agar nyala padam mengikuti variabel), `pipes`, `zones` (opsional `style: 'building'` dengan `floors` untuk potongan gedung), opsional `ground` untuk garis permukaan tanah, `vars`, `controls`, `production`, `quiz` (jawaban benar pada indeks yang ditunjuk `ans`, urutan tampil diacak otomatis), `events` (dengan `warnings` bertahap yang diakhiri satu peringatan `final`, serta opsional `hintVar`), `hotspots`, `inspect`, `budget`, dan `bowtie`. Koordinat memakai viewBox 1000 x 560.
+4. Untuk kasus faktor manusia, tambahkan satu kejadian dengan `start` (detik saat deviasi mulai), `hf`, dan `chat`. Objek `hf` berisi `type` (kunci dari `HF_TYPES`), `team` (kunci dari `TEAMS`), `threat` (indeks ancaman bow-tie yang dipicu), `title`, `factor` (teks singkat untuk label bow-tie), `lesson`, `controls`, serta opsional `roles` untuk mengganti jabatan tokoh. Setiap pesan `chat` berisi `t` (detik sejak operasi dijalankan), `who` (kunci dari `CAST`), opsional `at` (peralatan tempat balon muncul) dan `mood` (`normal`, `santai`, `ragu`, `panik`, atau `marah`), serta `text` maksimal 150 karakter.
+5. Jalankan validasi berikut sebelum commit. Alat ini memeriksa rujukan variabel dan peralatan, kesesuaian perangkat dengan tahap dan kit, urutan peringatan, jarak antartitik pemasangan, kecukupan anggaran terhadap biaya ideal, keseimbangan panjang jawaban kuis, kelengkapan kasus faktor manusia beserta urutan dan panjang pesan obrolan, serta larangan dash panjang dan tanda bintang ganda pada teks.
 
 ```bash
 node tools/check-scenarios.js        # ringkasan per skenario
@@ -126,6 +154,7 @@ Daftar referensi lengkap tercantum pada layar Credit. Referensi lokal didahuluka
 - Umum dan migas: PP No. 50 Tahun 2012, Permenaker No. 37 Tahun 2016, Kepmenaker No. 187/MEN/1999, Permen ESDM No. 18 Tahun 2018, OSHA 29 CFR 1910.119, CCPS (2001, 2007), CCPS/EI Bow Ties in Risk Management, IEC 61511, IEC 61882, ANSI/ISA-18.2, ANSI/ISA-101, API 510, API 653, API RP 576, API Std 2510, NFPA 25, dan NFPA 58.
 - Ketenagalistrikan dan EBT: Permen ESDM No. 10 Tahun 2021, Permenaker No. 12 Tahun 2015, Undang-Undang Uap dan Peraturan Uap Tahun 1930, IEC 60076-7, IEEE C57.104, NFPA 85, NFPA 850, NFPA 855, serta laporan DNV GL (2020) tentang insiden BESS McMicken.
 - Manufaktur: Permenaker No. 5 Tahun 2018 (NAB amonia 25 ppm), NFPA 652, NFPA 61, NFPA 68, NFPA 69, IIAR 2, ASHRAE 15, serta laporan CSB tentang Imperial Sugar (2009) dan Millard Refrigerated Services (2015).
+- Faktor manusia: Permenaker No. 4 Tahun 2025 tentang Operator Pesawat Uap, UU No. 30 Tahun 2009 tentang Ketenagalistrikan (Pasal 44 ayat 6 tentang sertifikat kompetensi tenaga teknik), PP No. 50 Tahun 2012 Lampiran II tentang sistem izin kerja, Reason (1990), HSE UK HSG48 (1999), Vaughan (1996) tentang normalisasi penyimpangan, CCPS (2008) tentang Management of Change, dan NFPA 51B.
 - Properti dan konstruksi: Permen PU No. 26/PRT/M/2008, SNI 03-1745-2000, SNI 03-3985-2000, SNI 03-3989-2000, Permenakertrans No. Per.04/MEN/1980, Permenaker No. Per.02/MEN/1983, Kepmenaker No. Kep.186/MEN/1999, Permen PUPR No. 10 Tahun 2021, NFPA 13, NFPA 96, NFPA 17A, NFPA 2001, dan NFPA 86.
 
 Skenario, nilai parameter, nilai PFD, dan tata letak P&ID disederhanakan untuk tujuan pelatihan dan bukan rancangan rekayasa yang dapat dipakai langsung di lapangan.

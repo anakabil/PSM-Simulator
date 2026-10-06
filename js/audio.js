@@ -61,6 +61,7 @@ const Sfx = (() => {
     boom() { noise(2.2, 'lowpass', 380, 0.6); tone(110, 1.4, 'sine', 0.45, 0, 32); },
     siren() { tone(600, 1.2, 'sawtooth', 0.05, 0, 1100); tone(1100, 1.2, 'sawtooth', 0.05, 1.2, 600); },
     start() { tone(392, 0.12, 'triangle', 0.1); tone(523, 0.2, 'triangle', 0.1, 0.1); },
+    chat() { tone(1047, 0.06, 'sine', 0.07); tone(1319, 0.1, 'sine', 0.06, 0.07); },
   };
 })();
 

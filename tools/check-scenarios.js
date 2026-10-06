@@ -10,9 +10,9 @@ const root = path.resolve(args.find(a => a !== '-v') || path.join(__dirname, '..
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const files = [...html.matchAll(/<script src="(js\/(?:data|scenarios\/[^"]+)\.js)"><\/script>/g)].map(m => m[1]);
 let src = files.map(f => fs.readFileSync(path.join(root, f), 'utf8')).join('\n;\n');
-src += '\n;this.__out = { DEVICES, ITPM, SCENARIOS, WARN_TYPES, PARAMS, GUIDEWORDS, SECTORS, EQ_TYPE_NAMES };';
+src += '\n;this.__out = { DEVICES, ITPM, SCENARIOS, WARN_TYPES, PARAMS, GUIDEWORDS, SECTORS, EQ_TYPE_NAMES, CAST, TEAMS, HF_TYPES };';
 const ctx = {}; vm.createContext(ctx); vm.runInContext(src, ctx);
-const { DEVICES, ITPM, SCENARIOS, WARN_TYPES, PARAMS, GUIDEWORDS, SECTORS, EQ_TYPE_NAMES } = ctx.__out;
+const { DEVICES, ITPM, SCENARIOS, WARN_TYPES, PARAMS, GUIDEWORDS, SECTORS, EQ_TYPE_NAMES, CAST, TEAMS, HF_TYPES } = ctx.__out;
 const pidSrc = fs.readFileSync(path.join(root, 'js/pid.js'), 'utf8');
 const drawMap = pidSrc.match(/const DRAW = \{([^}]*)\}/);
 const DRAWN = drawMap ? [...drawMap[1].matchAll(/(\w+)\s*:/g)].map(m => m[1]) : [];
@@ -68,8 +68,37 @@ for (const s of SCENARIOS) {
     c.effects.forEach(f => { if (!s.vars[f.var]) err(`${s.id} kendali ${c.id}: variabel ${f.var} tidak ada`); });
   });
   if (s.quiz.length !== 5) warn(`${s.id}: jumlah kuis ${s.quiz.length}, lazimnya 5`);
-  s.quiz.forEach((q, i) => { if (q.opts.length !== 4 || q.ans < 0 || q.ans > 3) err(`${s.id}: kuis ${i + 1} harus 4 opsi dengan jawaban 0 sampai 3`); });
-  if (s.events.length !== 4) warn(`${s.id}: jumlah kejadian ${s.events.length}, lazimnya 4`);
+  let longest = 0;
+  s.quiz.forEach((q, i) => {
+    if (q.opts.length !== 4 || q.ans < 0 || q.ans > 3) { err(`${s.id}: kuis ${i + 1} harus 4 opsi dengan jawaban 0 sampai 3`); return; }
+    const cl = q.opts[q.ans].length, dmax = Math.max(...q.opts.filter((_, j) => j !== q.ans).map(o => o.length));
+    if (cl > dmax) longest++;
+    if (cl > dmax * 1.35) warn(`${s.id}: kuis ${i + 1} jawaban benar jauh lebih panjang dari pengecoh sehingga mudah ditebak`);
+  });
+  if (longest > 3) warn(`${s.id}: jawaban benar menjadi opsi terpanjang pada ${longest} dari ${s.quiz.length} soal`);
+  const regular = s.events.filter(e => !e.hf), hfEvents = s.events.filter(e => e.hf);
+  if (regular.length !== 4) warn(`${s.id}: jumlah kejadian teknis ${regular.length}, lazimnya 4`);
+  if (hfEvents.length > 1) warn(`${s.id}: lebih dari satu kasus faktor manusia`);
+  hfEvents.forEach(ev => {
+    const h = ev.hf;
+    if (!HF_TYPES[h.type]) err(`${s.id} ${ev.id}: jenis kesalahan ${h.type} tidak dikenal`);
+    if (!TEAMS[h.team]) err(`${s.id} ${ev.id}: tim ${h.team} tidak dikenal`);
+    if (s.bowtie.threats[h.threat] === undefined) err(`${s.id} ${ev.id}: indeks ancaman ${h.threat} tidak ada di bow-tie`);
+    ['title', 'factor', 'lesson'].forEach(k => { if (!h[k]) err(`${s.id} ${ev.id}: hf.${k} belum diisi`); });
+    if (!h.controls || h.controls.length < 2) err(`${s.id} ${ev.id}: hf.controls minimal 2 butir`);
+    Object.keys(h.roles || {}).forEach(k => { if (!CAST[k]) err(`${s.id} ${ev.id}: roles memuat tokoh ${k} yang tidak ada di CAST`); });
+    if (ev.start === undefined) err(`${s.id} ${ev.id}: kasus faktor manusia memerlukan start`);
+    if (!ev.chat || ev.chat.length < 4) err(`${s.id} ${ev.id}: obrolan tim minimal 4 pesan`);
+    let lt = -1;
+    (ev.chat || []).forEach((m, i) => {
+      if (!CAST[m.who]) err(`${s.id} ${ev.id}: pesan ${i + 1} tokoh ${m.who} tidak ada di CAST`);
+      if (m.at && !eq[m.at]) err(`${s.id} ${ev.id}: pesan ${i + 1} lokasi ${m.at} tidak ada`);
+      if (m.t <= lt) err(`${s.id} ${ev.id}: waktu pesan harus naik`); lt = m.t;
+      if (m.mood && !['normal', 'santai', 'ragu', 'panik', 'marah'].includes(m.mood)) err(`${s.id} ${ev.id}: suasana ${m.mood} tidak dikenal`);
+      if (m.text.length > 150) warn(`${s.id} ${ev.id}: pesan ${i + 1} terlalu panjang untuk balon komik`);
+    });
+    if (ev.chat && ev.start !== undefined && !ev.chat.some(m => m.t < ev.start)) warn(`${s.id} ${ev.id}: tidak ada pesan sebelum kejadian dimulai`);
+  });
   s.events.forEach(ev => {
     ev.effects.forEach(f => {
       const v = s.vars[f.var];
@@ -93,7 +122,8 @@ for (const s of SCENARIOS) {
     if (finals !== 1 || ev.warnings[ev.warnings.length - 1].sev !== 'final') err(`${s.id} ${ev.id}: harus diakhiri tepat satu peringatan final`);
     if (verbose) {
       const end = Math.max(...ev.effects.map(f => f.delay + f.dur));
-      console.log(`  ${s.id} ${ev.id}: efek matang pada t=${end} s, peringatan pada ${ev.warnings.map(w => w.t + w.sev[0]).join(', ')}`);
+      const off = ev.start !== undefined ? ev.start : 0;
+      console.log(`  ${s.id} ${ev.id}${ev.hf ? ' [faktor manusia, mulai t=' + off + ']' : ''}: efek matang pada t=${end} s, peringatan pada ${ev.warnings.map(w => w.t + w.sev[0]).join(', ')}${ev.chat ? ', pesan pada ' + ev.chat.map(m => m.t - off).join(', ') + ' (relatif kejadian)' : ''}`);
     }
   });
   const hsIds = new Set();
@@ -131,7 +161,7 @@ for (const s of SCENARIOS) {
     if (b > cost + 4) warn(`${s.id} tahap ${st}: anggaran terlalu longgar (${b} dibanding ideal ${cost})`);
   }
   console.log(`${s.id} [${s.sector}]: ${line.join(', ')}`);
-  if (s.bowtie.threats.length !== s.events.length) warn(`${s.id}: jumlah ancaman bow-tie berbeda dengan jumlah kejadian`);
+  if (s.bowtie.threats.length !== s.events.filter(e => !e.hf).length) warn(`${s.id}: jumlah ancaman bow-tie berbeda dengan jumlah kejadian teknis`);
 }
 const bySector = {}; SCENARIOS.forEach(s => { bySector[s.sector] = (bySector[s.sector] || 0) + 1; });
 console.log('Skenario per sektor:', SECTORS.map(x => `${x.key} ${bySector[x.key] || 0}`).join(', '));

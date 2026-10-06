@@ -52,6 +52,8 @@ const Game = (() => {
   function gradeLabel(g) { return { A: 'Sangat Baik', B: 'Baik', C: 'Cukup', D: 'Perlu Pelatihan Ulang' }[g]; }
   function fxOn() { return cfg.fx && cfg.anim; }
   function opName() { return (scn && scn.op) || 'Proses Produksi'; }
+  /* huruf pertama kecil saja agar singkatan seperti AMP tetap kapital */
+  function opLower() { const o = opName(); return o.charAt(0).toLowerCase() + o.slice(1); }
   const SECTOR_ICON = { migas: 'drop', petrokimia: 'flask', listrik: 'bolt', ebt: 'leaf', manufaktur: 'factory', properti: 'building' };
   const LEVELS = ['Pemula', 'Menengah', 'Lanjutan'];
   let scnFilter = 'all';
@@ -92,6 +94,9 @@ const Game = (() => {
     flask: '<svg viewBox="0 0 24 24"><path d="M9 2.5h6M10 2.5v6.2L4.6 18.4A2.2 2.2 0 0 0 6.5 21.5h11a2.2 2.2 0 0 0 1.9-3.1L14 8.7V2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7.2 15h9.6l2 3.8a1.6 1.6 0 0 1-1.4 2.3H6.6a1.6 1.6 0 0 1-1.4-2.3z"/></svg>',
     leaf: '<svg viewBox="0 0 24 24"><path d="M20.5 3.5C11 3.5 4.5 8.5 4.5 15.6c0 1.4.3 2.6.8 3.6C7 13 11 9.5 16 7.5c-4.2 2.6-7.4 6.4-9 11.6 1 .9 2.5 1.4 4.2 1.4 6.4 0 9.3-6.5 9.3-17z"/></svg>',
     building: '<svg viewBox="0 0 24 24"><path d="M4 21.5V5.5L13 2.5v19zM14.5 21.5V9l5.5 2v10.5z"/><path d="M6.5 8h4M6.5 11.5h4M6.5 15h4M16.5 13h2M16.5 16.5h2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    chat: '<svg viewBox="0 0 24 24"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3h9A2.5 2.5 0 0 1 17 5.5v6a2.5 2.5 0 0 1-2.5 2.5H9l-4 3.5V14h0A2.5 2.5 0 0 1 3 11.5z"/><path d="M19 8.5h.5A1.5 1.5 0 0 1 21 10v6a1.5 1.5 0 0 1-1.5 1.5H19V21l-3.6-3.5H11a1.5 1.5 0 0 1-1.4-1"/></svg>',
+    person: '<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>',
+    comic: '<svg viewBox="0 0 24 24"><rect x="2.5" y="3.5" width="8.5" height="7.5" rx="1.2"/><rect x="13" y="3.5" width="8.5" height="7.5" rx="1.2"/><rect x="2.5" y="13" width="19" height="7.5" rx="1.2"/></svg>',
     bulb: '<svg viewBox="0 0 24 24"><path d="M12 2.5a6.5 6.5 0 0 0-3.9 11.7c.6.5.9 1.1.9 1.8v1h6v-1c0-.7.3-1.3.9-1.8A6.5 6.5 0 0 0 12 2.5z"/><path d="M9.5 19.5h5M10.5 22h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   };
 
@@ -537,6 +542,7 @@ const Game = (() => {
   function stopAll() {
     clearTimers();
     ev2 = null;
+    closeComic();
     if (sim) { sim.stop(); sim = null; }
     if (chartRaf) { cancelAnimationFrame(chartRaf); chartRaf = 0; }
     closePopover();
@@ -561,6 +567,7 @@ const Game = (() => {
         <section class="pid-area" id="pid-area">
           <div class="pid-wrap" id="pid"></div>
           <div class="fx-banner-wrap" id="fx-banners" aria-live="assertive"></div>
+          <div class="chat-float" id="chat-float" aria-hidden="true"></div>
           <div class="trend-wrap" id="trend-wrap"><canvas id="trend"></canvas></div>
         </section>
         <aside class="side" id="side"></aside>
@@ -650,8 +657,8 @@ const Game = (() => {
   }
   function stageTips(n) {
     const tips = {
-      1: ['Klik setiap peralatan pada P&ID atau daftar di panel kanan untuk membaca fungsinya.', `Tekan Jalankan ${opName()} dan ubah set point untuk melihat respons proses serta isi cairan di bejana.`, 'Setelah semua peralatan dipelajari, kerjakan kuis pemahaman proses.'],
-      2: [`Tekan Jalankan ${opName()}, lalu amati tren, pembacaan, dan isi bejana di P&ID.`, 'Saat terjadi kegagalan, peringatan lapangan muncul bertahap: getaran, kebocoran gas, gas beracun, panas berlebih, hingga ledakan.', 'Laporkan sedini mungkin. Laporan sebelum peringatan kritis mendapat bonus, sedangkan laporan setelah insiden terjadi mendapat penalti.'],
+      1: ['Klik setiap peralatan pada P&ID atau daftar di panel kanan untuk membaca fungsinya.', `Tekan Jalankan ${opName()} dan ubah set point untuk melihat respons proses serta isi cairan di bejana.`, 'Setelah semua peralatan dipelajari, kerjakan kuis pemahaman proses. Urutan pilihan jawaban diacak dan pengecohnya terdengar masuk akal, jadi baca setiap pilihan dengan cermat.'],
+      2: [`Tekan Jalankan ${opName()}, lalu amati tren, pembacaan, dan isi bejana di P&ID.`, 'Saat terjadi kegagalan, peringatan lapangan muncul bertahap: getaran, kebocoran gas, gas beracun, panas berlebih, hingga ledakan.', 'Laporkan sedini mungkin. Laporan sebelum peringatan kritis mendapat bonus, sedangkan laporan setelah insiden terjadi mendapat penalti.', 'Satu kejadian berawal dari obrolan tim operasi, maintenance, atau pihak lain. Baca balon obrolan di P&ID atau buka Lihat Komik untuk menemukan tindakan manusia yang memicu abnormalitas, lalu tentukan jenis kesalahannya di laporan.'],
       3: ['Klik titik pemasangan (+) pada P&ID untuk memilih perangkat barier langsung dari pop-up. Cara lain, pilih perangkat di Kotak Alat lalu klik titiknya.', 'Setelah perangkat terpasang, pop-up perangkat menampilkan program inspeksi dan pengujian yang dapat langsung diterapkan. Klik bejana, tangki, atau mesin berputar untuk menerapkan program inspeksi peralatan.', 'Barier tanpa pengujian berkala tidak dapat diandalkan. Pantau indikator keandalan dan sisa anggaran, yang ditampilkan dalam mata uang pilihan Anda di Configuration.', 'Klik perangkat atau peralatan untuk melihat detail, mengganti, atau melepasnya.'],
       4: ['Pikirkan apa yang terjadi bila pencegahan gagal: deteksi, isolasi, proteksi kebakaran, dan tanggap darurat.', 'Perhatikan sifat bahan, karena tidak semua media pemadam cocok untuk semua bahan.', 'Klik titik (+) untuk memilih perangkat mitigasi, lalu lengkapi dengan program uji yang sesuai, misalnya bump test detektor, uji sistem pemadam, uji fungsi ESD, dan latihan tanggap darurat.'],
     };
@@ -665,6 +672,8 @@ const Game = (() => {
     sim.reset(); sim.clearEvent();
     pid.clearFx();
     $('#fx-banners').innerHTML = '';
+    const cf = $('#chat-float'); if (cf) cf.innerHTML = '';
+    closeComic();
     $('#pid').classList.remove('boom');
     scn.equipment.forEach(e => pid.alarmNode(e.id, false));
     renderPlant();
@@ -777,14 +786,18 @@ const Game = (() => {
     const n = scn.events.length;
     side.innerHTML = `<div class="side-head"><h2>${ICON.alert}<span>Tahap 2: Abnormalitas</span></h2></div>
       <div class="card"><h4>Kejadian <span class="pill" id="ev-count">${S.eventIdx}/${n}</span></h4>
-        <p class="muted small">Setiap kali ${esc(opName().toLowerCase())} dijalankan, satu kegagalan akan muncul pada waktu yang tidak diketahui. Amati tren, pembacaan, dan peringatan lapangan, lalu laporkan secepatnya.</p>
-        <div class="ev-track">${scn.events.map((e, i) => `<span class="ev-dot" data-i="${i}">${i + 1}</span>`).join('')}</div>
+        <p class="muted small">Setiap kali ${esc(opLower())} dijalankan, satu kegagalan akan muncul pada waktu yang tidak diketahui. Amati tren, pembacaan, dan peringatan lapangan, lalu laporkan secepatnya.</p>
+        <div class="ev-track">${scn.events.map((e, i) => `<span class="ev-dot${e.chat ? ' hf' : ''}" data-i="${i}" title="${e.chat ? 'Kasus dari laporan tim' : 'Kejadian ' + (i + 1)}">${e.chat ? ICON.chat : i + 1}</span>`).join('')}</div>
+        ${scn.events.some(e => e.chat) ? `<p class="muted small hf-note">${ICON.chat}<span>Kejadian bertanda balon obrolan berasal dari laporan tim operasi atau maintenance. Baca obrolan antartim untuk menemukan tindakan manusia yang memicu abnormalitas.</span></p>` : ''}
       </div>
       <div class="card prod-card">
         <button class="btn3d primary wide run-big" id="btn-run-prod">${ICON.factory}<span>Jalankan ${esc(opName())}</span></button>
         ${prodStatsHTML()}
         <div class="alarm-box" id="alarm-box"><span class="lamp"></span><span id="alarm-text">Proses belum berjalan</span></div>
         <button class="btn3d red wide" id="btn-report" disabled>${ICON.alert}<span>Hentikan &amp; Laporkan Abnormalitas</span></button>
+      </div>
+      <div class="card chat-card" id="chat-card" hidden><h4>${ICON.chat}<span>Obrolan Tim</span> <span class="pill" id="chat-count">0</span><button class="btn3d silver small" id="btn-comic" type="button">${ICON.comic}<span>Lihat Komik</span></button></h4>
+        <ul class="chat-log" id="chat-log"><li class="empty">Belum ada pesan dari tim.</li></ul>
       </div>
       <div class="card warn-card"><h4>Peringatan Lapangan <span class="pill warn" id="warn-count">0</span></h4>
         <ul class="warn-log" id="warn-log"><li class="empty">Belum ada peringatan. Proses berjalan normal.</li></ul>
@@ -794,6 +807,7 @@ const Game = (() => {
     updateEvTrack();
     $('#btn-run-prod').addEventListener('click', () => { Sfx.start(); beginEvent(); });
     $('#btn-report').addEventListener('click', () => { Sfx.click(); openReport(false); });
+    $('#btn-comic').addEventListener('click', () => { Sfx.click(); openComic(); });
   }
   function hazopRow(r, i) {
     return `<tr><td>${i + 1}</td><td>${esc(r.node)}</td><td>${esc(PARAMS[r.param] || '-')}</td><td>${esc((GUIDEWORDS[r.guide] || '-').split(' (')[0])}</td><td class="${r.score >= 60 ? 'ok' : 'bad'}">${r.score}</td></tr>`;
@@ -808,7 +822,14 @@ const Game = (() => {
     const wl = $('#warn-log'); wl.innerHTML = '<li class="empty">Belum ada peringatan. Proses berjalan normal.</li>';
     $('#warn-count').textContent = '0';
     const evt = scn.events[S.eventIdx];
-    ev2 = { evt, delay: 5 + Math.random() * 4, started: false, alarmed: false, warnIdx: 0, nWarn: 0, crit: false, incident: false, reported: false, reportOpen: false };
+    ev2 = { evt, delay: evt.start !== undefined ? evt.start : 5 + Math.random() * 4, started: false, alarmed: false, warnIdx: 0, nWarn: 0, crit: false, incident: false, reported: false, reportOpen: false, chatIdx: 0, chatLog: [] };
+    const cc = $('#chat-card');
+    if (cc) {
+      cc.hidden = !evt.chat;
+      $('#chat-log').innerHTML = '<li class="empty">Belum ada pesan dari tim.</li>';
+      $('#chat-count').textContent = '0';
+      if (evt.chat) showToast('Kasus dari tim: perhatikan obrolan antartim di P&ID dan panel kanan.');
+    }
     runSim(true);
     const b = $('#btn-run-prod'); b.disabled = true; b.innerHTML = `${ICON.factory}<span>${esc(opName())} berjalan...</span>`;
     $('#btn-report').disabled = false;
@@ -818,6 +839,7 @@ const Game = (() => {
   function handleEvent(s) {
     if (!ev2 || ev2.reported) return;
     const evt = ev2.evt;
+    if (evt.chat) while (ev2.chatIdx < evt.chat.length && s.t >= evt.chat[ev2.chatIdx].t) postChat(evt.chat[ev2.chatIdx++]);
     if (!ev2.started && s.t >= ev2.delay) { ev2.started = true; s.startEvent(evt); }
     if (!ev2.started) return;
     if (!ev2.alarmed && Object.keys(scn.vars).some(id => s.status(id) !== 'normal')) {
@@ -910,6 +932,7 @@ const Game = (() => {
       </div>
       <div class="rp-sec"><b>Penyebab yang paling mungkin</b>${shuffledOpts(evt.causes, evt.causeAns, 'rp-cause')}</div>
       <div class="rp-sec"><b>Konsekuensi bila tidak ada proteksi</b>${shuffledOpts(evt.cons, evt.consAns, 'rp-cons')}</div>
+      ${evt.hf ? `<div class="rp-sec hf-sec"><b>${ICON.person}Jenis kesalahan manusia pada tindakan pemicu</b><div class="radios">${Object.keys(HF_TYPES).map(k => `<label><input type="radio" name="rp-hf" value="${k}"><span><b>${esc(HF_TYPES[k].name)}.</b> ${esc(HF_TYPES[k].desc)}</span></label>`).join('')}</div></div>` : ''}
       <div class="hint-box">
         <div class="hint-head"><span class="hint-ico">${ICON.bulb}</span><div><b>Butuh petunjuk?</b><small>${cfg.difficulty === 'mudah' ? 'Mode Mudah: petunjuk tidak mengurangi poin.' : 'Setiap petunjuk mengurangi ' + HINT_COST + ' poin dari laporan ini.'}</small></div><button class="btn3d silver small" id="btn-hint">Buka petunjuk 1 dari 3</button></div>
         <ol class="hint-list" id="hint-list"></ol>
@@ -954,10 +977,13 @@ const Game = (() => {
   function submitReport() {
     const node = $('#rp-node').value, param = $('#rp-param').value, guide = $('#rp-guide').value;
     const cause = $('input[name=rp-cause]:checked'), cons = $('input[name=rp-cons]:checked');
-    if (!node || !param || !guide || !cause || !cons) { Sfx.fail(); showToast('Lengkapi semua isian laporan.'); return; }
     const evt = ev2.evt; const a = evt.answer;
-    const pts = { node: a.node.includes(node) ? 20 : 0, param: a.param.includes(param) ? 20 : 0, guide: a.guide.includes(guide) ? 20 : 0, cause: cause.value === '1' ? 20 : 0, cons: cons.value === '1' ? 20 : 0 };
-    const base = pts.node + pts.param + pts.guide + pts.cause + pts.cons;
+    const hfIn = evt.hf ? $('input[name=rp-hf]:checked') : null;
+    if (!node || !param || !guide || !cause || !cons || (evt.hf && !hfIn)) { Sfx.fail(); showToast('Lengkapi semua isian laporan.'); return; }
+    /* bobot: 5 x 20 poin; kasus faktor manusia 15/15/15/20/15 + jenis kesalahan 20 */
+    const W = evt.hf ? { node: 15, param: 15, guide: 15, cause: 20, cons: 15, hf: 20 } : { node: 20, param: 20, guide: 20, cause: 20, cons: 20, hf: 0 };
+    const pts = { node: a.node.includes(node) ? W.node : 0, param: a.param.includes(param) ? W.param : 0, guide: a.guide.includes(guide) ? W.guide : 0, cause: cause.value === '1' ? W.cause : 0, cons: cons.value === '1' ? W.cons : 0, hf: evt.hf && hfIn.value === evt.hf.type ? W.hf : 0 };
+    const base = pts.node + pts.param + pts.guide + pts.cause + pts.cons + pts.hf;
     let mod = 0, modTxt = '';
     if (ev2.phase === 'early' && base >= 60) { mod = 10; modTxt = '<p class="note ok"><b>Bonus deteksi dini +10.</b> Abnormalitas dikenali dari tren proses sebelum muncul peringatan kritis di lapangan.</p>'; }
     else if (ev2.phase === 'late') { mod = -20; modTxt = '<p class="warn"><b>Penalti -20.</b> Insiden telah terjadi sebelum abnormalitas dilaporkan.</p>'; }
@@ -966,7 +992,7 @@ const Game = (() => {
     const hintPenalty = cfg.difficulty === 'mudah' ? 0 : HINT_COST * hintsUsed;
     const hintTxt = hintsUsed ? `<p class="note">Petunjuk dipakai: <b>${hintsUsed}</b>${hintPenalty ? `, pengurangan ${hintPenalty} poin` : ', tanpa pengurangan poin pada Mode Mudah'}.</p>` : '';
     const score = Math.max(0, Math.min(100, base + mod - hintPenalty));
-    S.eventResults.push({ node, param, guide, score, phase: ev2.phase, hints: hintsUsed });
+    S.eventResults.push({ node, param, guide, score, phase: ev2.phase, hints: hintsUsed, hf: evt.hf ? { type: hfIn.value, ok: !!pts.hf } : undefined });
     closeModal();
     if (score >= 60) Sfx.success(); else Sfx.fail();
     const row = (lbl, ok, ans) => `<tr><td>${lbl}</td><td class="${ok ? 'ok' : 'bad'}">${ok ? 'Benar' : 'Salah'}</td><td>${esc(ans)}</td></tr>`;
@@ -974,9 +1000,11 @@ const Game = (() => {
     const chain = evt.warnings.map((w, i) => `<li class="sev-${w.sev} ${i < ev2.warnIdx ? 'seen' : 'unseen'}"><span class="wi">${ICON[w.type]}</span><div><b>${esc(WARN_TYPES[w.type].title)}</b> <small>${i < ev2.warnIdx ? 'terjadi' : 'dicegah'}</small><p>${esc(w.text)}</p></div></li>`).join('');
     showModal({ title: `Hasil Laporan ${S.eventIdx + 1}: ${score} poin`, cls: 'report',
       body: `<table class="result-table"><tr><th>Unsur</th><th>Penilaian</th><th>Jawaban yang diharapkan</th></tr>
-        ${row('Node', pts.node, a.node.join(' / '))}${row('Parameter', pts.param, a.param.map(p => PARAMS[p]).join(' / '))}${row('Guideword', pts.guide, a.guide.map(g => GUIDEWORDS[g].split(' (')[0]).join(' / '))}${row('Penyebab', pts.cause, evt.causes[evt.causeAns])}${row('Konsekuensi', pts.cons, evt.cons[evt.consAns])}</table>
+        ${row('Node', pts.node, a.node.join(' / '))}${row('Parameter', pts.param, a.param.map(p => PARAMS[p]).join(' / '))}${row('Guideword', pts.guide, a.guide.map(g => GUIDEWORDS[g].split(' (')[0]).join(' / '))}${row('Penyebab', pts.cause, evt.causes[evt.causeAns])}${row('Konsekuensi', pts.cons, evt.cons[evt.consAns])}${evt.hf ? row('Jenis kesalahan', pts.hf, HF_TYPES[evt.hf.type].name + ': ' + HF_TYPES[evt.hf.type].desc) : ''}</table>
         ${modTxt}${hintTxt}<p class="explain">${esc(evt.explain)}</p>
+        ${evt.hf ? `<div class="hf-lesson"><h4>${ICON.person}<span>Faktor manusia: ${esc(evt.hf.title)}</span></h4><p>${esc(evt.hf.lesson)}</p><div class="hf-controls"><b>Kontrol yang seharusnya mencegah:</b>${evt.hf.controls.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>${ev2.chatLog.length ? '<button class="btn3d silver small" id="btn-comic-res" type="button">' + ICON.comic + '<span>Lihat ulang komik obrolan</span></button>' : ''}</div>` : ''}
         <h4 class="chain-h">Rangkaian eskalasi kejadian ini (${seen.length} dari ${evt.warnings.length} tahap terjadi)</h4><ul class="chain">${chain}</ul>`,
+      onMount: m => { const bc = m.querySelector('#btn-comic-res'); if (bc) bc.addEventListener('click', () => { Sfx.click(); openComic(true); }); },
       buttons: [{ label: 'Lanjut', cls: 'btn3d primary', onClick: () => {
         S.eventIdx++; updateEvTrack();
         const tb = $('#hazop tbody'); if (tb) tb.insertAdjacentHTML('beforeend', hazopRow(S.eventResults[S.eventResults.length - 1], S.eventResults.length - 1));
@@ -993,6 +1021,125 @@ const Game = (() => {
           b.innerHTML = `${ICON.factory}<span>Jalankan ${esc(opName())} (kejadian ${S.eventIdx + 1})</span>`;
         }
       } }] });
+  }
+
+  /* ---------- obrolan tim: avatar komik, balon pesan, dan tampilan komik ---------- */
+  function avatarSVG(id, mood) {
+    const c = CAST[id] || CAST.raka;
+    const team = (TEAMS[c.team] || TEAMS.ops).color;
+    const ink = '#1b1f24', m = mood || 'normal';
+    const brow = {
+      normal: 'M24.5 28.6 29 28.2M35 28.2 39.5 28.6', santai: 'M24.5 28.4 29 28.6M35 27.4 39.5 26.6',
+      ragu: 'M24.5 29.2 29 27.6M35 27.6 39.5 29.2', panik: 'M24.5 27 29 26.4M35 26.4 39.5 27', marah: 'M24.5 26.8 29 28.8M35 28.8 39.5 26.8',
+    }[m] || 'M24.5 28.6 29 28.2M35 28.2 39.5 28.6';
+    const mouth = {
+      normal: '<path d="M27 41.5 Q32 45 37 41.5" fill="none" stroke="#1b1f24" stroke-width="2" stroke-linecap="round"/>',
+      santai: '<path d="M27 41.8 Q33 45 38 40" fill="none" stroke="#1b1f24" stroke-width="2" stroke-linecap="round"/>',
+      ragu: '<path d="M27 43.5 Q29.5 41.2 32 43.4 Q34.5 45.6 37 43.2" fill="none" stroke="#1b1f24" stroke-width="2" stroke-linecap="round"/>',
+      panik: '<ellipse cx="32" cy="43" rx="3.2" ry="3.8" fill="#1b1f24"/><ellipse cx="32" cy="44.4" rx="1.8" ry="1.4" fill="#e57373"/>',
+      marah: '<path d="M27 44.5 Q32 40.8 37 44.5" fill="none" stroke="#1b1f24" stroke-width="2" stroke-linecap="round"/>',
+    }[m] || '';
+    const eyes = m === 'panik'
+      ? '<circle cx="27" cy="33" r="3" fill="#fff" stroke="#1b1f24" stroke-width="1.4"/><circle cx="37" cy="33" r="3" fill="#fff" stroke="#1b1f24" stroke-width="1.4"/><circle cx="27" cy="33.4" r="1.3" fill="#1b1f24"/><circle cx="37" cy="33.4" r="1.3" fill="#1b1f24"/>'
+      : '<circle cx="27" cy="33" r="1.9" fill="#1b1f24"/><circle cx="37" cy="33" r="1.9" fill="#1b1f24"/>';
+    let head = '', hat = '';
+    if (c.hat === 'hijab') {
+      head = `<path d="M17.5 35 Q17 15.5 32 15.5 Q47 15.5 46.5 35 Q46.5 47 39.5 51 L24.5 51 Q17.5 47 17.5 35 Z" fill="${c.scarf}" stroke="${ink}" stroke-width="2.2"/><ellipse cx="32" cy="34.5" rx="10.2" ry="11.6" fill="${c.skin}" stroke="${ink}" stroke-width="1.6"/>`;
+      hat = `<path d="M18.5 26 Q18.5 13 32 13 Q45.5 13 45.5 26 Z" fill="${c.helmet}" stroke="${ink}" stroke-width="2"/><rect x="15.5" y="24.5" width="33" height="3.6" rx="1.8" fill="${c.helmet}" stroke="${ink}" stroke-width="1.8"/>`;
+    } else {
+      head = `<circle cx="19.6" cy="34" r="2.6" fill="${c.skin}" stroke="${ink}" stroke-width="1.6"/><circle cx="44.4" cy="34" r="2.6" fill="${c.skin}" stroke="${ink}" stroke-width="1.6"/><circle cx="32" cy="33" r="12.6" fill="${c.skin}" stroke="${ink}" stroke-width="2.2"/>`;
+      if (c.hat === 'helmet') hat = `<path d="M17.6 29 Q17.6 13.5 32 13.5 Q46.4 13.5 46.4 29 Z" fill="${c.helmet}" stroke="${ink}" stroke-width="2"/><path d="M32 14 V28.5" stroke="rgba(0,0,0,0.18)" stroke-width="3"/><rect x="14.5" y="27.4" width="35" height="3.8" rx="1.9" fill="${c.helmet}" stroke="${ink}" stroke-width="1.8"/><path d="M22 19.5 Q25 16.5 29 16" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.7"/>`;
+      else if (c.hat === 'cap') hat = `<path d="M19 27.5 Q19 15.5 32 15.5 Q45 15.5 45 27.5 Z" fill="${c.helmet}" stroke="${ink}" stroke-width="2"/><path d="M38 27.5 Q50 26 53.5 29.6 L38 29.8 Z" fill="${c.helmet}" stroke="${ink}" stroke-width="1.8"/><circle cx="32" cy="16" r="1.4" fill="${ink}"/>`;
+      else if (c.hat === 'hair') hat = `<circle cx="32" cy="13.5" r="5" fill="${c.helmet}" stroke="${ink}" stroke-width="1.8"/><path d="M19.2 33 Q17 15.8 32 15.8 Q47 15.8 44.8 33 Q43 23.5 32 23 Q22 23.5 19.2 33 Z" fill="${c.helmet}" stroke="${ink}" stroke-width="1.8"/>`;
+      else if (c.hat === 'short') hat = `<path d="M19.6 31 Q18.6 17 32 17 Q45.4 17 44.4 31 Q42.5 24.5 36 23.4 Q30 26 24 24.4 Q20.6 26.5 19.6 31 Z" fill="${c.helmet}" stroke="${ink}" stroke-width="1.8"/>`;
+      if (c.headset) hat += `<path d="M18.5 33 Q18.5 15.5 32 15.5 Q45.5 15.5 45.5 33" fill="none" stroke="${ink}" stroke-width="2.4"/><rect x="15.6" y="30" width="5.4" height="8.4" rx="2.2" fill="#37474f" stroke="${ink}" stroke-width="1.4"/><rect x="43" y="30" width="5.4" height="8.4" rx="2.2" fill="#37474f" stroke="${ink}" stroke-width="1.4"/><path d="M18.4 38 Q19.5 44.5 27 44.4" fill="none" stroke="${ink}" stroke-width="1.6"/><circle cx="27.4" cy="44.3" r="1.6" fill="${ink}"/>`;
+    }
+    const glasses = c.glasses ? `<rect x="22.6" y="30" width="8.4" height="6" rx="2.2" fill="none" stroke="${ink}" stroke-width="1.5"/><rect x="33" y="30" width="8.4" height="6" rx="2.2" fill="none" stroke="${ink}" stroke-width="1.5"/><path d="M31 32.6 H33" stroke="${ink}" stroke-width="1.4"/>` : '';
+    const sweat = m === 'ragu' || m === 'panik' ? '<path d="M45.5 22 Q48 26 46.2 28 Q44 28.4 44.4 25.8 Z" fill="#81d4fa" stroke="#1b1f24" stroke-width="1"/>' : '';
+    return `<svg viewBox="0 0 64 64" class="avatar" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="${team}" opacity="0.18"/><circle cx="32" cy="32" r="30" fill="none" stroke="${ink}" stroke-width="2.4"/>
+      <clipPath id="avc-${id}-${m}"><circle cx="32" cy="32" r="29"/></clipPath><g clip-path="url(#avc-${id}-${m})">
+      <path d="M8 66 Q10 48.5 32 47 Q54 48.5 56 66 Z" fill="${c.suit}" stroke="${ink}" stroke-width="2"/><path d="M13 58.5 H51" stroke="#e0e6ea" stroke-width="3" opacity="0.9"/><path d="M27.5 45 h9 v4 h-9z" fill="${c.skin}"/>
+      ${head}${hat}<path d="${brow}" stroke="${ink}" stroke-width="1.8" stroke-linecap="round" fill="none"/>${eyes}${glasses}${mouth}${sweat}</g></svg>`;
+  }
+  function castOf(evt, id) {
+    const c = CAST[id] || { name: id, role: '', team: 'ops' };
+    const role = (evt && evt.hf && evt.hf.roles && evt.hf.roles[id]) || c.role;
+    return Object.assign({}, c, { role });
+  }
+  function chatItemHTML(evt, m) {
+    const c = castOf(evt, m.who), tm = TEAMS[c.team] || TEAMS.ops;
+    return `<li class="chat-msg" style="--team:${tm.color}"><span class="av">${avatarSVG(m.who, m.mood)}</span><div class="bub"><div class="ch"><b>${esc(c.name)}</b><small>${esc(c.role)}</small><time>${esc(m.clock || '')}</time></div><p>${esc(m.text)}</p></div></li>`;
+  }
+  function postChat(m) {
+    if (!ev2) return;
+    const evt = ev2.evt;
+    const msg = Object.assign({}, m, { clock: sim.clock() });
+    ev2.chatLog.push(msg);
+    const log = $('#chat-log');
+    if (log) {
+      const empty = log.querySelector('.empty'); if (empty) empty.remove();
+      log.insertAdjacentHTML('beforeend', chatItemHTML(evt, msg));
+      log.scrollTop = log.scrollHeight;
+    }
+    const cnt = $('#chat-count'); if (cnt) cnt.textContent = ev2.chatLog.length;
+    Sfx.chat();
+    floatBubble(evt, msg);
+  }
+  /* Balon komik di P&ID, diletakkan di atas peralatan tempat tokoh berada. */
+  function floatBubble(evt, m) {
+    const area = $('#pid-area'), wrap = $('#chat-float'), pidEl = $('#pid');
+    if (!area || !wrap || !pidEl) return;
+    const ar = area.getBoundingClientRect(), pr = pidEl.getBoundingClientRect();
+    const node = m.at && pid.eqNode(m.at);
+    const nr = node ? node.getBoundingClientRect() : null;
+    const c = castOf(evt, m.who);
+    const b = document.createElement('div');
+    b.className = 'cf-bub';
+    b.style.setProperty('--team', (TEAMS[c.team] || TEAMS.ops).color);
+    b.innerHTML = `<span class="av">${avatarSVG(m.who, m.mood)}</span><div><b>${esc(c.name)}</b><p>${esc(m.text)}</p></div>`;
+    wrap.appendChild(b);
+    const bw = b.offsetWidth, bh = b.offsetHeight;
+    let x = nr ? nr.left + nr.width / 2 - ar.left : pr.left + pr.width / 2 - ar.left;
+    let y = nr ? nr.top - ar.top - 8 : pr.top - ar.top + 70;
+    const minX = pr.left - ar.left + bw / 2 + 6, maxX = pr.right - ar.left - bw / 2 - 6;
+    const ax = x;
+    x = Math.max(minX, Math.min(maxX, x));
+    if (y - bh < pr.top - ar.top + 6) { b.classList.add('below'); y = (nr ? nr.bottom - ar.top : y) + 10; }
+    b.style.left = x + 'px'; b.style.top = y + 'px';
+    b.style.setProperty('--tail', Math.max(18, Math.min(bw - 18, bw / 2 + (ax - x))) + 'px');
+    requestAnimationFrame(() => b.classList.add('show'));
+    while (wrap.children.length > 2) wrap.firstChild.remove();
+    later(() => { b.classList.remove('show'); later(() => b.remove(), 350); }, 7500);
+  }
+  let comicResume = false;
+  function closeComic() {
+    const w = $('.comic-wrap'); if (!w) return;
+    w.remove();
+    if (comicResume && sim && ev2 && !ev2.reported) runSim(true);
+    comicResume = false;
+  }
+  function openComic(reveal) {
+    if (!ev2 || !ev2.evt.chat) return;
+    closeComic();
+    const evt = ev2.evt, msgs = ev2.chatLog;
+    comicResume = !!(sim && sim.running);
+    if (comicResume) runSim(false);
+    const panels = msgs.map((m, i) => {
+      const c = castOf(evt, m.who), eq = m.at && scn.equipment.find(e => e.id === m.at);
+      return `<div class="comic-panel${i % 3 === 1 ? ' tilt' : ''}" style="--team:${(TEAMS[c.team] || TEAMS.ops).color}"><span class="scene">${esc(eq ? eq.name : 'Area kerja')}</span><span class="pnum">${i + 1}</span>
+        <div class="speech">${esc(m.text)}</div>
+        <div class="figure">${avatarSVG(m.who, m.mood)}<span class="tag"><b>${esc(c.name)}</b><small>${esc(c.role)}</small></span><time>${esc(m.clock)}</time></div></div>`;
+    }).join('');
+    const fin = ev2.incident ? evt.warnings.find(w => w.sev === 'final') : null;
+    const end = fin ? `<div class="comic-panel boom"><div class="burst-wrap"><svg class="burst" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true"><path d="M100 4 118 34 152 14 146 48 192 46 160 70 196 96 150 92 156 118 120 98 100 120 84 96 44 116 54 88 6 92 42 66 8 40 52 46 44 12 82 34Z" fill="#ffd54f" stroke="#1b1f24" stroke-width="4" vector-effect="non-scaling-stroke"/></svg><b>INSIDEN!</b></div><p>${esc(fin.text)}</p></div>` : '';
+    const w = document.createElement('div');
+    w.className = 'comic-wrap';
+    w.innerHTML = `<div class="comic-sheet" role="dialog" aria-label="Komik obrolan tim"><div class="comic-head"><h3>${ICON.comic}<span>Obrolan Tim, ${esc(scn.title)}</span></h3>${reveal && evt.hf ? `<span class="comic-case">${ICON.person}Kasus: ${esc(evt.hf.title)} (${esc(HF_TYPES[evt.hf.type].name)})</span>` : ''}<button class="btn3d silver small" type="button" data-close>${ICON.x}<span>Tutup</span></button></div>
+      <div class="comic-grid">${panels || '<p class="muted">Belum ada obrolan.</p>'}${end}</div>
+      <p class="muted small">Semua tokoh dan percakapan adalah fiksi untuk pelatihan.${comicResume ? ' Proses dijeda selama komik dibuka.' : ''}</p></div>`;
+    document.body.appendChild(w);
+    requestAnimationFrame(() => w.classList.add('show'));
+    w.addEventListener('click', ev => { if (ev.target === w || ev.target.closest('[data-close]')) { Sfx.click(); closeComic(); } });
   }
 
   /* ---------- TAHAP 3 & 4: barier, inspeksi, dan pengujian ---------- */
@@ -1400,7 +1547,7 @@ const Game = (() => {
         ${cfg.name ? `<p class="muted">Pemain: <b>${esc(cfg.name)}</b></p>` : ''}
         <h4>Diagram Bow-Tie Anda</h4>
         <div class="bowtie-wrap">${bowtieSVG(prev, mit)}</div>
-        <div class="bt-legend"><span><i class="lg solid"></i>Barier teruji (terkredit)</span><span><i class="lg dashed"></i>Barier belum diuji (keandalan tidak terbukti)</span></div>
+        <div class="bt-legend"><span><i class="lg solid"></i>Barier teruji (terkredit)</span><span><i class="lg dashed"></i>Barier belum diuji (keandalan tidak terbukti)</span>${scn.events.some(e => e.hf) ? '<span><i class="lg hf"></i>Faktor manusia dari kasus obrolan tim (pemicu ancaman atau pelemah barier)</span>' : ''}</div>
         <div class="degr"><b>Kontrol degradasi (inspeksi, pengujian, dan perawatan):</b> ${progs.length || eqProgs.length ? [...progs, ...eqProgs].map(p => `<span class="chip">${esc(p)}</span>`).join('') : '<span class="muted">tidak ada</span>'}</div>
         <h4>Catatan Pembelajaran</h4>
         <ul class="notes">
@@ -1409,6 +1556,7 @@ const Game = (() => {
           <li>Investasi barier dan program pengujian: pencegahan ${money(spent(3))}, mitigasi ${money(spent(4))}, total ${money(spent(3) + spent(4))}. ${esc(costNote())}</li>
           <li>Lapisan proteksi harus independen, efektif, dan dapat diaudit. Setiap ancaman pada bow-tie idealnya dipotong oleh lebih dari satu barier dengan mekanisme berbeda (instrumen, mekanis, dan prosedural).</li>
           <li>Barier hanya seandal program inspeksi dan pengujiannya. Tanpa pengujian berkala, kegagalan tersembunyi baru diketahui saat barier dibutuhkan.</li>
+          ${scn.events.some(e => e.hf) ? `<li>Faktor manusia pada diagram bow-tie menunjukkan bahwa barier teknis dapat dilumpuhkan oleh pekerjaan di luar kewenangan, bypass, atau kelalaian. Kontrolnya adalah sistem izin kerja, manajemen perubahan, pengelolaan bypass, kompetensi, dan budaya berani menghentikan pekerjaan.${(() => { const r = S.eventResults.find(x => x.hf); return r ? (r.hf.ok ? ' Anda mengklasifikasikan jenis kesalahan manusia dengan tepat.' : ' Klasifikasi jenis kesalahan manusia Anda masih perlu diperbaiki.') : ''; })()}</li>` : ''}
         </ul>
         <div class="cfg-actions">
           <button class="btn3d primary" data-act="again">${ICON.play}<span>Ulangi Skenario</span></button>
@@ -1440,6 +1588,7 @@ const Game = (() => {
       <text x="658" y="26" text-anchor="middle" font-size="13" font-weight="800" fill="#1f2a35">BARIER MITIGASI</text>
       <text x="865" y="26" text-anchor="middle" font-size="13" font-weight="800" fill="#1f2a35">KONSEKUENSI</text>
       ${th.map((t, i) => `<g><path d="M250 ${rowY(i, th.length)} C 380 ${rowY(i, th.length)}, 400 210, 440 210" fill="none" stroke="#9aa6b1" stroke-width="2"/><rect x="20" y="${rowY(i, th.length) - 20}" width="230" height="40" rx="8" fill="#eef2f5" stroke="#5d6b78" stroke-width="2"/><foreignObject x="26" y="${rowY(i, th.length) - 18}" width="218" height="36"><div xmlns="http://www.w3.org/1999/xhtml" class="bt-txt">${esc(t)}</div></foreignObject></g>`).join('')}
+      ${scn.events.filter(e => e.hf && th[e.hf.threat] !== undefined).map(e => { const y = rowY(e.hf.threat, th.length) + 24; return `<g class="bt-hf"><path d="M135 ${y - 4} V${y}" stroke="#e09b00" stroke-width="2"/><rect x="24" y="${y}" width="222" height="32" rx="7" fill="#fff4dc" stroke="#e09b00" stroke-width="1.6" stroke-dasharray="4 2"/><circle cx="36" cy="${y + 11}" r="3.6" fill="#b26a00"/><path d="M30.2 ${y + 22.5} a5.8 5.2 0 0 1 11.6 0z" fill="#b26a00"/><foreignObject x="46" y="${y + 2}" width="196" height="28"><div xmlns="http://www.w3.org/1999/xhtml" class="bt-hf-txt">${esc(e.hf.factor)}</div></foreignObject></g>`; }).join('')}
       ${cs.map((c, i) => `<g><path d="M560 210 C 600 210, 620 ${rowY(i, cs.length)}, 750 ${rowY(i, cs.length)}" fill="none" stroke="#9aa6b1" stroke-width="2"/><rect x="750" y="${rowY(i, cs.length) - 20}" width="230" height="40" rx="8" fill="#fdecec" stroke="#d64541" stroke-width="2"/><foreignObject x="756" y="${rowY(i, cs.length) - 18}" width="218" height="36"><div xmlns="http://www.w3.org/1999/xhtml" class="bt-txt">${esc(c)}</div></foreignObject></g>`).join('')}
       <rect x="440" y="168" width="120" height="84" rx="14" fill="#1f2a35" stroke="#e53935" stroke-width="3"/>
       <foreignObject x="446" y="174" width="108" height="72"><div xmlns="http://www.w3.org/1999/xhtml" class="bt-txt top">${esc(bt.top)}</div></foreignObject>
@@ -1466,11 +1615,12 @@ const Game = (() => {
     window.addEventListener('resize', () => { if (chart) chart.draw(); closePopover(); });
     window.addEventListener('keydown', ev => {
       if (ev.key !== 'Escape') return;
+      if ($('.comic-wrap')) { closeComic(); return; }
       if (pop) { closePopover(); return; }
       if (tool && S && S.stage >= 3 && $('#tool-desc')) selectTool(null, null);
     });
   }
-  return { init, showMenu };
+  return { init, showMenu, avatarSVG };
 })();
 
 document.addEventListener('DOMContentLoaded', Game.init);
