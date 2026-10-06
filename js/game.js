@@ -49,6 +49,10 @@ const Game = (() => {
   function grade(score) { return score >= 85 ? 'A' : score >= 70 ? 'B' : score >= 55 ? 'C' : 'D'; }
   function gradeLabel(g) { return { A: 'Sangat Baik', B: 'Baik', C: 'Cukup', D: 'Perlu Pelatihan Ulang' }[g]; }
   function fxOn() { return cfg.fx && cfg.anim; }
+  function opName() { return (scn && scn.op) || 'Proses Produksi'; }
+  const SECTOR_ICON = { migas: 'drop', petrokimia: 'flask', listrik: 'bolt', ebt: 'leaf', manufaktur: 'factory', properti: 'building' };
+  const LEVELS = ['Pemula', 'Menengah', 'Lanjutan'];
+  let scnFilter = 'all';
 
   const ICON = {
     book: '<svg viewBox="0 0 24 24"><path d="M2.5 5.2c3.3-1.6 6.4-1.4 8.7.6v14c-2.3-1.8-5.4-2-8.7-.6z"/><path d="M21.5 5.2c-3.3-1.6-6.4-1.4-8.7.6v14c2.3-1.8 5.4-2 8.7-.6z"/></svg>',
@@ -79,6 +83,13 @@ const Game = (() => {
     explosion: '<svg viewBox="0 0 24 24"><path d="m12 1.5 2.2 5.3 4.9-3.1-1.9 5.5 5.3 1.9-5.3 2 2.3 5.4-5.4-2.6L12 22l-2.1-6.1-5.4 2.6 2.3-5.4-5.3-2 5.3-1.9-1.9-5.5 4.9 3.1z"/></svg>',
     minimize: '<svg viewBox="0 0 24 24"><path d="M5 18h14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
     restore: '<svg viewBox="0 0 24 24"><path d="M12 19V7m-6 6 6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    smoke: '<svg viewBox="0 0 24 24"><path d="M6.5 19.5a4 4 0 0 1-.4-8 5.6 5.6 0 0 1 10.7-1.6 3.9 3.9 0 0 1 .2 7.8z"/><path d="M8.5 6.5c1-1.2 2.6-1.2 3.6 0M13.5 4.8c.9-1 2.3-1 3.2 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    arc: '<svg viewBox="0 0 24 24"><path d="M13.5 1.5 4.5 13.5h6l-1.5 9 9.5-13h-6.2z"/></svg>',
+    dust: '<svg viewBox="0 0 24 24"><circle cx="6" cy="14" r="2.6"/><circle cx="11.5" cy="10.5" r="3.2"/><circle cx="17.5" cy="13" r="2.8"/><circle cx="9" cy="18.2" r="1.7"/><circle cx="14.6" cy="18.4" r="1.9"/><circle cx="19.5" cy="7.5" r="1.3"/><circle cx="4" cy="8.5" r="1.2"/><circle cx="15" cy="5" r="1"/></svg>',
+    drop: '<svg viewBox="0 0 24 24"><path d="M12 2.5s-6.5 7.4-6.5 12a6.5 6.5 0 0 0 13 0c0-4.6-6.5-12-6.5-12z"/></svg>',
+    flask: '<svg viewBox="0 0 24 24"><path d="M9 2.5h6M10 2.5v6.2L4.6 18.4A2.2 2.2 0 0 0 6.5 21.5h11a2.2 2.2 0 0 0 1.9-3.1L14 8.7V2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7.2 15h9.6l2 3.8a1.6 1.6 0 0 1-1.4 2.3H6.6a1.6 1.6 0 0 1-1.4-2.3z"/></svg>',
+    leaf: '<svg viewBox="0 0 24 24"><path d="M20.5 3.5C11 3.5 4.5 8.5 4.5 15.6c0 1.4.3 2.6.8 3.6C7 13 11 9.5 16 7.5c-4.2 2.6-7.4 6.4-9 11.6 1 .9 2.5 1.4 4.2 1.4 6.4 0 9.3-6.5 9.3-17z"/></svg>',
+    building: '<svg viewBox="0 0 24 24"><path d="M4 21.5V5.5L13 2.5v19zM14.5 21.5V9l5.5 2v10.5z"/><path d="M6.5 8h4M6.5 11.5h4M6.5 15h4M16.5 13h2M16.5 16.5h2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>',
     bulb: '<svg viewBox="0 0 24 24"><path d="M12 2.5a6.5 6.5 0 0 0-3.9 11.7c.6.5.9 1.1.9 1.8v1h6v-1c0-.7.3-1.3.9-1.8A6.5 6.5 0 0 0 12 2.5z"/><path d="M9.5 19.5h5M10.5 22h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   };
 
@@ -345,38 +356,65 @@ const Game = (() => {
   /* ---------- PILIH SKENARIO ---------- */
   function showNewGame() {
     const hist = loadJSON(HIST_KEY) || {};
+    const listOf = key => SCENARIOS.filter(x => x.sector === key).sort((p, q) => LEVELS.indexOf(p.level) - LEVELS.indexOf(q.level));
+    const sectors = SECTORS.filter(x => listOf(x.key).length);
+    if (scnFilter !== 'all' && !sectors.some(x => x.key === scnFilter)) scnFilter = 'all';
+    const card = sc => `<div class="scn-card" data-id="${sc.id}" style="--accent:${sc.color}">
+        <div class="scn-badge">${esc(sc.level)}</div>
+        <div class="scn-icon">${scnIcon(sc.id)}</div>
+        <h3>${esc(sc.title)}</h3>
+        <p>${esc(sc.subtitle)}</p>
+        <div class="scn-meta"><span>${esc(sc.area)}</span>${hist[sc.id] ? `<span class="best">Terbaik: ${hist[sc.id].total} (${hist[sc.id].grade})</span>` : ''}</div>
+        <button class="btn3d primary">${ICON.play}<span>Mulai</span></button>
+      </div>`;
     app.innerHTML = `<div class="screen sub">
       ${bgPhoto()}
       <div class="panel wide">
         <div class="panel-head"><h2>Pilih Skenario Proses</h2><button class="btn3d silver small" data-act="back">${ICON.home}<span>Menu</span></button></div>
-        <p class="muted">Setiap skenario memuat P&amp;ID, simulasi proses produksi, kejadian abnormal dengan peringatan lapangan, serta titik pemasangan barier dan program inspeksi. Mulailah dari tingkat Pemula bila baru mengenal keselamatan proses.</p>
-        <div class="scn-grid">
-          ${SCENARIOS.map(s => `<div class="scn-card" data-id="${s.id}" style="--accent:${s.color}">
-            <div class="scn-badge">${esc(s.level)}</div>
-            <div class="scn-icon">${scnIcon(s.id)}</div>
-            <h3>${esc(s.title)}</h3>
-            <p>${esc(s.subtitle)}</p>
-            <div class="scn-meta"><span>${esc(s.sector)}</span>${hist[s.id] ? `<span class="best">Terbaik: ${hist[s.id].total} (${hist[s.id].grade})</span>` : ''}</div>
-            <button class="btn3d primary">${ICON.play}<span>Mulai</span></button>
-          </div>`).join('')}
+        <p class="muted">Setiap skenario memuat P&amp;ID, simulasi proses, kejadian abnormal dengan peringatan lapangan, serta titik pemasangan barier dan program inspeksi. Skenario dikelompokkan menurut sektor industri. Mulailah dari tingkat Pemula bila baru mengenal keselamatan proses.</p>
+        <div class="sector-tabs" role="tablist" aria-label="Filter sektor">
+          <button class="chip-tab" data-sec="all" role="tab">Semua Sektor<b>${SCENARIOS.length}</b></button>
+          ${sectors.map(x => `<button class="chip-tab" data-sec="${x.key}" role="tab">${ICON[SECTOR_ICON[x.key]] || ''}<span>${esc(x.name)}</span><b>${listOf(x.key).length}</b></button>`).join('')}
         </div>
+        <div id="scn-list"></div>
       </div>
     </div>`;
-    on(app, '[data-act=back]', 'click', () => { Sfx.click(); showMenu(); });
-    on(app, '.scn-card button', 'click', ev => {
+    const pick = ev => {
       Sfx.start();
       const id = ev.currentTarget.closest('.scn-card').dataset.id;
       const existing = loadJSON(SAVE_KEY);
-      const start = () => startScenario(SCENARIOS.find(s => s.id === id));
+      const start = () => startScenario(SCENARIOS.find(x => x.id === id));
       if (existing && !existing.finished) {
         showModal({ title: 'Permainan tersimpan akan ditimpa', body: '<p>Ada permainan yang belum selesai. Memulai permainan baru akan menghapus progres tersebut. Lanjutkan?</p>',
           buttons: [{ label: 'Ya, mulai baru', cls: 'btn3d primary', onClick: start }, { label: 'Batal', cls: 'btn3d silver' }] });
       } else start();
-    });
+    };
+    const render = () => {
+      $$('.chip-tab').forEach(t => { const act = t.dataset.sec === scnFilter; t.classList.toggle('active', act); t.setAttribute('aria-selected', act ? 'true' : 'false'); });
+      const secs = scnFilter === 'all' ? sectors : sectors.filter(x => x.key === scnFilter);
+      const box = $('#scn-list');
+      box.innerHTML = secs.map(x => `<section class="scn-sector"><h3 class="sector-h"><span class="sector-ico">${ICON[SECTOR_ICON[x.key]] || ''}</span>${esc(x.name)}</h3><div class="scn-grid">${listOf(x.key).map(card).join('')}</div></section>`).join('');
+      on(box, '.scn-card button', 'click', pick);
+    };
+    on(app, '[data-act=back]', 'click', () => { Sfx.click(); showMenu(); });
+    on(app, '.chip-tab', 'click', ev => { Sfx.click(); scnFilter = ev.currentTarget.dataset.sec; render(); });
+    render();
   }
   function scnIcon(id) {
     const steel = '<defs><linearGradient id="si-%" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#b9c3cc"/><stop offset="1" stop-color="#5d6874"/></linearGradient><linearGradient id="sv-%" x1="0" x2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#b9c3cc"/><stop offset="1" stop-color="#5d6874"/></linearGradient></defs>';
     if (id === 'separator') return `<svg viewBox="0 0 80 60">${steel.replace(/%/g, 'a')}<rect x="8" y="18" width="64" height="26" rx="13" fill="url(#si-a)" stroke="#2b3640" stroke-width="2"/><rect x="18" y="21" width="44" height="4" rx="2" fill="#fff" opacity=".8"/><rect x="16" y="37" width="48" height="3" fill="#29abe2"/><path d="M40 18V6M14 44v10M62 44v10" stroke="#2b3640" stroke-width="4" stroke-linecap="round"/></svg>`;
+    const IC = {
+      distilasi: k => `<rect x="14" y="3" width="20" height="54" rx="10" fill="url(#sv-${k})" stroke="#2b3640" stroke-width="2"/><path d="M18 16h12M18 24h12M18 32h12M18 40h12" stroke="#5d6874" stroke-width="1.5"/><path d="M24 3V1h26v9" fill="none" stroke="#2b3640" stroke-width="2.5"/><rect x="40" y="12" width="34" height="14" rx="7" fill="url(#si-${k})" stroke="#2b3640" stroke-width="2"/><rect x="45" y="21" width="24" height="3" fill="#29abe2"/><circle cx="58" cy="44" r="8" fill="url(#si-${k})" stroke="#2b3640" stroke-width="2"/>`,
+      boiler: k => `<rect x="8" y="4" width="50" height="12" rx="6" fill="url(#si-${k})" stroke="#2b3640" stroke-width="2"/><rect x="12" y="18" width="42" height="38" rx="4" fill="url(#sv-${k})" stroke="#2b3640" stroke-width="2"/><rect x="18" y="26" width="30" height="24" rx="2" fill="#1d262e"/><path d="M26 49c-4-5 1-8 1-13 3 3 4 6 3 9 2-1 3-3 3-5 3 4 1 8-2 9z" fill="#ff9100"/><rect x="62" y="8" width="10" height="48" fill="url(#sv-${k})" stroke="#2b3640" stroke-width="2"/>`,
+      trafo: k => `<path d="M8 22h6v28H8zM66 22h6v28h-6z" fill="url(#sv-${k})" stroke="#5d6874" stroke-width="1.2"/><rect x="16" y="20" width="48" height="34" rx="4" fill="url(#sv-${k})" stroke="#2b3640" stroke-width="2"/><path d="M24 20V6M34 20V6M44 20V6" stroke="#5d6874" stroke-width="5"/><path d="M20 10h8M30 10h8M40 10h8M20 15h8M30 15h8M40 15h8" stroke="#eef1f3" stroke-width="2.4"/><rect x="48" y="4" width="22" height="9" rx="4.5" fill="url(#si-${k})" stroke="#2b3640" stroke-width="1.5"/><path d="M38 31l-5 8h5l-3 8 8-11h-5l3-5z" fill="#29abe2"/>`,
+      biogas: k => `<path d="M4 40h60l-8 14H12z" fill="#7a6a52" stroke="#2b3640" stroke-width="2"/><path d="M2 41C10 20 56 20 66 41z" fill="#26323d" stroke="#0b1015" stroke-width="2"/><path d="M14 33c8-8 26-9 36-3" stroke="#fff" stroke-width="2" opacity=".35" fill="none"/><rect x="70" y="18" width="5" height="36" fill="url(#sv-${k})" stroke="#2b3640" stroke-width="1.5"/><path d="M72.5 4c4 5 3 9 0 12-3-3-4-7 0-12z" fill="#ff9100"/>`,
+      bess: k => `<rect x="6" y="14" width="68" height="38" rx="3" fill="url(#si-${k})" stroke="#2b3640" stroke-width="2"/><rect x="11" y="20" width="40" height="26" rx="2" fill="#1d262e"/><path d="M14 24h7v8h-7zM24 24h7v8h-7zM34 24h7v8h-7zM14 35h7v8h-7zM24 35h7v8h-7zM34 35h7v8h-7z" fill="#5cc6ef"/><rect x="55" y="19" width="14" height="28" rx="2" fill="#e9eef2" stroke="#5d6874"/><path d="M66 2l-8 12h6l-3 9 9-13h-6z" fill="#29abe2"/>`,
+      debu: k => `<path d="M8 6h28v32L26 54h-8L8 38z" fill="url(#sv-${k})" stroke="#2b3640" stroke-width="2"/><rect x="8" y="34" width="28" height="3" fill="#29abe2"/><circle cx="52" cy="26" r="9" fill="#d8bd8f"/><circle cx="63" cy="20" r="7" fill="#c9a46a"/><circle cx="62" cy="33" r="8" fill="#e0c89f"/><circle cx="72" cy="27" r="5" fill="#d8bd8f"/><circle cx="48" cy="38" r="4" fill="#c9a46a"/>`,
+      amonia: k => `<circle cx="26" cy="32" r="18" fill="url(#si-${k})" stroke="#2b3640" stroke-width="2"/><path d="M16 26v12l20-4v-4z" fill="#2b3640"/><g stroke="#29abe2" stroke-width="3" stroke-linecap="round"><path d="M60 10v40M43 20l34 20M43 40l34-20"/><path d="M55 12l5 5 5-5M55 48l5-5 5 5"/></g>`,
+      gedung: k => `<rect x="14" y="6" width="40" height="50" rx="2" fill="url(#sv-${k})" stroke="#2b3640" stroke-width="2"/><path d="M14 18h40M14 30h40M14 42h40" stroke="#5d6874" stroke-width="2"/><path d="M20 11h6M30 11h6M40 11h6M20 23h6M30 23h6M40 23h6M20 35h6M30 35h6M40 35h6" stroke="#5cc6ef" stroke-width="3"/><path d="M60 14v38" stroke="#ef5350" stroke-width="4"/><path d="M60 22h10M60 36h10" stroke="#ef5350" stroke-width="3"/><path d="M70 26l-3 4h6zM70 40l-3 4h6z" fill="#29abe2"/>`,
+      amp: k => `<rect x="4" y="22" width="48" height="18" rx="9" fill="url(#si-${k})" stroke="#2b3640" stroke-width="2"/><path d="M14 20v22M40 20v22" stroke="#26323d" stroke-width="5"/><path d="M52 31c6-5 12-4 16 0-4 4-10 5-16 0z" fill="#ff9100"/><rect x="58" y="4" width="10" height="20" fill="url(#sv-${k})" stroke="#2b3640" stroke-width="1.5"/><path d="M6 50h60" stroke="#2b3640" stroke-width="3"/><circle cx="14" cy="46" r="4" fill="#26323d"/><circle cx="42" cy="46" r="4" fill="#26323d"/>`,
+    };
+    if (IC[id]) return `<svg viewBox="0 0 80 60">${steel.replace(/%/g, id)}${IC[id](id)}</svg>`;
     if (id === 'reactor') return `<svg viewBox="0 0 80 60">${steel.replace(/%/g, 'b')}<rect x="18" y="16" width="44" height="30" rx="12" fill="#5cc6ef" opacity=".55" stroke="#1572a8" stroke-width="2"/><rect x="22" y="6" width="36" height="48" rx="14" fill="url(#sv-b)" stroke="#2b3640" stroke-width="2"/><path d="M40 2v30M30 32h20" stroke="#2b3640" stroke-width="3" stroke-linecap="round"/></svg>`;
     return `<svg viewBox="0 0 80 60">${steel.replace(/%/g, 'c')}<rect x="6" y="14" width="56" height="26" rx="13" fill="url(#si-c)" stroke="#2b3640" stroke-width="2"/><rect x="14" y="34" width="40" height="3" fill="#29abe2"/><path d="M62 40v-18h8l6 8v10z" fill="#2b3640"/><path d="M64 26h5l4 5h-9z" fill="#8fdcf7"/><circle cx="18" cy="44" r="6" fill="#1d262e"/><circle cx="34" cy="44" r="6" fill="#1d262e"/><circle cx="68" cy="44" r="6" fill="#1d262e"/></svg>`;
   }
@@ -591,7 +629,8 @@ const Game = (() => {
   function updateProdStats() {
     const t = $('#ps-time'); if (!t || !sim) return;
     t.textContent = sim.clock();
-    const v = $('#ps-val'); if (v) v.textContent = num(sim.prod, scn.production.unit === 'm³' ? 1 : 0) + ' ' + scn.production.unit;
+    const p = scn.production;
+    const v = $('#ps-val'); if (v) v.textContent = num(sim.prod, p.dec !== undefined ? p.dec : (p.unit === 'm³' ? 1 : 0)) + ' ' + p.unit;
   }
   function setStatus(txt, cls) {
     const st = $('#ps-status'); if (!st) return;
@@ -606,8 +645,8 @@ const Game = (() => {
   }
   function stageTips(n) {
     const tips = {
-      1: ['Klik setiap peralatan pada P&ID atau daftar di panel kanan untuk membaca fungsinya.', 'Tekan Jalankan Proses Produksi dan ubah set point untuk melihat respons proses serta isi cairan di bejana.', 'Setelah semua peralatan dipelajari, kerjakan kuis pemahaman proses.'],
-      2: ['Tekan Jalankan Proses Produksi, lalu amati tren, pembacaan, dan isi bejana di P&ID.', 'Saat terjadi kegagalan, peringatan lapangan muncul bertahap: getaran, kebocoran gas, gas beracun, panas berlebih, hingga ledakan.', 'Laporkan sedini mungkin. Laporan sebelum peringatan kritis mendapat bonus, sedangkan laporan setelah insiden terjadi mendapat penalti.'],
+      1: ['Klik setiap peralatan pada P&ID atau daftar di panel kanan untuk membaca fungsinya.', `Tekan Jalankan ${opName()} dan ubah set point untuk melihat respons proses serta isi cairan di bejana.`, 'Setelah semua peralatan dipelajari, kerjakan kuis pemahaman proses.'],
+      2: [`Tekan Jalankan ${opName()}, lalu amati tren, pembacaan, dan isi bejana di P&ID.`, 'Saat terjadi kegagalan, peringatan lapangan muncul bertahap: getaran, kebocoran gas, gas beracun, panas berlebih, hingga ledakan.', 'Laporkan sedini mungkin. Laporan sebelum peringatan kritis mendapat bonus, sedangkan laporan setelah insiden terjadi mendapat penalti.'],
       3: ['Klik titik pemasangan (+) pada P&ID untuk memilih perangkat barier langsung dari pop-up. Cara lain, pilih perangkat di Kotak Alat lalu klik titiknya.', 'Setelah perangkat terpasang, pop-up perangkat menampilkan program inspeksi dan pengujian yang dapat langsung diterapkan. Klik bejana, tangki, atau mesin berputar untuk menerapkan program inspeksi peralatan.', 'Barier tanpa pengujian berkala tidak dapat diandalkan. Pantau indikator keandalan dan sisa anggaran, yang ditampilkan dalam mata uang pilihan Anda di Configuration.', 'Klik perangkat atau peralatan untuk melihat detail, mengganti, atau melepasnya.'],
       4: ['Pikirkan apa yang terjadi bila pencegahan gagal: deteksi, isolasi, proteksi kebakaran, dan tanggap darurat.', 'Perhatikan sifat bahan, karena tidak semua media pemadam cocok untuk semua bahan.', 'Klik titik (+) untuk memilih perangkat mitigasi, lalu lengkapi dengan program uji yang sesuai, misalnya bump test detektor, uji sistem pemadam, uji fungsi ESD, dan latihan tanggap darurat.'],
     };
@@ -651,7 +690,7 @@ const Game = (() => {
     side.innerHTML = `<div class="side-head"><h2>${ICON.book}<span>Tahap 1: Kondisi Normal</span></h2></div>
       <div class="card"><h4>Gambaran Proses</h4>${scn.overview.map(p => `<p>${esc(p)}</p>`).join('')}</div>
       <div class="card"><h4>Proses Produksi</h4>
-        <button class="btn3d primary wide" id="btn-run">${ICON.play}<span>Jalankan Proses Produksi</span></button>
+        <button class="btn3d primary wide" id="btn-run">${ICON.play}<span>Jalankan ${esc(opName())}</span></button>
         ${prodStatsHTML()}
         <p class="muted small">Ubah set point dan amati tren, pembacaan, serta isi cairan di bejana.</p>
         <div class="sliders">${scn.controls.map(c => `<label class="slider"><span>${esc(c.label)} <b id="val-${c.id}">${String(c.def).replace('.', ',')} ${esc(c.unit)}</b></span><input type="range" data-ctl="${c.id}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.def}"></label>`).join('')}</div>
@@ -669,7 +708,7 @@ const Game = (() => {
       const running = sim.running;
       runSim(!running);
       setStatus(running ? 'Dijeda' : 'Normal', running ? 'idle' : 'ok');
-      $('#btn-run').innerHTML = running ? `${ICON.play}<span>Lanjutkan Proses Produksi</span>` : `${ICON.pause}<span>Jeda Proses</span>`;
+      $('#btn-run').innerHTML = running ? `${ICON.play}<span>Lanjutkan ${esc(opName())}</span>` : `${ICON.pause}<span>Jeda Proses</span>`;
     });
     on(side, 'input[type=range]', 'input', ev => {
       const id = ev.currentTarget.dataset.ctl; const c = scn.controls.find(x => x.id === id);
@@ -733,11 +772,11 @@ const Game = (() => {
     const n = scn.events.length;
     side.innerHTML = `<div class="side-head"><h2>${ICON.alert}<span>Tahap 2: Abnormalitas</span></h2></div>
       <div class="card"><h4>Kejadian <span class="pill" id="ev-count">${S.eventIdx}/${n}</span></h4>
-        <p class="muted small">Setiap kali proses produksi dijalankan, satu kegagalan akan muncul pada waktu yang tidak diketahui. Amati tren, pembacaan, dan peringatan lapangan, lalu laporkan secepatnya.</p>
+        <p class="muted small">Setiap kali ${esc(opName().toLowerCase())} dijalankan, satu kegagalan akan muncul pada waktu yang tidak diketahui. Amati tren, pembacaan, dan peringatan lapangan, lalu laporkan secepatnya.</p>
         <div class="ev-track">${scn.events.map((e, i) => `<span class="ev-dot" data-i="${i}">${i + 1}</span>`).join('')}</div>
       </div>
       <div class="card prod-card">
-        <button class="btn3d primary wide run-big" id="btn-run-prod">${ICON.factory}<span>Jalankan Proses Produksi</span></button>
+        <button class="btn3d primary wide run-big" id="btn-run-prod">${ICON.factory}<span>Jalankan ${esc(opName())}</span></button>
         ${prodStatsHTML()}
         <div class="alarm-box" id="alarm-box"><span class="lamp"></span><span id="alarm-text">Proses belum berjalan</span></div>
         <button class="btn3d red wide" id="btn-report" disabled>${ICON.alert}<span>Hentikan &amp; Laporkan Abnormalitas</span></button>
@@ -766,7 +805,7 @@ const Game = (() => {
     const evt = scn.events[S.eventIdx];
     ev2 = { evt, delay: 5 + Math.random() * 4, started: false, alarmed: false, warnIdx: 0, nWarn: 0, crit: false, incident: false, reported: false, reportOpen: false };
     runSim(true);
-    const b = $('#btn-run-prod'); b.disabled = true; b.innerHTML = `${ICON.factory}<span>Proses produksi berjalan...</span>`;
+    const b = $('#btn-run-prod'); b.disabled = true; b.innerHTML = `${ICON.factory}<span>${esc(opName())} berjalan...</span>`;
     $('#btn-report').disabled = false;
     setStatus('Normal', 'ok');
     setAlarm('Proses normal. Amati tren dan P&ID.', false);
@@ -799,8 +838,8 @@ const Game = (() => {
     pid.fx(w.type, p.x, p.y, { sev: w.sev, at: w.at, big: w.big });
     addWarnLog(w);
     showBanner(w);
-    if (w.type === 'leak' || w.type === 'toxic' || w.type === 'spill') Sfx.hiss();
-    else if (w.type === 'fire') Sfx.crackle();
+    if (['leak', 'toxic', 'spill', 'dust'].includes(w.type)) Sfx.hiss();
+    else if (['fire', 'smoke', 'arc'].includes(w.type)) Sfx.crackle();
     if (w.type !== 'explosion') Sfx.warn();
     if (w.sev === 'crit') setStatus('Bahaya', 'crit');
   }
@@ -946,7 +985,7 @@ const Game = (() => {
           finishStage(2, avg, `<p>Rata-rata skor identifikasi dari <b>${S.eventResults.length}</b> kejadian.</p>`);
         } else {
           const b = $('#btn-run-prod'); b.disabled = false;
-          b.innerHTML = `${ICON.factory}<span>Jalankan Proses Produksi (kejadian ${S.eventIdx + 1})</span>`;
+          b.innerHTML = `${ICON.factory}<span>Jalankan ${esc(opName())} (kejadian ${S.eventIdx + 1})</span>`;
         }
       } }] });
   }
@@ -1035,7 +1074,7 @@ const Game = (() => {
       pid.setTargets(null);
     } else {
       const t = ITPM[tool.id];
-      const fitTxt = t.target === 'device' ? t.fits.map(k => DEVICES[k].code).join(', ') : t.fitsEq.map(x => ({ vessel: 'bejana tekan', reactor: 'reaktor', tank: 'tangki', truck: 'truk tangki', hx: 'penukar panas', pump: 'pompa', compressor: 'kompresor', motor: 'motor/agitator' }[x])).join(', ');
+      const fitTxt = t.target === 'device' ? t.fits.filter(k => kitOk(DEVICES[k])).map(k => DEVICES[k].code).join(', ') : t.fitsEq.filter(x => scn.equipment.some(e => e.type === x)).map(x => EQ_TYPE_NAMES[x] || x).join(', ');
       desc.innerHTML = `<b>${esc(t.name)}</b><br>${esc(t.desc)}<div class="meta"><span>Biaya ${money(t.cost)}</span><span>Berlaku untuk: ${esc(fitTxt)}</span></div><p class="muted small">${t.target === 'device' ? 'Klik perangkat terpasang yang berbingkai biru di P&amp;ID.' : 'Klik peralatan yang berbingkai biru di P&amp;ID.'}</p>`;
       updateTargets();
     }

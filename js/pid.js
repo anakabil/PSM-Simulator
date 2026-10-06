@@ -19,6 +19,17 @@ const PID = (() => {
     product: { c: '#4f9d69', name: 'Produk resin' },
     lpg:     { c: '#e0773a', name: 'LPG cair' },
     flare:   { c: '#e05a4f', name: 'Jalur flare' },
+    steam:   { c: '#90a4ae', name: 'Uap air (steam)' },
+    coal:    { c: '#3e3a36', name: 'Serbuk batu bara dan udara primer' },
+    air:     { c: '#a5d6a7', name: 'Udara pembakaran' },
+    flue:    { c: '#8d6e63', name: 'Gas buang' },
+    power:   { c: '#f6c344', name: 'Kabel daya listrik' },
+    bulk:    { c: '#c8a165', name: 'Material curah' },
+    agg:     { c: '#9e9e9e', name: 'Agregat batuan' },
+    asphalt: { c: '#1f1f1f', name: 'Aspal panas' },
+    hotoil:  { c: '#ff7043', name: 'Oli termal (hot oil)' },
+    fw:      { c: '#ef5350', name: 'Air pemadam kebakaran' },
+    nh3:     { c: '#9c7ad6', name: 'Amonia cair' },
   };
 
   function el(tag, attrs, parent) {
@@ -69,6 +80,12 @@ const PID = (() => {
     grad(d, 'gBlast', [[0, '#ffffff'], [0.25, '#fff59d'], [0.55, '#ffb300'], [0.8, '#ff5722', 0.8], [1, '#d84315', 0]], { radial: true });
     grad(d, 'gSpill', [[0, '#3e3029', 0.95], [1, '#2a211c', 0.6]], { radial: true });
     grad(d, 'gScorch', [[0, '#1d1a18', 0.7], [1, '#1d1a18', 0]], { radial: true });
+    grad(d, 'gDust', [[0, '#c9a46a', 0.9], [0.55, '#d8bd8f', 0.6], [1, '#e6d3b0', 0]], { radial: true });
+    grad(d, 'gArc', [[0, '#ffffff', 0.95], [0.35, '#fff59d', 0.75], [0.7, '#4fc3f7', 0.35], [1, '#4fc3f7', 0]], { radial: true });
+    grad(d, 'gPV', [[0, '#4d74a3'], [0.45, '#1f3b5b'], [1, '#0f2133']], { attrs: { x1: 0, y1: 0, x2: 1, y2: 1 } });
+    grad(d, 'gMembrane', [[0, '#5a6672'], [0.35, '#2b333b'], [1, '#0f1418']], { attrs: { x1: 0, y1: 0, x2: 0, y2: 1 } });
+    grad(d, 'gEarth', [[0, '#b7ab9b'], [1, '#8f8374']], { attrs: { x1: 0, y1: 0, x2: 0, y2: 1 } });
+    grad(d, 'gPome', [[0, '#7a6a52', 0.9], [1, '#4c4134', 0.95]], { attrs: { x1: 0, y1: 0, x2: 0, y2: 1 } });
     const f = el('filter', { id: 'fShadow', x: '-20%', y: '-20%', width: '140%', height: '150%' }, d);
     el('feDropShadow', { dx: 0, dy: 3, stdDeviation: 2.5, 'flood-color': '#0b1015', 'flood-opacity': 0.35 }, f);
     const f2 = el('filter', { id: 'fGlow', x: '-50%', y: '-50%', width: '200%', height: '200%' }, d);
@@ -252,7 +269,293 @@ const PID = (() => {
     lines.forEach((l, i) => text(g, x0 + w / 2, e.y + (i - (lines.length - 1) / 2) * 11 + 1, l, { class: 'eq-label', 'font-size': fs, 'font-weight': 700, fill: '#2b3640' }));
   }
 
-  const DRAW = { vessel: drawVessel, reactor: drawReactor, tank: drawTank, pump: drawPump, compressor: drawCompressor, hx: drawHx, valve: drawValve, flare: drawFlare, truck: drawTruck, manifold: drawManifold, motor: drawMotor, building: drawBuilding, muster: drawMuster, sink: drawSink };
+  /* ---------- simbol tambahan lintas sektor ---------- */
+  function legs(g, xs, y1, y2) { xs.forEach(lx => el('line', { x1: lx, y1, x2: lx, y2, stroke: '#2b3640', 'stroke-width': 3.5, 'stroke-linecap': 'round' }, g)); }
+  function shine(g, x, y, w, h) { el('rect', { x, y, width: w, height: h, rx: Math.min(w, h) / 2, fill: '#fff', opacity: 0.6 }, g); }
+  function drawColumn(g, e, ctx) {
+    const r = e.w / 2, cx = e.x + r;
+    el('path', { d: `M${e.x + 8} ${e.y + e.h - 6} L${e.x - 2} ${e.y + e.h + 18} H${e.x + e.w + 2} L${e.x + e.w - 8} ${e.y + e.h - 6} Z`, fill: 'url(#gDark)', stroke: '#1d262e', 'stroke-width': 1 }, g);
+    const body = { x: e.x, y: e.y, width: e.w, height: e.h, rx: r, ry: r };
+    el('rect', Object.assign({ fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, body), g);
+    if (e.level) addLevel(g, { id: e.id, x: e.x, y: e.y + e.h * 0.72, w: e.w, h: e.h * 0.28 }, ctx, 'rect', body);
+    const n = Math.max(4, Math.round((e.h - 2 * r) / 26));
+    for (let i = 1; i < n; i++) {
+      const ty = e.y + r * 0.8 + i * (e.h * 0.72 - r * 0.8) / n;
+      el('path', { d: `M${e.x + 6} ${ty} H${e.x + e.w - 6}`, stroke: '#5d6874', 'stroke-width': 1.2, 'stroke-dasharray': '5 3', opacity: 0.55 }, g);
+    }
+    shine(g, e.x + 7, e.y + r * 0.6, 6, e.h - r * 1.2);
+    label(g, cx, e.y + e.h * 0.42, e.id, e.w >= 70 ? 15 : 12);
+  }
+  function drawFurnace(g, e) {
+    const cx = e.x + e.w / 2;
+    el('path', { d: `M${e.x + 14} ${e.y + e.h - 2} L${cx - 14} ${e.y + e.h + 22} H${cx + 14} L${e.x + e.w - 14} ${e.y + e.h - 2} Z`, fill: 'url(#gDark)', stroke: '#1d262e', 'stroke-width': 1.2 }, g);
+    el('rect', { x: e.x, y: e.y, width: e.w, height: e.h, rx: 8, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    const ix = e.x + 12, iy = e.y + 30, iw = e.w - 24, ih = e.h - 44;
+    el('rect', { x: ix, y: iy, width: iw, height: ih, rx: 4, fill: '#1d262e', stroke: '#0b1015', 'stroke-width': 1.5 }, g);
+    for (let k = 0; k < 4; k++) {
+      el('line', { x1: ix + 3 + k * 4, y1: iy + 2, x2: ix + 3 + k * 4, y2: iy + ih - 2, stroke: '#7d8a96', 'stroke-width': 1.6 }, g);
+      el('line', { x1: ix + iw - 3 - k * 4, y1: iy + 2, x2: ix + iw - 3 - k * 4, y2: iy + ih - 2, stroke: '#7d8a96', 'stroke-width': 1.6 }, g);
+    }
+    const fl = el('g', { class: 'furn-flames' }, g);
+    const nb = Math.max(2, Math.min(4, Math.round(iw / 40)));
+    for (let k = 0; k < nb; k++) {
+      const fx0 = ix + 16 + (iw - 32) * (k + 0.5) / nb, fy = iy + ih - 6;
+      el('path', { class: 'flame', d: `M${fx0} ${fy - 40} C${fx0 + 12} ${fy - 25} ${fx0 + 9} ${fy - 8} ${fx0} ${fy} C${fx0 - 9} ${fy - 8} ${fx0 - 12} ${fy - 25} ${fx0} ${fy - 40} Z`, fill: 'url(#gFlame)', filter: 'url(#fGlow)' }, fl);
+    }
+    el('rect', { x: e.x, y: e.y + 22, width: e.w, height: 4, fill: '#29abe2' }, g);
+    label(g, cx, e.y + 13, e.id, 13);
+  }
+  function drawHeater(g, e) {
+    const cx = e.x + e.w / 2;
+    el('rect', { x: cx - 7, y: e.y - 34, width: 14, height: 36, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 1.4 }, g);
+    el('rect', { x: e.x, y: e.y, width: e.w, height: e.h, rx: 10, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    const ix = e.x + 9, iy = e.y + 14, iw = e.w - 18, ih = e.h - 30;
+    el('rect', { x: ix, y: iy, width: iw, height: ih, rx: 4, fill: '#1d262e' }, g);
+    let d = '';
+    for (let k = 0; k < 6; k++) { const yy = iy + 6 + k * (ih - 30) / 5; d += `M${ix + 4} ${yy} Q${cx} ${yy + 5} ${ix + iw - 4} ${yy} `; }
+    el('path', { d, fill: 'none', stroke: '#ff8a50', 'stroke-width': 2, opacity: 0.85 }, g);
+    el('path', { class: 'flame', d: `M${cx} ${iy + ih - 24} C${cx + 8} ${iy + ih - 15} ${cx + 6} ${iy + ih - 5} ${cx} ${iy + ih - 2} C${cx - 6} ${iy + ih - 5} ${cx - 8} ${iy + ih - 15} ${cx} ${iy + ih - 24} Z`, fill: 'url(#gFlame)', filter: 'url(#fGlow)' }, g);
+    el('rect', { x: e.x, y: e.y + e.h - 12, width: e.w, height: 3, fill: '#29abe2' }, g);
+    label(g, cx, e.y + e.h + 14, e.id, 11, { 'font-weight': 700 });
+  }
+  function drawBurner(g, e) {
+    const s = e.dir === 'left' ? -1 : 1;
+    el('rect', { x: e.x - 16, y: e.y - 11, width: 32, height: 22, rx: 5, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 1.6, filter: 'url(#fSoft)' }, g);
+    el('rect', { x: e.x - 16, y: e.y + 5, width: 32, height: 3, fill: '#29abe2' }, g);
+    el('path', { d: `M${e.x + s * 16} ${e.y - 6} L${e.x + s * 26} ${e.y - 3} V${e.y + 3} L${e.x + s * 16} ${e.y + 6} Z`, fill: '#2b3640' }, g);
+    el('path', { class: 'hflame' + (s < 0 ? ' left' : ''), d: `M${e.x + s * 26} ${e.y} C${e.x + s * 34} ${e.y - 9} ${e.x + s * 46} ${e.y - 5} ${e.x + s * 56} ${e.y} C${e.x + s * 46} ${e.y + 5} ${e.x + s * 34} ${e.y + 9} ${e.x + s * 26} ${e.y} Z`, fill: 'url(#gFlame)', filter: 'url(#fGlow)' }, g);
+    label(g, e.x, e.y + 25, e.id, 10.5, { 'font-weight': 700 });
+  }
+  function drawDrum(g, e) {
+    const r = e.h / 2;
+    [0.22, 0.78].forEach(f => { const rx = e.x + e.w * f; [-12, 12].forEach(dx => el('circle', { cx: rx + dx, cy: e.y + e.h + 7, r: 7, fill: 'url(#gDark)' }, g)); });
+    el('rect', { x: e.x - 6, y: e.y + e.h + 12, width: e.w + 12, height: 6, rx: 2, fill: '#2b3640' }, g);
+    el('rect', { x: e.x, y: e.y, width: e.w, height: e.h, rx: r, ry: r, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    [0.22, 0.78].forEach(f => el('rect', { x: e.x + e.w * f - 7, y: e.y - 3, width: 14, height: e.h + 6, rx: 3, fill: 'url(#gDark)', stroke: '#1d262e', 'stroke-width': 1 }, g));
+    el('rect', { x: e.x + e.w * 0.5 - 4, y: e.y - 2, width: 8, height: e.h + 4, rx: 2, fill: '#29abe2', opacity: 0.9 }, g);
+    el('rect', { x: e.x + r, y: e.y + 6, width: e.w - 2 * r, height: 5, rx: 2.5, fill: '#fff', opacity: 0.7 }, g);
+    label(g, e.x + e.w * 0.36, e.y + e.h / 2 + 2, e.id, 14);
+  }
+  function drawSilo(g, e, ctx) {
+    const cx = e.x + e.w / 2, hb = e.y + e.h * 0.68, ow = Math.max(10, e.w * 0.16), ry = Math.min(10, e.w * 0.12);
+    legs(g, [e.x + 6, e.x + e.w - 6], hb, e.y + e.h + 12);
+    const d = `M${e.x} ${e.y} V${hb} L${cx - ow / 2} ${e.y + e.h} H${cx + ow / 2} L${e.x + e.w} ${hb} V${e.y} A${e.w / 2} ${ry} 0 0 1 ${e.x} ${e.y} Z`;
+    el('path', { d, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    if (e.level) addLevel(g, e, ctx, 'path', { d });
+    el('ellipse', { cx, cy: e.y, rx: e.w / 2, ry, fill: 'url(#gSteelTop)', stroke: '#3b4651', 'stroke-width': 2 }, g);
+    el('path', { d: `M${e.x} ${hb} H${e.x + e.w}`, stroke: '#29abe2', 'stroke-width': 3, opacity: 0.85 }, g);
+    shine(g, e.x + 7, e.y + 12, 6, Math.max(10, hb - e.y - 22));
+    label(g, cx, e.y + (hb - e.y) / 2 + 4, e.id, e.w >= 80 ? 15 : 12);
+  }
+  function drawFilter(g, e) {
+    const hh = e.h * 0.62, cx = e.x + e.w / 2, ow = Math.max(12, e.w * 0.18);
+    legs(g, [e.x + 6, e.x + e.w - 6], e.y + hh, e.y + e.h + 10);
+    el('path', { d: `M${e.x} ${e.y + hh} L${cx - ow / 2} ${e.y + e.h - 8} H${cx + ow / 2} L${e.x + e.w} ${e.y + hh} Z`, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 2, filter: 'url(#fShadow)' }, g);
+    el('rect', { x: e.x, y: e.y, width: e.w, height: hh, rx: 6, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    el('rect', { x: e.x + 8, y: e.y + 16, width: e.w - 16, height: hh - 24, rx: 3, fill: '#e9eef2', stroke: '#8d99a5', 'stroke-width': 1 }, g);
+    const nb = Math.max(3, Math.floor((e.w - 20) / 12));
+    for (let k = 0; k < nb; k++) { const bx = e.x + 14 + k * (e.w - 28) / (nb - 1); el('line', { x1: bx, y1: e.y + 20, x2: bx, y2: e.y + hh - 12, stroke: '#c5cdd4', 'stroke-width': 5, 'stroke-linecap': 'round' }, g); }
+    el('rect', { x: e.x, y: e.y + 6, width: e.w, height: 4, fill: '#29abe2' }, g);
+    el('circle', { cx, cy: e.y + e.h - 2, r: 6, fill: 'url(#gDark)' }, g);
+    label(g, cx, e.y + hh / 2 + 6, e.id, 13);
+  }
+  function drawElevator(g, e) {
+    const cx = e.x + e.w / 2;
+    el('rect', { x: e.x, y: e.y + 26, width: e.w, height: e.h - 48, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 1.8, filter: 'url(#fShadow)' }, g);
+    for (let yy = e.y + 36; yy < e.y + e.h - 28; yy += 14) el('rect', { x: e.x + 4, y: yy, width: e.w / 2 - 6, height: 4, rx: 1, fill: '#5d6874', opacity: 0.7 }, g);
+    el('path', { d: `M${e.x - 8} ${e.y + 28} V${e.y + 8} Q${cx} ${e.y - 14} ${e.x + e.w + 8} ${e.y + 8} V${e.y + 28} Z`, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 2, filter: 'url(#fShadow)' }, g);
+    el('circle', { cx, cy: e.y + 12, r: 7, fill: 'url(#gDark)' }, g);
+    el('rect', { x: e.x - 8, y: e.y + e.h - 24, width: e.w + 16, height: 24, rx: 4, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 2 }, g);
+    el('rect', { x: e.x + e.w + 8, y: e.y + 4, width: 18, height: 14, rx: 3, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 1.2 }, g);
+    text(g, e.x + e.w + 17, e.y + 11.5, 'M', { 'font-size': 9, 'font-weight': 800, fill: '#1f2a35' });
+    label(g, cx, e.y - 18, e.id, 11, { 'font-weight': 700 });
+  }
+  function drawConveyor(g, e) {
+    const x1 = e.x, y1 = e.y + e.h, x2 = e.x + e.w, y2 = e.y;
+    const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+    const n = Math.max(2, Math.round(len / 46));
+    for (let k = 0; k <= n; k++) { const px = x1 + ux * len * k / n, py = y1 + uy * len * k / n; el('line', { x1: px, y1: py + 5, x2: px, y2: py + 16, stroke: '#5d6874', 'stroke-width': 2.4 }, g); }
+    el('path', { d: `M${x1} ${y1} L${x2} ${y2}`, stroke: '#1d262e', 'stroke-width': 9, 'stroke-linecap': 'round' }, g);
+    el('path', { class: 'flow', d: `M${x1} ${y1} L${x2} ${y2}`, fill: 'none', stroke: '#c8a165', 'stroke-width': 3, 'stroke-dasharray': '6 8', 'stroke-linecap': 'round' }, g);
+    [[x1, y1], [x2, y2]].forEach(pt => el('circle', { cx: pt[0], cy: pt[1], r: 7, fill: 'url(#gSteelR)', stroke: '#3b4651', 'stroke-width': 1.4 }, g));
+    label(g, (x1 + x2) / 2 + uy * 14, (y1 + y2) / 2 - 14, e.id, 10.5, { 'font-weight': 700 });
+  }
+  function drawMill(g, e) {
+    el('rect', { x: e.x - 18, y: e.y + 20, width: 36, height: 8, rx: 2, fill: 'url(#gDark)' }, g);
+    el('rect', { x: e.x - 26, y: e.y - 22, width: 52, height: 44, rx: 10, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    el('circle', { cx: e.x, cy: e.y, r: 14, fill: '#1d262e', stroke: '#5d6874', 'stroke-width': 2 }, g);
+    const rot = el('g', { class: 'rot', transform: `translate(${e.x},${e.y})` }, g);
+    el('path', { d: 'M-10 0 H10 M0 -10 V10', stroke: '#cfd6dc', 'stroke-width': 3, 'stroke-linecap': 'round' }, rot);
+    el('rect', { x: e.x - 26, y: e.y + 13, width: 52, height: 3, fill: '#29abe2' }, g);
+    label(g, e.x, e.y + 42, e.id, 12);
+  }
+  function drawFan(g, e) {
+    const r = 22, s = e.dir === 'left' ? -1 : 1;
+    el('rect', { x: s > 0 ? e.x : e.x - r - 12, y: e.y - r, width: r + 12, height: 13, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 1.6 }, g);
+    el('circle', { cx: e.x, cy: e.y, r, fill: 'url(#gSteelR)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    el('circle', { cx: e.x, cy: e.y, r: 14, fill: '#26323d' }, g);
+    const rot = el('g', { class: 'rot', transform: `translate(${e.x},${e.y})` }, g);
+    let bd = '';
+    for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; bd += `M0 0 L${(Math.cos(a) * 12).toFixed(1)} ${(Math.sin(a) * 12).toFixed(1)} `; }
+    el('path', { d: bd, stroke: '#8fdcf7', 'stroke-width': 3, 'stroke-linecap': 'round' }, rot);
+    el('circle', { cx: e.x, cy: e.y, r: 3, fill: '#cfd6dc' }, g);
+    label(g, e.x, e.y + 37, e.id, 11.5);
+  }
+  function drawGenerator(g, e) {
+    el('rect', { x: e.x - 6, y: e.y + e.h - 8, width: e.w + 12, height: 10, rx: 2, fill: 'url(#gDark)' }, g);
+    el('rect', { x: e.x, y: e.y, width: e.w, height: e.h - 8, rx: 8, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    for (let xx = e.x + 8; xx < e.x + e.w * 0.55; xx += 6) el('line', { x1: xx, y1: e.y + 10, x2: xx, y2: e.y + e.h - 16, stroke: '#5d6874', 'stroke-width': 1.4, opacity: 0.6 }, g);
+    const gx = e.x + e.w * 0.77, gy = e.y + (e.h - 8) / 2, gr = Math.max(8, Math.min(16, (e.h - 8) / 2 - 5));
+    el('circle', { cx: gx, cy: gy, r: gr, fill: '#ffffff', stroke: '#1565a6', 'stroke-width': 2.2 }, g);
+    text(g, gx, gy + 1, 'G', { 'font-size': gr * 1.15, 'font-weight': 900, fill: '#1565a6' });
+    el('rect', { x: e.x + 8, y: e.y + 4, width: e.w * 0.5, height: 4, rx: 2, fill: '#fff', opacity: 0.7 }, g);
+    label(g, e.x + e.w / 2, e.y + e.h + 14, e.id, 12);
+  }
+  function drawTurbine(g, e) {
+    el('line', { x1: e.x - 14, y1: e.y + e.h / 2, x2: e.x + e.w + 18, y2: e.y + e.h / 2, stroke: '#2b3640', 'stroke-width': 5 }, g);
+    const d = `M${e.x} ${e.y + e.h * 0.28} L${e.x + e.w} ${e.y} V${e.y + e.h} L${e.x} ${e.y + e.h * 0.72} Z`;
+    el('path', { d, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 2.2, 'stroke-linejoin': 'round', filter: 'url(#fShadow)' }, g);
+    for (let k = 1; k < 4; k++) { const xx = e.x + e.w * k / 4, t = 1 - k / 4; el('line', { x1: xx, y1: e.y + e.h * 0.28 * t + 3, x2: xx, y2: e.y + e.h - e.h * 0.28 * t - 3, stroke: '#5d6874', 'stroke-width': 1.2, opacity: 0.6 }, g); }
+    el('rect', { x: e.x + e.w * 0.25, y: e.y + e.h - 5, width: e.w * 0.75, height: 3, fill: '#29abe2' }, g);
+    label(g, e.x + e.w * 0.58, e.y + e.h / 2 + 1, e.id, 12);
+  }
+  function drawTransformer(g, e) {
+    const fw = 18, cx = e.x + e.w / 2;
+    [e.x - fw, e.x + e.w].forEach(rx => {
+      for (let k = 0; k < 4; k++) el('rect', { x: rx + k * 4.5, y: e.y + e.h * 0.1, width: 3.2, height: e.h * 0.8, rx: 1.2, fill: 'url(#gSteelV)', stroke: '#5d6874', 'stroke-width': 0.6 }, g);
+      el('rect', { x: rx - 1, y: e.y + e.h * 0.12, width: fw + 1, height: 3, fill: '#5d6874' }, g);
+      el('rect', { x: rx - 1, y: e.y + e.h * 0.84, width: fw + 1, height: 3, fill: '#5d6874' }, g);
+    });
+    const cvx = e.x + e.w * 0.6, cvy = e.y - 46, px = e.x + e.w * 0.74;
+    el('path', { d: `M${px} ${cvy + 14} V${e.y}`, stroke: '#3b4651', 'stroke-width': 3.2 }, g);
+    el('rect', { x: px - 5, y: e.y - 22, width: 10, height: 9, rx: 2, fill: '#2b3640' }, g);
+    el('rect', { x: cvx, y: cvy, width: e.w * 0.46, height: 17, rx: 8.5, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 1.6, filter: 'url(#fSoft)' }, g);
+    el('rect', { x: e.x, y: e.y, width: e.w, height: e.h, rx: 6, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    el('rect', { x: e.x, y: e.y + e.h - 12, width: e.w, height: 4, fill: '#29abe2' }, g);
+    shine(g, e.x + 8, e.y + 8, 6, e.h - 24);
+    [0.14, 0.29, 0.44].forEach(f => {
+      const bx = e.x + e.w * f;
+      el('rect', { x: bx - 3, y: e.y - 32, width: 6, height: 32, fill: '#cfd6dc', stroke: '#5d6874', 'stroke-width': 0.8 }, g);
+      for (let k = 0; k < 4; k++) el('ellipse', { cx: bx, cy: e.y - 6 - k * 7, rx: 6.5, ry: 2.2, fill: '#eef1f3', stroke: '#5d6874', 'stroke-width': 0.8 }, g);
+      el('circle', { cx: bx, cy: e.y - 34, r: 3, fill: '#2b3640' }, g);
+    });
+    label(g, cx, e.y + e.h / 2, e.id, 15);
+  }
+  function drawPanel(g, e) {
+    el('rect', { x: e.x - 3, y: e.y + e.h - 4, width: e.w + 6, height: 6, rx: 2, fill: '#2b3640' }, g);
+    el('rect', { x: e.x, y: e.y, width: e.w, height: e.h, rx: 4, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 2, filter: 'url(#fShadow)' }, g);
+    const n = Math.max(1, Math.round(e.w / 30)), dw = e.w / n;
+    for (let k = 0; k < n; k++) {
+      const dx = e.x + k * dw;
+      el('rect', { x: dx + 3, y: e.y + 10, width: dw - 6, height: e.h - 16, rx: 2, fill: 'url(#gSteelTop)', stroke: '#8d99a5', 'stroke-width': 1 }, g);
+      el('circle', { cx: dx + dw / 2 - 4, cy: e.y + 17, r: 2.6, fill: k % 2 ? '#66bb6a' : '#29abe2' }, g);
+      el('rect', { x: dx + dw - 9, y: e.y + e.h / 2 - 4, width: 3, height: 10, rx: 1.5, fill: '#2b3640' }, g);
+      for (let v = 0; v < 3; v++) el('line', { x1: dx + 7, y1: e.y + e.h - 14 - v * 4, x2: dx + dw - 12, y2: e.y + e.h - 14 - v * 4, stroke: '#8d99a5', 'stroke-width': 1 }, g);
+    }
+    el('rect', { x: e.x, y: e.y + 3, width: e.w, height: 4, fill: '#29abe2' }, g);
+    if (e.sub) text(g, e.x + e.w / 2, e.y + e.h / 2 + 1, e.sub, { 'font-size': 9.5, 'font-weight': 900, fill: '#1565a6' });
+    label(g, e.x + e.w / 2, e.y + e.h + 14, e.id, 11.5);
+  }
+  function drawBattery(g, e) {
+    el('rect', { x: e.x - 4, y: e.y + e.h - 4, width: e.w + 8, height: 8, rx: 2, fill: '#2b3640' }, g);
+    el('rect', { x: e.x, y: e.y, width: e.w, height: e.h, rx: 3, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    for (let xx = e.x + 6; xx < e.x + e.w - 4; xx += 7) el('line', { x1: xx, y1: e.y + 3, x2: xx, y2: e.y + e.h - 3, stroke: '#8d99a5', 'stroke-width': 1, opacity: 0.5 }, g);
+    const wx = e.x + 10, wy = e.y + 14, ww = e.w - 50, wh = e.h - 26;
+    el('rect', { x: wx, y: wy, width: ww, height: wh, rx: 3, fill: '#1d262e', stroke: '#0b1015', 'stroke-width': 1.2 }, g);
+    const cols = Math.max(3, Math.floor(ww / 18)), rows = Math.max(2, Math.floor(wh / 12));
+    for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) el('rect', { x: wx + 4 + c * (ww - 8) / cols, y: wy + 4 + r * (wh - 8) / rows, width: (ww - 8) / cols - 3, height: (wh - 8) / rows - 3, rx: 1.5, fill: 'url(#gBlueV)', opacity: 0.9 }, g);
+    el('rect', { x: e.x + e.w - 32, y: e.y + 9, width: 22, height: e.h - 18, rx: 2, fill: 'url(#gSteelTop)', stroke: '#5d6874', 'stroke-width': 1 }, g);
+    el('rect', { x: e.x + e.w - 15, y: e.y + e.h / 2 - 5, width: 3, height: 10, rx: 1.5, fill: '#2b3640' }, g);
+    label(g, e.x + e.w / 2, e.y + e.h + 16, e.id, 12);
+  }
+  function drawSolar(g, e) {
+    const n = e.n || 3, pw = e.w / n, bh = e.h * 0.62;
+    for (let k = 0; k < n; k++) {
+      const px = e.x + k * pw;
+      el('line', { x1: px + pw / 2, y1: e.y + bh - 6, x2: px + pw / 2, y2: e.y + e.h, stroke: '#2b3640', 'stroke-width': 3 }, g);
+      const A = [px + pw * 0.26, e.y], B = [px + pw - 3, e.y], C = [px + pw * 0.74, e.y + bh], D = [px + 3, e.y + bh];
+      el('path', { d: `M${A} L${B} L${C} L${D} Z`, fill: 'url(#gPV)', stroke: '#3b4651', 'stroke-width': 1.6, filter: 'url(#fSoft)' }, g);
+      let gd = '';
+      [1 / 3, 2 / 3].forEach(t => { gd += `M${A[0] + (B[0] - A[0]) * t} ${A[1]} L${D[0] + (C[0] - D[0]) * t} ${D[1]} `; });
+      gd += `M${(A[0] + D[0]) / 2} ${(A[1] + D[1]) / 2} L${(B[0] + C[0]) / 2} ${(B[1] + C[1]) / 2}`;
+      el('path', { d: gd, stroke: '#8fb7dd', 'stroke-width': 0.9, opacity: 0.75 }, g);
+    }
+    label(g, e.x + e.w / 2, e.y + e.h + 13, e.id, 11.5);
+  }
+  function drawLagoon(g, e) {
+    const top = e.y + e.h * 0.4, cx = e.x + e.w / 2;
+    el('rect', { x: e.x - 14, y: top, width: e.w + 28, height: e.y + e.h - top + 10, rx: 8, fill: 'url(#gEarth)', opacity: 0.85 }, g);
+    el('path', { d: `M${e.x} ${top} H${e.x + e.w} L${e.x + e.w - 34} ${e.y + e.h} H${e.x + 34} Z`, fill: 'url(#gPome)', stroke: '#3b4651', 'stroke-width': 1.6 }, g);
+    el('path', { d: `M${e.x + 10} ${top + 16} H${e.x + e.w - 10}`, stroke: '#a39274', 'stroke-width': 1.4, 'stroke-dasharray': '10 8', opacity: 0.8 }, g);
+    el('path', { d: `M${e.x - 6} ${top + 2} C${e.x + e.w * 0.16} ${e.y - 6} ${e.x + e.w * 0.84} ${e.y - 6} ${e.x + e.w + 6} ${top + 2} Z`, fill: 'url(#gMembrane)', stroke: '#0b1015', 'stroke-width': 1.8, filter: 'url(#fShadow)' }, g);
+    el('path', { d: `M${e.x + e.w * 0.2} ${e.y + (top - e.y) * 0.42} C${e.x + e.w * 0.35} ${e.y + 4} ${e.x + e.w * 0.6} ${e.y + 4} ${e.x + e.w * 0.72} ${e.y + (top - e.y) * 0.3}`, fill: 'none', stroke: '#ffffff', 'stroke-width': 3, opacity: 0.25, 'stroke-linecap': 'round' }, g);
+    label(g, cx, e.y + (top - e.y) * 0.62, e.id, 15, { fill: '#e6f2f9' });
+  }
+  function drawCooler(g, e) {
+    const nf = e.fans || Math.max(1, Math.round(e.w / 50));
+    el('rect', { x: e.x, y: e.y, width: e.w, height: e.h, rx: 5, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    el('rect', { x: e.x + 6, y: e.y + 14, width: e.w - 12, height: e.h - 22, rx: 2, fill: '#e9eef2', stroke: '#8d99a5', 'stroke-width': 1 }, g);
+    for (let xx = e.x + 10; xx < e.x + e.w - 14; xx += 5) el('line', { x1: xx, y1: e.y + 16, x2: xx + 6, y2: e.y + e.h - 10, stroke: '#9aa6b1', 'stroke-width': 1 }, g);
+    for (let k = 0; k < nf; k++) {
+      const fx0 = e.x + e.w * (k + 0.5) / nf, rr = Math.min(20, e.w / nf / 2 - 4);
+      el('ellipse', { cx: fx0, cy: e.y - 1, rx: rr, ry: 6, fill: '#26323d', stroke: '#3b4651', 'stroke-width': 1.2 }, g);
+      el('path', { d: `M${fx0 - rr * 0.7} ${e.y - 1} H${fx0 + rr * 0.7} M${fx0} ${e.y - 5} V${e.y + 3}`, stroke: '#8fdcf7', 'stroke-width': 2, 'stroke-linecap': 'round' }, g);
+    }
+    el('rect', { x: e.x, y: e.y + e.h - 6, width: e.w, height: 3, fill: '#29abe2' }, g);
+    label(g, e.x + e.w / 2, e.y + e.h + 14, e.id, 11.5);
+  }
+  function drawStack(g, e) {
+    const h = e.h || 120, w = e.w || 20, x = e.x - w / 2, y = e.y - h;
+    el('path', { d: `M${x + 3} ${y} H${x + w - 3} L${x + w} ${e.y} H${x} Z`, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 1.8, filter: 'url(#fShadow)' }, g);
+    [0.18, 0.5].forEach(f => el('rect', { x: x + 2, y: y + h * f, width: w - 4, height: 4, fill: '#29abe2', opacity: 0.85 }, g));
+    el('rect', { x: x - 2, y: y - 4, width: w + 4, height: 6, rx: 2, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 1.2 }, g);
+    label(g, e.x + w / 2 + 5, e.y - h * 0.32, e.id, 11, { 'text-anchor': 'start', 'font-weight': 700 });
+  }
+  function drawCylinders(g, e) {
+    const n = e.n || 4, slot = (e.w - 16) / n, cw = Math.min(18, slot - 5);
+    el('rect', { x: e.x, y: e.y, width: e.w, height: e.h, rx: 4, fill: 'rgba(255,255,255,0.35)', stroke: '#5d6874', 'stroke-width': 1.5, 'stroke-dasharray': '4 3' }, g);
+    el('path', { d: `M${e.x + 8} ${e.y + 12} H${e.x + e.w + 4}`, stroke: '#46525e', 'stroke-width': 4, 'stroke-linecap': 'round' }, g);
+    for (let k = 0; k < n; k++) {
+      const cx = e.x + 8 + slot * (k + 0.5);
+      el('path', { d: `M${cx} ${e.y + 21} V${e.y + 12}`, stroke: '#46525e', 'stroke-width': 2 }, g);
+      el('rect', { x: cx - cw / 2, y: e.y + 20, width: cw, height: e.h - 26, rx: cw / 2, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 1.4, filter: 'url(#fSoft)' }, g);
+      el('rect', { x: cx - cw / 2, y: e.y + e.h * 0.58, width: cw, height: 3, fill: '#29abe2' }, g);
+    }
+    label(g, e.x + e.w / 2, e.y + e.h + 13, e.id, 11);
+  }
+  function drawHood(g, e) {
+    const cx = e.x + e.w / 2, hh = e.h * 0.4, sy = e.y + e.h * 0.68;
+    el('rect', { x: cx - 10, y: e.y - 6, width: 20, height: 8, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 1.2 }, g);
+    el('path', { d: `M${e.x + e.w * 0.22} ${e.y} H${e.x + e.w * 0.78} L${e.x + e.w} ${e.y + hh} H${e.x} Z`, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 2, filter: 'url(#fShadow)' }, g);
+    el('rect', { x: e.x + 4, y: e.y + hh - 6, width: e.w - 8, height: 4, fill: '#29abe2' }, g);
+    el('rect', { x: e.x + 4, y: sy, width: e.w - 8, height: e.y + e.h - sy, rx: 3, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 1.8, filter: 'url(#fShadow)' }, g);
+    el('rect', { x: e.x + 4, y: sy, width: e.w - 8, height: 6, fill: '#26323d' }, g);
+    const nb = Math.max(2, Math.round(e.w / 40));
+    for (let k = 0; k < nb; k++) {
+      const bx = e.x + 4 + (e.w - 8) * (k + 0.5) / nb;
+      el('path', { class: 'flame', d: `M${bx} ${sy - 13} C${bx + 5} ${sy - 7} ${bx + 4} ${sy - 2} ${bx} ${sy} C${bx - 4} ${sy - 2} ${bx - 5} ${sy - 7} ${bx} ${sy - 13} Z`, fill: '#4fc3f7', opacity: 0.9 }, g);
+    }
+    label(g, cx, sy + (e.y + e.h - sy) / 2 + 3, e.id, 11);
+  }
+  function drawMixer(g, e) {
+    const cx = e.x + e.w / 2;
+    legs(g, [e.x + 6, e.x + e.w - 6], e.y + e.h * 0.7, e.y + e.h + 12);
+    el('rect', { x: e.x, y: e.y, width: e.w, height: e.h * 0.84, rx: 5, fill: 'url(#gSteelV)', stroke: '#3b4651', 'stroke-width': 2.2, filter: 'url(#fShadow)' }, g);
+    const sw = (e.w - 12) / 6;
+    el('path', { d: `M${e.x + 6} ${e.y + 18} l${sw} 6 l${sw} -6 l${sw} 6 l${sw} -6 l${sw} 6 l${sw} -6`, fill: 'none', stroke: '#5d6874', 'stroke-width': 1.6 }, g);
+    const by = e.y + 32, bh = e.h * 0.28;
+    el('rect', { x: e.x + 6, y: by, width: e.w - 12, height: bh, rx: 2, fill: '#e9eef2', stroke: '#8d99a5', 'stroke-width': 1 }, g);
+    for (let k = 1; k < 3; k++) el('line', { x1: e.x + 6 + (e.w - 12) * k / 3, y1: by, x2: e.x + 6 + (e.w - 12) * k / 3, y2: by + bh, stroke: '#8d99a5', 'stroke-width': 1.4 }, g);
+    el('path', { d: `M${e.x + 10} ${by + bh + 4} H${e.x + e.w - 10} L${cx + 9} ${by + bh + 22} H${cx - 9} Z`, fill: 'url(#gDark)', opacity: 0.55 }, g);
+    const py = e.y + e.h * 0.64;
+    el('rect', { x: e.x + 4, y: py, width: e.w - 8, height: e.h * 0.16, rx: 4, fill: 'url(#gSteelH)', stroke: '#3b4651', 'stroke-width': 1.6 }, g);
+    [0.36, 0.64].forEach(f => el('circle', { cx: e.x + e.w * f, cy: py + e.h * 0.08, r: 5, fill: '#26323d' }, g));
+    el('rect', { x: e.x, y: e.y + 6, width: e.w, height: 4, fill: '#29abe2' }, g);
+    label(g, cx, e.y - 10, e.id, 12);
+  }
+
+  const DRAW = { vessel: drawVessel, reactor: drawReactor, tank: drawTank, pump: drawPump, compressor: drawCompressor, hx: drawHx, valve: drawValve, flare: drawFlare, truck: drawTruck, manifold: drawManifold, motor: drawMotor, building: drawBuilding, muster: drawMuster, sink: drawSink,
+    column: drawColumn, furnace: drawFurnace, heater: drawHeater, burner: drawBurner, drum: drawDrum, silo: drawSilo, filter: drawFilter, elevator: drawElevator, conveyor: drawConveyor, mill: drawMill, fan: drawFan, generator: drawGenerator, turbine: drawTurbine, transformer: drawTransformer, panel: drawPanel, battery: drawBattery, solar: drawSolar, lagoon: drawLagoon, cooler: drawCooler, stack: drawStack, cylinders: drawCylinders, hood: drawHood, mixer: drawMixer };
 
   function eqBounds(e) {
     switch (e.type) {
@@ -265,6 +568,24 @@ const PID = (() => {
       case 'building': return { x: e.x - 36, y: e.y - 36, w: 72, h: 60 };
       case 'muster': return { x: e.x - 22, y: e.y - 22, w: 44, h: 44 };
       case 'sink': return e.dir === 'left' ? { x: e.x - 132, y: e.y - 16, w: 132, h: 32 } : { x: e.x, y: e.y - 16, w: 132, h: 32 };
+      case 'column': return { x: e.x, y: e.y, w: e.w, h: e.h + 16 };
+      case 'furnace': return { x: e.x, y: e.y, w: e.w, h: e.h + 20 };
+      case 'heater': return { x: e.x, y: e.y - 34, w: e.w, h: e.h + 34 };
+      case 'burner': return e.dir === 'left' ? { x: e.x - 58, y: e.y - 14, w: 76, h: 28 } : { x: e.x - 18, y: e.y - 14, w: 76, h: 28 };
+      case 'drum': return { x: e.x - 6, y: e.y - 3, w: e.w + 12, h: e.h + 21 };
+      case 'silo': return { x: e.x, y: e.y - 10, w: e.w, h: e.h + 22 };
+      case 'filter': return { x: e.x, y: e.y, w: e.w, h: e.h + 10 };
+      case 'elevator': return { x: e.x - 8, y: e.y - 10, w: e.w + 36, h: e.h + 10 };
+      case 'conveyor': return { x: e.x - 8, y: e.y - 8, w: e.w + 16, h: e.h + 26 };
+      case 'mill': return { x: e.x - 28, y: e.y - 24, w: 56, h: 54 };
+      case 'fan': return { x: e.x - 36, y: e.y - 26, w: 72, h: 52 };
+      case 'generator': return { x: e.x - 6, y: e.y, w: e.w + 12, h: e.h + 2 };
+      case 'turbine': return { x: e.x - 14, y: e.y, w: e.w + 32, h: e.h };
+      case 'transformer': return { x: e.x - 20, y: e.y - 48, w: e.w + 40, h: e.h + 48 };
+      case 'panel': case 'battery': case 'solar': case 'lagoon': case 'cylinders': case 'mixer': return { x: e.x, y: e.y, w: e.w, h: e.h };
+      case 'cooler': return { x: e.x, y: e.y - 8, w: e.w, h: e.h + 8 };
+      case 'stack': return { x: e.x - (e.w || 20) / 2 - 4, y: e.y - (e.h || 120) - 6, w: (e.w || 20) + 8, h: (e.h || 120) + 6 };
+      case 'hood': return { x: e.x, y: e.y - 6, w: e.w, h: e.h + 6 };
       default: return { x: e.x - 20, y: e.y - 20, w: 40, h: 40 };
     }
   }
@@ -279,6 +600,11 @@ const PID = (() => {
     const grp = el('g', { class: 'pipe', 'data-id': p.id }, g);
     if (p.dashed) {
       el('path', { d, fill: 'none', stroke: f.c, 'stroke-width': w * 0.75, 'stroke-dasharray': '8 6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.85 }, grp);
+    } else if (p.fluid === 'power') {
+      el('path', { d, fill: 'none', stroke: '#1d262e', 'stroke-width': w + 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'marker-end': p.arrow ? 'url(#mArrow)' : null }, grp);
+      el('path', { d, fill: 'none', stroke: '#46525e', 'stroke-width': Math.max(1.5, w - 1.5), 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, grp);
+      el('path', { d, fill: 'none', stroke: f.c, 'stroke-width': 1.6, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, grp);
+      el('path', { class: 'flow', d, fill: 'none', stroke: '#fff59d', 'stroke-width': 1.8, 'stroke-dasharray': '3 12', 'stroke-linecap': 'round', opacity: 0 }, grp);
     } else {
       el('path', { d, fill: 'none', stroke: '#46525e', 'stroke-width': w + 4, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'marker-end': p.arrow ? 'url(#mArrow)' : null }, grp);
       el('path', { d, fill: 'none', stroke: '#cfd6dc', 'stroke-width': w + 1, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, grp);
@@ -352,6 +678,7 @@ const PID = (() => {
     el('rect', { x: 0, y: 0, width: VB_W, height: VB_H, rx: 14, fill: 'url(#gGrid)' }, svg);
     el('rect', { x: 0, y: 0, width: VB_W, height: VB_H, rx: 14, fill: 'url(#pGrid)' }, svg);
 
+    const gZones = el('g', { class: 'layer-zones' }, svg);
     const gPipes = el('g', { class: 'layer-pipes' }, svg);
     const gEq = el('g', { class: 'layer-eq' }, svg);
     const gLabels = el('g', { class: 'layer-labels' }, svg);
@@ -363,6 +690,22 @@ const PID = (() => {
     const gFxTop = el('g', { class: 'layer-fx layer-fx-top' }, svg);
     const ctx = { defs, levels: {} };
 
+    if (scn.ground) {
+      el('rect', { x: 2, y: scn.ground, width: VB_W - 4, height: VB_H - scn.ground - 2, fill: 'url(#gEarth)', opacity: 0.22 }, gZones);
+      el('path', { d: `M2 ${scn.ground} H${VB_W - 2}`, stroke: '#8f8374', 'stroke-width': 2.4 }, gZones);
+      text(gZones, 14, scn.ground + 13, 'Permukaan tanah', { 'text-anchor': 'start', 'font-size': 9.5, 'font-weight': 700, fill: '#6f6456' });
+    }
+    (scn.zones || []).forEach(z => {
+      if (z.style === 'building') {
+        el('rect', { x: z.x, y: z.y, width: z.w, height: z.h, rx: 4, fill: 'rgba(255,255,255,0.55)', stroke: '#5d6b78', 'stroke-width': 3 }, gZones);
+        el('path', { d: `M${z.x - 10} ${z.y} H${z.x + z.w + 10}`, stroke: '#46525e', 'stroke-width': 7, 'stroke-linecap': 'round' }, gZones);
+        (z.floors || []).forEach(fy => el('rect', { x: z.x, y: fy - 3, width: z.w, height: 6, fill: '#9aa6b1' }, gZones));
+        (z.labels || []).forEach(l => text(gZones, z.x + 8, l[0], l[1], { 'text-anchor': 'start', 'font-size': 10.5, 'font-weight': 800, fill: '#4a6275' }));
+        return;
+      }
+      el('rect', { x: z.x, y: z.y, width: z.w, height: z.h, rx: 10, fill: z.fill || 'rgba(41,171,226,0.05)', stroke: '#8fb3c9', 'stroke-width': 1.6, 'stroke-dasharray': '7 5' }, gZones);
+      if (z.label) text(gZones, z.x + 10, z.y + 13, z.label, { 'text-anchor': 'start', 'font-size': 10.5, 'font-weight': 800, fill: '#4a6275' });
+    });
     scn.pipes.forEach(p => drawPipe(gPipes, p));
     const eqGroups = {}, eqById = {};
     scn.equipment.forEach(e => {
@@ -453,6 +796,20 @@ const PID = (() => {
       } else if (type === 'fire') {
         fire(g, big ? 1.5 : 0.9);
         top = big ? 80 : 54;
+      } else if (type === 'smoke') {
+        cloud(g, { haze: 'url(#gSmoke)', fill: '#77828c', stroke: '#3b4651' }, big ? 52 : 38, big ? 10 : 7, big ? 60 : 42, 'fx-smoke');
+        top = big ? 72 : 52;
+      } else if (type === 'dust') {
+        cloud(g, { haze: 'url(#gDust)', fill: '#dcc39a', stroke: '#8d6e3f' }, big ? 56 : 40, big ? 10 : 8, big ? 66 : 46);
+        top = big ? 76 : 54;
+      } else if (type === 'arc') {
+        el('circle', { class: 'fx-arcglow', r: big ? 48 : 36, fill: 'url(#gArc)' }, g);
+        el('path', { class: 'fx-arc', d: 'M3 -30 L-11 2 L-1 2 L-7 28 L11 -6 L1 -6 L9 -30 Z', fill: '#fff59d', stroke: '#ffffff', 'stroke-width': 1.6, 'stroke-linejoin': 'round', filter: 'url(#fGlow)' }, g);
+        for (let i = 0; i < 6; i++) {
+          const a = i * Math.PI / 3 + 0.3;
+          el('line', { class: 'fx-spark', x1: (Math.cos(a) * 14).toFixed(1), y1: (Math.sin(a) * 14).toFixed(1), x2: (Math.cos(a) * 26).toFixed(1), y2: (Math.sin(a) * 26).toFixed(1), stroke: '#ffe082', 'stroke-width': 2.2, 'stroke-linecap': 'round', style: `animation-delay:${(i * 0.07).toFixed(2)}s` }, g);
+        }
+        top = big ? 58 : 46;
       } else if (type === 'explosion') {
         el('ellipse', { class: 'fx-scorch', rx: 90, ry: 40, fill: 'url(#gScorch)' }, g);
         fire(g, 1.3);
@@ -568,7 +925,7 @@ const PID = (() => {
   function fluidsIn(scn) {
     const seen = [];
     scn.pipes.forEach(p => { if (!seen.includes(p.fluid)) seen.push(p.fluid); });
-    return seen.map(k => Object.assign({ key: k }, FLUIDS[k] || FLUIDS.mix));
+    return seen.map(k => Object.assign({ key: k }, FLUIDS[k] || FLUIDS.mix, scn.fluidNames && scn.fluidNames[k] ? { name: scn.fluidNames[k] } : {}));
   }
 
   return { render, fluidsIn, FLUIDS, VB_W, VB_H };
