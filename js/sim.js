@@ -2,7 +2,8 @@
    SIM: mesin simulasi proses sederhana.
    Setiap variabel bergerak menuju nilai target dengan konstanta waktu
    (orde satu) ditambah derau kecil. Target = nilai normal + pengaruh
-   kendali operator + pengaruh kejadian abnormal (ramp).
+   kendali operator + pengaruh kejadian abnormal (ramp halus).
+   Satu detik simulasi dianggap satu menit operasi pabrik.
    ===================================================================== */
 class Simulator {
   constructor(scn, opts) {
@@ -17,6 +18,8 @@ class Simulator {
     this.controls = {};
     (scn.controls || []).forEach(c => { this.controls[c.id] = c.def; });
     this.t = 0;
+    this.prod = 0;
+    this.halted = false;
     this.running = false;
     this.event = null;
     this.eventT0 = 0;
@@ -29,7 +32,6 @@ class Simulator {
   startEvent(ev) { this.event = ev; this.eventT0 = this.t; }
   clearEvent() { this.event = null; }
   eventElapsed() { return this.event ? this.t - this.eventT0 : 0; }
-  /* Apakah kejadian sudah berkembang penuh (semua efek selesai ramp)? */
   eventMature() {
     if (!this.event) return false;
     const te = this.eventElapsed();
@@ -37,7 +39,7 @@ class Simulator {
   }
   reset() {
     Object.keys(this.scn.vars).forEach(id => { this.vars[id] = this.scn.vars[id].normal; this.history[id] = []; });
-    this.t = 0; this.event = null; this.resetControls();
+    this.t = 0; this.prod = 0; this.halted = false; this.event = null; this._acc = 0; this.resetControls();
   }
   target(id) {
     const v = this.scn.vars[id];
@@ -48,10 +50,8 @@ class Simulator {
     if (this.event) {
       const te = this.eventElapsed();
       this.event.effects.forEach(f => {
-        if (f.var !== id) return;
-        if (te <= f.delay) return;
+        if (f.var !== id || te <= f.delay) return;
         const frac = Math.min(1, (te - f.delay) / Math.max(0.01, f.dur));
-        // ramp halus (ease-in) dari normal ke nilai 'to'
         const k = frac * frac * (3 - 2 * frac);
         tgt = tgt + (f.to - v.normal) * k;
       });
@@ -63,8 +63,7 @@ class Simulator {
     Object.keys(this.scn.vars).forEach(id => {
       const v = this.scn.vars[id];
       const tgt = this.target(id);
-      const tau = v.tau || 3;
-      const a = 1 - Math.exp(-dt / tau);
+      const a = 1 - Math.exp(-dt / (v.tau || 3));
       let val = this.vars[id] + (tgt - this.vars[id]) * a;
       val += (Math.random() - 0.5) * 2 * (v.noise || 0);
       this.vars[id] = Math.max(v.min, Math.min(v.max, val));
@@ -72,6 +71,8 @@ class Simulator {
       h.push(this.vars[id]);
       if (h.length > this.opts.historyLen) h.shift();
     });
+    const p = this.scn.production;
+    if (p && !this.halted) this.prod += Math.max(0, this.vars[p.var]) * p.k * dt;
     this.listeners.forEach(fn => fn(this));
   }
   status(id) {
@@ -85,7 +86,13 @@ class Simulator {
   }
   format(id) {
     const v = this.scn.vars[id];
-    return this.vars[id].toFixed(v.dec === undefined ? 1 : v.dec) + ' ' + v.unit;
+    return this.vars[id].toFixed(v.dec === undefined ? 1 : v.dec).replace('.', ',') + ' ' + v.unit;
+  }
+  /* Jam operasi: mulai 08:00, satu detik simulasi = satu menit. */
+  clock(t) {
+    const m = Math.floor(t === undefined ? this.t : t);
+    const hh = (8 + Math.floor(m / 60)) % 24, mm = m % 60;
+    return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
   }
   start() {
     if (this.running) return;
@@ -98,8 +105,8 @@ class Simulator {
       this._acc += real * this.opts.speed;
       const DT = 0.1;
       let n = 0;
-      while (this._acc >= DT && n < 20) { this.step(DT); this._acc -= DT; n++; }
-      this._raf = requestAnimationFrame(loop);
+      while (this._acc >= DT && n < 20 && this.running) { this.step(DT); this._acc -= DT; n++; }
+      if (this.running) this._raf = requestAnimationFrame(loop);
     };
     this._raf = requestAnimationFrame(loop);
   }
@@ -107,8 +114,9 @@ class Simulator {
 }
 
 /* ---------------------------------------------------------------------
-   Grafik tren pada canvas: beberapa variabel ditumpuk vertikal,
-   masing-masing dengan garis batas alarm.
+   Grafik tren pada canvas, gaya HMI berperforma tinggi (ISA-101):
+   latar gelap netral, jejak biru muda, warna kuning/merah hanya saat
+   variabel keluar batas alarm.
    --------------------------------------------------------------------- */
 class TrendChart {
   constructor(canvas, sim, varIds) {
@@ -124,33 +132,32 @@ class TrendChart {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     const n = this.ids.length;
-    const padL = 132, padR = 10, gap = 6;
+    const padL = 138, padR = 10, gap = 6;
     const rowH = (H - gap * (n + 1)) / n;
     const len = this.sim.opts.historyLen;
+    const COL = { normal: '#4fc3f7', hi: '#ffb300', lo: '#ffb300', hihi: '#ff5252', lolo: '#ff5252' };
     this.ids.forEach((id, i) => {
       const v = this.sim.scn.vars[id];
+      const st = this.sim.status(id);
       const y0 = gap + i * (rowH + gap);
       const x0 = padL, w = W - padL - padR;
-      // panel
-      ctx.fillStyle = '#0f2744';
+      ctx.fillStyle = '#18212a';
       roundRect(ctx, 4, y0, W - 8, rowH, 6); ctx.fill();
-      // alarm bands
+      ctx.strokeStyle = 'rgba(143,220,247,0.12)'; ctx.lineWidth = 1; ctx.stroke();
       const yOf = val => y0 + rowH - ((val - v.min) / (v.max - v.min)) * rowH;
       const band = (from, to, color) => {
         const ya = yOf(Math.min(to, v.max)), yb = yOf(Math.max(from, v.min));
         ctx.fillStyle = color; ctx.fillRect(x0, ya, w, Math.max(0, yb - ya));
       };
-      if (v.hi !== undefined) band(v.hi, v.hihi !== undefined ? v.hihi : v.max, 'rgba(255,167,38,0.18)');
-      if (v.hihi !== undefined) band(v.hihi, v.max, 'rgba(239,83,80,0.28)');
-      if (v.lo !== undefined) band(v.lolo !== undefined ? v.lolo : v.min, v.lo, 'rgba(255,167,38,0.18)');
-      if (v.lolo !== undefined) band(v.min, v.lolo, 'rgba(239,83,80,0.28)');
-      // normal line
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+      if (v.hi !== undefined) band(v.hi, v.hihi !== undefined ? v.hihi : v.max, 'rgba(255,179,0,0.13)');
+      if (v.hihi !== undefined) band(v.hihi, v.max, 'rgba(255,82,82,0.2)');
+      if (v.lo !== undefined) band(v.lolo !== undefined ? v.lolo : v.min, v.lo, 'rgba(255,179,0,0.13)');
+      if (v.lolo !== undefined) band(v.min, v.lolo, 'rgba(255,82,82,0.2)');
+      ctx.strokeStyle = 'rgba(207,216,224,0.3)'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x0, yOf(v.normal)); ctx.lineTo(x0 + w, yOf(v.normal)); ctx.stroke();
       ctx.setLineDash([]);
-      // trace
       const h = this.sim.history[id];
-      ctx.strokeStyle = v.color || '#4fc3f7'; ctx.lineWidth = 2.2; ctx.lineJoin = 'round';
+      ctx.strokeStyle = COL[st]; ctx.lineWidth = 2.2; ctx.lineJoin = 'round';
       ctx.beginPath();
       h.forEach((val, k) => {
         const x = x0 + ((k + (len - h.length)) / (len - 1)) * w;
@@ -158,19 +165,17 @@ class TrendChart {
         if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
       ctx.stroke();
-      // marker
       if (h.length) {
         const y = yOf(h[h.length - 1]);
-        ctx.fillStyle = v.color || '#4fc3f7';
+        ctx.fillStyle = COL[st];
         ctx.beginPath(); ctx.arc(x0 + w, y, 3.5, 0, Math.PI * 2); ctx.fill();
       }
-      // label
-      const st = this.sim.status(id);
-      ctx.fillStyle = st === 'normal' ? '#e3f2fd' : (st === 'hi' || st === 'lo' ? '#ffb74d' : '#ff5252');
+      ctx.fillStyle = st === 'normal' ? '#cfd8e0' : COL[st];
       ctx.font = '700 11px Nunito, sans-serif';
       ctx.textBaseline = 'top';
       ctx.fillText(ellipsize(ctx, v.label, padL - 16), 10, y0 + 6);
       ctx.font = '800 14px Nunito, sans-serif';
+      ctx.fillStyle = st === 'normal' ? '#ffffff' : COL[st];
       ctx.fillText(this.sim.format(id), 10, y0 + rowH - 22);
     });
   }
