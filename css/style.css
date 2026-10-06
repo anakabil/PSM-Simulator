@@ -176,7 +176,7 @@ a.btn3d { text-decoration: none; }
 .pid-wrap.boom { animation: boom 0.65s ease-out; }
 @keyframes boom { 0%, 100% { transform: translate(0, 0); } 10% { transform: translate(-10px, 6px); } 20% { transform: translate(9px, -7px); } 30% { transform: translate(-7px, -5px); } 40% { transform: translate(6px, 5px); } 55% { transform: translate(-4px, 2px); } 70% { transform: translate(3px, -2px); } 85% { transform: translate(-1px, 1px); } }
 .pid-svg { width: 100%; height: 100%; display: block; }
-.trend-wrap { height: 200px; background: #11181f; border-radius: 16px; box-shadow: 0 0 0 2px var(--char2), var(--shadow); padding: 4px; }
+.trend-wrap { height: 216px; background: linear-gradient(180deg, #e3e8ec, #d6dce2); border-radius: 16px; box-shadow: 0 0 0 2px var(--sv4), var(--shadow); padding: 3px; }
 .trend-wrap canvas { width: 100%; height: 100%; display: block; }
 .side { background: linear-gradient(180deg, #f3f6f8, #e2e7ec); border-radius: 18px; box-shadow: 0 0 0 2px var(--sv4), var(--shadow); padding: 12px; overflow: auto; min-height: 0; }
 .side-head h2 { display: flex; align-items: center; gap: 10px; font-size: 20px; color: var(--ink); margin-bottom: 10px; }
@@ -484,6 +484,7 @@ body.no-fx .pid-wrap.boom { animation: none; }
   .screen.play { position: relative; min-height: 100vh; }
   .play-main { grid-template-columns: 1fr; }
   .pid-wrap { min-height: 320px; }
+  .trend-wrap { height: 320px; }
   .stepper { order: 3; width: 100%; }
   .topbar { flex-wrap: wrap; }
   .toolbox { grid-template-columns: 1fr; }

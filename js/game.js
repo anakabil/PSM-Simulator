@@ -29,6 +29,8 @@ const Game = (() => {
   function on(root, sel, evt, fn) { $$(sel, root).forEach(n => n.addEventListener(evt, fn)); }
   function later(fn, ms) { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); return t; }
   function clearTimers() { timers.forEach(t => clearTimeout(t)); timers.clear(); }
+  /* Fisher-Yates: urutan opsi kuis dan laporan diacak setiap kali tampil. */
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   function num(x, dec) { return Number(x).toLocaleString('id-ID', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 }); }
   function pct(x) { return Math.round(x * 100) + '%'; }
   /* Biaya disimpan dalam satuan anggaran, ditampilkan dalam Rupiah atau USD. */
@@ -752,7 +754,7 @@ const Game = (() => {
     }
     const q = scn.quiz[S.quizIdx];
     showModal({ title: `Kuis ${S.quizIdx + 1} / ${scn.quiz.length}`, cls: 'quiz',
-      body: `<p class="q">${esc(q.q)}</p><div class="opts">${q.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="letter">${'ABCD'[i]}</span><span>${esc(o)}</span></button>`).join('')}</div><div class="fb" id="quiz-fb"></div>`,
+      body: `<p class="q">${esc(q.q)}</p><div class="opts">${shuffle(q.opts.map((_, i) => i)).map((i, pos) => `<button class="opt" data-i="${i}"><span class="letter">${'ABCD'[pos]}</span><span>${esc(q.opts[i])}</span></button>`).join('')}</div><div class="fb" id="quiz-fb"></div>`,
       buttons: [{ label: 'Lanjut', cls: 'btn3d primary', keep: true, onClick: () => { if ($('#quiz-fb').dataset.done) { closeModal(); nextQuiz(); } else showToast('Pilih salah satu jawaban terlebih dahulu.'); } }],
       onMount: m => {
         on(m, '.opt', 'click', ev => {
@@ -946,7 +948,7 @@ const Game = (() => {
     ];
   }
   function shuffledOpts(opts, ansIdx, name) {
-    const idx = opts.map((_, i) => i).sort(() => Math.random() - 0.5);
+    const idx = shuffle(opts.map((_, i) => i));
     return `<div class="radios">${idx.map(i => `<label><input type="radio" name="${name}" value="${i === ansIdx ? 1 : 0}"><span>${esc(opts[i])}</span></label>`).join('')}</div>`;
   }
   function submitReport() {
