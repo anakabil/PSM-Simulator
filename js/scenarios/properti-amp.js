@@ -95,7 +95,7 @@ const SCN_AMP = {
   ],
   quiz: [
     { q: 'Mengapa drum dan saluran gas buang harus dipurging sebelum burner dinyalakan ulang?', opts: ['Agar drum lebih cepat panas', 'Untuk membuang uap atau kabut bahan bakar yang tertinggal sehingga tidak terbentuk campuran yang meledak saat penyalaan', 'Agar agregat lebih kering', 'Untuk membersihkan kantong filter'], ans: 1,
-      why: 'Ledakan saat penyalaan ulang adalah pola kecelakaan yang berulang pada tungku dan pengering berbahan bakar. NFPA 86 mensyaratkan purging dengan udara segar sebelum setiap penyalaan.' },
+      why: 'Ledakan saat penyalaan ulang adalah pola kecelakaan yang berulang pada tungku dan pengering berbahan bakar. NFPA 86 mensyaratkan purging dengan udara segar sebelum penyalaan.' },
     { q: 'Apa fungsi ID fan pada AMP?', opts: ['Meniupkan udara pembakaran ke burner', 'Menyedot gas pembakaran dan debu dari drum melalui baghouse sehingga tekanan di ujung burner tetap negatif', 'Mendinginkan agregat panas', 'Memompa aspal ke menara pencampur'], ans: 1,
       why: 'Tekanan negatif mencegah api dan gas panas keluar ke arah operator. Bila ID fan mati, burner harus berhenti otomatis.' },
     { q: 'Mengapa suhu gas masuk baghouse harus dijaga dalam rentang tertentu?', opts: ['Agar cerobong tidak berasap sama sekali', 'Karena kantong filter memiliki batas suhu operasi dan debu berminyak di dalamnya mudah terbakar, sedangkan suhu terlalu rendah membuat uap air mengembun dan menyumbat kantong', 'Agar ID fan bekerja lebih ringan', 'Karena aturan lalu lintas truk'], ans: 1,

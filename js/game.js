@@ -370,8 +370,8 @@ const Game = (() => {
     app.innerHTML = `<div class="screen sub">
       ${bgPhoto()}
       <div class="panel wide">
-        <div class="panel-head"><h2>Pilih Skenario Proses</h2><button class="btn3d silver small" data-act="back">${ICON.home}<span>Menu</span></button></div>
-        <p class="muted">Setiap skenario memuat P&amp;ID, simulasi proses, kejadian abnormal dengan peringatan lapangan, serta titik pemasangan barier dan program inspeksi. Skenario dikelompokkan menurut sektor industri. Mulailah dari tingkat Pemula bila baru mengenal keselamatan proses.</p>
+        <div class="panel-head"><h2>Pilih Skenario</h2><button class="btn3d silver small" data-act="back">${ICON.home}<span>Menu</span></button></div>
+        <p class="muted">Setiap skenario memuat P&amp;ID atau potongan fasilitas, simulasi operasi, kejadian abnormal dengan peringatan lapangan, serta titik pemasangan barier dan program inspeksi. Skenario dikelompokkan menurut sektor industri, dari unit proses migas hingga gedung komersial dan proyek konstruksi. Mulailah dari tingkat Pemula bila baru mengenal keselamatan proses.</p>
         <div class="sector-tabs" role="tablist" aria-label="Filter sektor">
           <button class="chip-tab" data-sec="all" role="tab">Semua Sektor<b>${SCENARIOS.length}</b></button>
           ${sectors.map(x => `<button class="chip-tab" data-sec="${x.key}" role="tab">${ICON[SECTOR_ICON[x.key]] || ''}<span>${esc(x.name)}</span><b>${listOf(x.key).length}</b></button>`).join('')}

@@ -1,13 +1,14 @@
 /* =====================================================================
    PSM Simulator - Data permainan
-   Katalog barier, program inspeksi dan pengujian (ITPM), skenario
-   proses, kuis, kejadian abnormal beserta peringatan lapangan, titik
-   pemasangan barier, dan target inspeksi peralatan.
+   Katalog barier beserta kit per jenis fasilitas, program inspeksi dan
+   pengujian (ITPM), model biaya, sektor industri, jenis peringatan
+   lapangan, dan credit. Skenario berada di js/scenarios/*.js dan
+   ditambahkan ke SCENARIOS setelah berkas ini dimuat.
    ===================================================================== */
 
 const APP_INFO = {
   name: 'PSM Simulator',
-  version: '1.2.0',
+  version: '1.3.0',
   tagline: 'Simulasi Keselamatan Proses: Pahami, Kenali, Lindungi',
 };
 
@@ -29,6 +30,19 @@ const CREDITS = {
     'Keputusan Menteri Tenaga Kerja No. KEP.187/MEN/1999 tentang Pengendalian Bahan Kimia Berbahaya di Tempat Kerja.',
     'Peraturan Menteri Ketenagakerjaan No. 37 Tahun 2016 tentang Keselamatan dan Kesehatan Kerja Bejana Tekanan dan Tangki Timbun.',
     'Peraturan Menteri ESDM No. 18 Tahun 2018 tentang Pemeriksaan Keselamatan Instalasi dan Peralatan pada Kegiatan Usaha Minyak dan Gas Bumi.',
+    'Peraturan Menteri ESDM No. 10 Tahun 2021 tentang Keselamatan Ketenagalistrikan.',
+    'Undang-Undang Uap Tahun 1930 (Stoom Ordonnantie) dan Peraturan Uap Tahun 1930 (Stoom Verordening).',
+    'Peraturan Menteri Ketenagakerjaan No. 12 Tahun 2015 tentang Keselamatan dan Kesehatan Kerja Listrik di Tempat Kerja.',
+    'Peraturan Menteri Ketenagakerjaan No. 5 Tahun 2018 tentang Keselamatan dan Kesehatan Kerja Lingkungan Kerja.',
+    'Peraturan Menteri Tenaga Kerja dan Transmigrasi No. Per.04/MEN/1980 tentang Syarat-syarat Pemasangan dan Pemeliharaan Alat Pemadam Api Ringan.',
+    'Peraturan Menteri Tenaga Kerja No. Per.02/MEN/1983 tentang Instalasi Alarm Kebakaran Automatik.',
+    'Keputusan Menteri Tenaga Kerja No. KEP.186/MEN/1999 tentang Unit Penanggulangan Kebakaran di Tempat Kerja.',
+    'Peraturan Menteri Pekerjaan Umum No. 26/PRT/M/2008 tentang Persyaratan Teknis Sistem Proteksi Kebakaran pada Bangunan Gedung dan Lingkungan.',
+    'Peraturan Menteri PUPR No. 10 Tahun 2021 tentang Pedoman Sistem Manajemen Keselamatan Konstruksi.',
+    'Badan Standardisasi Nasional (2000). SNI 03-1745-2000 Tata cara perencanaan dan pemasangan sistem pipa tegak dan slang untuk pencegahan bahaya kebakaran pada bangunan rumah dan gedung.',
+    'Badan Standardisasi Nasional (2000). SNI 03-3985-2000 Tata cara perencanaan, pemasangan dan pengujian sistem deteksi dan alarm kebakaran untuk pencegahan bahaya kebakaran pada bangunan gedung.',
+    'Badan Standardisasi Nasional (2000). SNI 03-3989-2000 Tata cara perencanaan dan pemasangan sistem sprinkler otomatik untuk pencegahan bahaya kebakaran pada bangunan gedung.',
+    'Dinas Penanggulangan Kebakaran dan Penyelamatan Provinsi DKI Jakarta. Data kejadian kebakaran menurut penyebab, dengan korsleting listrik sebagai penyebab terbanyak.',
     'OSHA 29 CFR 1910.119, Process Safety Management of Highly Hazardous Chemicals.',
     'CCPS (2001). Layer of Protection Analysis: Simplified Process Risk Assessment. AIChE.',
     'CCPS (2007). Guidelines for Risk Based Process Safety. AIChE/Wiley.',
@@ -44,6 +58,18 @@ const CREDITS = {
     'API 510, Pressure Vessel Inspection Code; API 653, Tank Inspection, Repair, Alteration, and Reconstruction; API RP 576, Inspection of Pressure-relieving Devices.',
     'API RP 2350, Overfill Protection for Storage Tanks in Petroleum Facilities.',
     'NFPA 25, Standard for the Inspection, Testing, and Maintenance of Water-Based Fire Protection Systems; NFPA 58, Liquefied Petroleum Gas Code.',
+    'API Std 2510, Design and Construction of LPG Installations; API Std 650, Welded Tanks for Oil Storage.',
+    'IEC 60076-7 (2018). Power transformers, Part 7: Loading guide for mineral-oil-immersed power transformers.',
+    'IEEE C57.104 (2019). IEEE Guide for the Interpretation of Gases Generated in Mineral Oil-Immersed Transformers.',
+    'NFPA 85, Boiler and Combustion Systems Hazards Code; NFPA 86, Standard for Ovens and Furnaces.',
+    'NFPA 850, Recommended Practice for Fire Protection for Electric Generating Plants and High Voltage Direct Current Converter Stations; NFPA 855, Standard for the Installation of Stationary Energy Storage Systems; NFPA 70B, Standard for Electrical Equipment Maintenance.',
+    'NFPA 652, Standard on the Fundamentals of Combustible Dust; NFPA 61, Standard for the Prevention of Fires and Dust Explosions in Agricultural and Food Processing Facilities; NFPA 68, Standard on Explosion Protection by Deflagration Venting; NFPA 69, Standard on Explosion Prevention Systems.',
+    'NFPA 13, Standard for the Installation of Sprinkler Systems; NFPA 15, Standard for Water Spray Fixed Systems for Fire Protection; NFPA 2001, Standard on Clean Agent Fire Extinguishing Systems; NFPA 96, Standard for Ventilation Control and Fire Protection of Commercial Cooking Operations; NFPA 17A, Standard for Wet Chemical Extinguishing Systems.',
+    'IIAR 2, Standard for Safe Design of Closed-Circuit Ammonia Refrigeration Systems; ASHRAE 15, Safety Standard for Refrigeration Systems.',
+    'NIOSH. Pocket Guide to Chemical Hazards: Ammonia (nilai IDLH 300 ppm).',
+    'U.S. Chemical Safety Board (2009). Investigation Report: Sugar Dust Explosion and Fire, Imperial Sugar Company, Port Wentworth, Georgia.',
+    'U.S. Chemical Safety Board (2015). Key Lessons for Preventing Hydraulic Shock in Industrial Refrigeration Systems: Anhydrous Ammonia Release at Millard Refrigerated Services, Theodore, Alabama.',
+    'DNV GL (2020). McMicken Battery Energy Storage System Event Technical Analysis and Recommendations. Arizona Public Service.',
   ],
 };
 
