@@ -7,6 +7,7 @@ const Game = (() => {
   const SAVE_KEY = 'psm_sim_save_v1';
   const CFG_KEY = 'psm_sim_cfg_v1';
   const HIST_KEY = 'psm_sim_hist_v1';
+  const HINT_COST = 5;
   const DEFAULT_CFG = { sound: true, music: true, musicVol: 45, speed: 1, difficulty: 'normal', hints: true, anim: true, fx: true, name: '' };
 
   const app = document.getElementById('app');
@@ -61,15 +62,93 @@ const Game = (() => {
     vibration: '<svg viewBox="0 0 24 24"><path d="M2 12h3l2-6 3 12 3-15 3 15 2-6h4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg>',
     spill: '<svg viewBox="0 0 24 24"><path d="M12 2.5s-5.5 6.3-5.5 10a5.5 5.5 0 0 0 11 0c0-3.7-5.5-10-5.5-10z"/><ellipse cx="12" cy="21.5" rx="9" ry="1.6"/></svg>',
     explosion: '<svg viewBox="0 0 24 24"><path d="m12 1.5 2.2 5.3 4.9-3.1-1.9 5.5 5.3 1.9-5.3 2 2.3 5.4-5.4-2.6L12 22l-2.1-6.1-5.4 2.6 2.3-5.4-5.3-2 5.3-1.9-1.9-5.5 4.9 3.1z"/></svg>',
+    minimize: '<svg viewBox="0 0 24 24"><path d="M5 18h14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+    restore: '<svg viewBox="0 0 24 24"><path d="M12 19V7m-6 6 6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    bulb: '<svg viewBox="0 0 24 24"><path d="M12 2.5a6.5 6.5 0 0 0-3.9 11.7c.6.5.9 1.1.9 1.8v1h6v-1c0-.7.3-1.3.9-1.8A6.5 6.5 0 0 0 12 2.5z"/><path d="M9.5 19.5h5M10.5 22h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  };
+
+  /* ---------- ikon 3D halaman depan (gradien, bevel, kilap) ---------- */
+  function gearPath(cx, cy, ro, ri, n) {
+    const step = (Math.PI * 2) / n;
+    const P = (r, a) => (cx + r * Math.cos(a)).toFixed(2) + ' ' + (cy + r * Math.sin(a)).toFixed(2);
+    let d = '';
+    for (let i = 0; i < n; i++) {
+      const a = i * step - Math.PI / 2;
+      d += (i ? ' L' : 'M') + P(ri, a - step * 0.3) + ' L' + P(ro, a - step * 0.16) + ' A' + ro + ' ' + ro + ' 0 0 1 ' + P(ro, a + step * 0.16)
+        + ' L' + P(ri, a + step * 0.3) + ' A' + ri + ' ' + ri + ' 0 0 1 ' + P(ri, a + step * 0.7);
+    }
+    return d + ' Z';
+  }
+  function starPts(cx, cy, ro, ri) {
+    const pts = [];
+    for (let i = 0; i < 10; i++) { const r = i % 2 ? ri : ro, a = -Math.PI / 2 + i * Math.PI / 5; pts.push((cx + r * Math.cos(a)).toFixed(2) + ',' + (cy + r * Math.sin(a)).toFixed(2)); }
+    return pts.join(' ');
+  }
+  const gloss = id => `<radialGradient id="${id}" cx=".38" cy=".16" r=".62"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>`;
+  const ICON3D = {
+    play: () => `<svg class="icon3d i-play" viewBox="0 0 48 48" aria-hidden="true"><defs>
+      <linearGradient id="i3p-b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9be5ff"/><stop offset=".5" stop-color="#22a6e3"/><stop offset="1" stop-color="#0a557f"/></linearGradient>
+      <linearGradient id="i3p-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cfeaf8"/></linearGradient>${gloss('i3p-s')}</defs>
+      <circle class="ping" cx="24" cy="23" r="20.5" fill="none" stroke="#8fe0ff" stroke-width="2"/>
+      <ellipse cx="24" cy="45" rx="15" ry="2.4" fill="#04111a" opacity=".35"/>
+      <circle cx="24" cy="23" r="20.5" fill="url(#i3p-b)" stroke="#08476b" stroke-width="1.2"/>
+      <circle cx="24" cy="23" r="18.4" fill="none" stroke="#ffffff" stroke-opacity=".35"/>
+      <path d="M19.5 14.8 33.6 23 19.5 31.2z" transform="translate(1.2 1.8)" fill="#063a57" opacity=".45" stroke="#063a57" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M19.5 14.8 33.6 23 19.5 31.2z" fill="url(#i3p-g)" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+      <ellipse cx="20" cy="12.6" rx="13" ry="7.2" fill="url(#i3p-s)"/></svg>`,
+    resume: () => `<svg class="icon3d i-resume" viewBox="0 0 48 48" aria-hidden="true"><defs>
+      <linearGradient id="i3c-b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6f7c88"/><stop offset=".5" stop-color="#2c3843"/><stop offset="1" stop-color="#0e151b"/></linearGradient>
+      <linearGradient id="i3c-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c9f1ff"/><stop offset="1" stop-color="#29abe2"/></linearGradient>
+      <filter id="i3c-f" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.6"/></filter>${gloss('i3c-s')}</defs>
+      <ellipse cx="24" cy="45" rx="15" ry="2.4" fill="#04111a" opacity=".35"/>
+      <circle cx="24" cy="23" r="20.5" fill="url(#i3c-b)" stroke="#05080b" stroke-width="1.2"/>
+      <circle cx="24" cy="23" r="18.4" fill="none" stroke="#ffffff" stroke-opacity=".22"/>
+      <g class="chev"><path d="M15.5 15l8.5 8-8.5 8M24.5 15l8.5 8-8.5 8" fill="none" stroke="#29abe2" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" filter="url(#i3c-f)" opacity=".85"/>
+      <path d="M15.5 15l8.5 8-8.5 8M24.5 15l8.5 8-8.5 8" fill="none" stroke="url(#i3c-g)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+      <ellipse cx="20" cy="12.6" rx="13" ry="7" fill="url(#i3c-s)" opacity=".55"/></svg>`,
+    gear: () => `<svg class="icon3d i-gear" viewBox="0 0 48 48" aria-hidden="true"><defs>
+      <linearGradient id="i3g-b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#c8d1d9"/><stop offset="1" stop-color="#5a6672"/></linearGradient>
+      <radialGradient id="i3g-h" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#d6f4ff"/><stop offset=".6" stop-color="#29abe2"/><stop offset="1" stop-color="#0a557f"/></radialGradient></defs>
+      <ellipse cx="24" cy="45" rx="15" ry="2.4" fill="#04111a" opacity=".35"/>
+      <g class="gear-rot"><path d="${gearPath(24, 24.8, 21, 16, 8)}" fill="#1d262e" opacity=".45"/>
+      <path d="${gearPath(24, 23, 21, 16, 8)}" fill="url(#i3g-b)" stroke="#3b4651" stroke-width="1.2" stroke-linejoin="round"/>
+      <circle cx="24" cy="23" r="12.6" fill="none" stroke="#ffffff" stroke-opacity=".7" stroke-width="1.2"/>
+      <circle cx="24" cy="23" r="11.2" fill="none" stroke="#5a6672" stroke-opacity=".55" stroke-width="1"/></g>
+      <circle cx="24" cy="23" r="7.4" fill="url(#i3g-h)" stroke="#08476b" stroke-width="1.2"/>
+      <circle cx="21.8" cy="20.8" r="2.4" fill="#ffffff" opacity=".75"/></svg>`,
+    medal: () => `<svg class="icon3d i-medal" viewBox="0 0 48 48" aria-hidden="true"><defs>
+      <linearGradient id="i3m-r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fd8fb"/><stop offset="1" stop-color="#1565a6"/></linearGradient>
+      <linearGradient id="i3m-d" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c4ccd4"/><stop offset="1" stop-color="#5f6b77"/></linearGradient>
+      <linearGradient id="i3m-i" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8f9ba6"/><stop offset="1" stop-color="#eef2f5"/></linearGradient>
+      <linearGradient id="i3m-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b6ecff"/><stop offset="1" stop-color="#1e9bd7"/></linearGradient>${gloss('i3m-g')}</defs>
+      <ellipse cx="24" cy="45.2" rx="13" ry="2.2" fill="#04111a" opacity=".32"/>
+      <g class="medal-swing">
+      <path d="M14.5 2.5h8.5l3.5 15.5-7.5 4.2z" fill="url(#i3m-r)" stroke="#0d4f80" stroke-width="1"/>
+      <path d="M33.5 2.5H25l-3.5 15.5 7.5 4.2z" fill="url(#i3m-r)" stroke="#0d4f80" stroke-width="1"/>
+      <path d="M23 2.5h2l-1 8z" fill="#0d4f80" opacity=".35"/>
+      <circle cx="24" cy="30" r="13.4" fill="url(#i3m-d)" stroke="#4b5661" stroke-width="1.2"/>
+      <circle cx="24" cy="30" r="10.2" fill="url(#i3m-i)" stroke="#ffffff" stroke-opacity=".7"/>
+      <polygon points="${starPts(24.8, 31.2, 7.2, 3)}" fill="#0b4f75" opacity=".35"/>
+      <polygon points="${starPts(24, 30.2, 7.2, 3)}" fill="url(#i3m-s)" stroke="#0b5a86" stroke-width=".8" stroke-linejoin="round"/>
+      <ellipse cx="20.5" cy="22.5" rx="8.5" ry="4.6" fill="url(#i3m-g)" opacity=".85"/></g></svg>`,
+    speaker: on => `<svg class="icon3d i-speaker" viewBox="0 0 48 48" aria-hidden="true"><defs>
+      <linearGradient id="i3s-b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#cfd6dd"/><stop offset="1" stop-color="#7f8b96"/></linearGradient>${gloss('i3s-g')}</defs>
+      <circle cx="24" cy="24" r="21" fill="url(#i3s-b)" stroke="#6b7783" stroke-width="1.2"/>
+      <circle cx="24" cy="24" r="19" fill="none" stroke="#ffffff" stroke-opacity=".7"/>
+      <path d="M12.5 20h5l6.5-5.5v19l-6.5-5.5h-5z" fill="#26323d" stroke="#141c23" stroke-width="1" stroke-linejoin="round"/>
+      ${on ? '<path d="M28.3 19.3a6.3 6.3 0 0 1 0 9.4M31.8 15.8a11.2 11.2 0 0 1 0 16.4" fill="none" stroke="#1e9bd7" stroke-width="2.8" stroke-linecap="round"/>'
+           : '<path d="m28.6 20.2 7.6 7.6m0-7.6-7.6 7.6" fill="none" stroke="#5d6b78" stroke-width="2.8" stroke-linecap="round"/>'}
+      <ellipse cx="20" cy="13" rx="13" ry="6.6" fill="url(#i3s-g)" opacity=".8"/></svg>`,
   };
 
   /* ---------- modal ---------- */
   function showModal(o) {
     closeModal();
+    closePopover();
     const m = document.createElement('div');
     m.className = 'modal-wrap';
     m.innerHTML = `<div class="modal ${o.cls || ''}">
-      ${o.title ? `<div class="modal-head"><h3>${o.title}</h3></div>` : ''}
+      ${o.title ? `<div class="modal-head"><h3>${o.title}</h3>${o.minimizable ? `<button class="modal-min" aria-label="Perkecil laporan" title="Perkecil untuk melihat P&amp;ID">${ICON.minimize}</button>` : ''}</div>` : ''}
       <div class="modal-body">${o.body || ''}</div>
       <div class="modal-foot">${(o.buttons || [{ label: 'Tutup', cls: 'btn3d primary' }]).map((b, i) => `<button class="${b.cls || 'btn3d primary'}" data-i="${i}">${b.label}</button>`).join('')}</div>
     </div>`;
@@ -81,19 +160,124 @@ const Game = (() => {
       if (!b || !b.keep) closeModal();
       if (b && b.onClick) b.onClick();
     });
+    if (o.minimizable) m.querySelector('.modal-min').addEventListener('click', () => minimizeModal(m, o.dockTitle || o.title));
     if (o.onMount) o.onMount(m);
     return m;
   }
-  function closeModal() { $$('.modal-wrap').forEach(n => n.remove()); }
+  function minimizeModal(m, label) {
+    Sfx.click();
+    m.classList.add('minimized');
+    document.body.classList.add('has-dock');
+    const dock = document.createElement('div');
+    dock.className = 'modal-dock';
+    dock.setAttribute('role', 'status');
+    dock.innerHTML = `<span class="dock-dot"></span><div><b>${label}</b><span>Isian tersimpan. Pelajari P&amp;ID, tren, dan peringatan, lalu lanjutkan.</span></div><button class="btn3d primary small">${ICON.restore}<span>Lanjutkan Mengisi</span></button>`;
+    document.body.appendChild(dock);
+    requestAnimationFrame(() => dock.classList.add('show'));
+    dock.querySelector('button').addEventListener('click', () => {
+      Sfx.click(); closePopover(); dock.remove();
+      document.body.classList.remove('has-dock');
+      m.classList.remove('minimized');
+    });
+  }
+  function closeModal() {
+    $$('.modal-wrap').forEach(n => n.remove());
+    $$('.modal-dock').forEach(n => n.remove());
+    document.body.classList.remove('has-dock');
+  }
+
+  /* ---------- pop-up informasi pada P&ID ---------- */
+  let pop = null;
+  function closePopover() {
+    if (!pop) return;
+    pop.el.remove();
+    if (pop.eqId && pid) pid.highlight(pop.eqId, false);
+    pop = null;
+  }
+  function openPopover(anchor, html, meta) {
+    closePopover();
+    const area = $('#pid-area');
+    if (!area || !anchor) return null;
+    const el = document.createElement('div');
+    el.className = 'pop';
+    el.setAttribute('role', 'dialog');
+    el.innerHTML = `<button class="pop-x" aria-label="Tutup">${ICON.x}</button>${html}<span class="pop-arrow" aria-hidden="true"></span>`;
+    area.appendChild(el);
+    placePopover(el, anchor, area);
+    el.addEventListener('click', ev => ev.stopPropagation());
+    el.querySelector('.pop-x').addEventListener('click', () => { Sfx.click(); closePopover(); });
+    pop = Object.assign({ el }, meta || {});
+    requestAnimationFrame(() => el.classList.add('show'));
+    return el;
+  }
+  function placePopover(el, anchor, area) {
+    const a = anchor.getBoundingClientRect(), r = area.getBoundingClientRect();
+    const w = el.offsetWidth, h = el.offsetHeight, gap = 14, pad = 8;
+    let side = 'right', left = a.right - r.left + gap, top;
+    if (left + w > r.width - pad) { side = 'left'; left = a.left - r.left - w - gap; }
+    if (left < pad) {
+      side = 'below';
+      left = Math.min(Math.max(pad, a.left - r.left + a.width / 2 - w / 2), r.width - w - pad);
+      top = a.bottom - r.top + gap;
+      if (top + h > r.height - pad) { side = 'above'; top = a.top - r.top - h - gap; }
+      top = Math.max(pad, top);
+      el.style.setProperty('--ax', Math.min(Math.max(16, a.left - r.left + a.width / 2 - left), w - 16) + 'px');
+    } else {
+      top = Math.min(Math.max(pad, a.top - r.top + a.height / 2 - h / 2), Math.max(pad, r.height - h - pad));
+      el.style.setProperty('--ay', Math.min(Math.max(16, a.top - r.top + a.height / 2 - top), h - 16) + 'px');
+    }
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+    el.dataset.side = side;
+  }
+  function eqPopHTML(e, live) {
+    return `<div class="pop-head"><b>${esc(e.id)}</b><span>${esc(e.name)}</span></div><p>${esc(e.desc)}</p>${live && e.vars ? `<div class="live-wrap" id="pop-live">${liveHTML(e)}</div>` : ''}`;
+  }
 
   /* ---------- latar foto kilang (monokrom silver, redup) ---------- */
   function bgPhoto() { return '<div class="bg-photo" aria-hidden="true"></div>'; }
+
+  /* ---------- partikel cahaya halaman depan (canvas) ---------- */
+  function startParticles(canvas) {
+    if (!canvas) return;
+    const reduce = document.body.classList.contains('no-anim') || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (reduce) return;
+    const ctx = canvas.getContext('2d');
+    const sprite = (rgb, size) => {
+      const c = document.createElement('canvas'); c.width = c.height = size;
+      const g = c.getContext('2d'), grd = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      grd.addColorStop(0, `rgba(${rgb},1)`); grd.addColorStop(0.35, `rgba(${rgb},.55)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+      g.fillStyle = grd; g.fillRect(0, 0, size, size); return c;
+    };
+    const sprites = [sprite('143,220,247', 64), sprite('255,255,255', 64), sprite('41,171,226', 64)];
+    let W = 0, H = 0, parts = [];
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const resize = () => { W = canvas.clientWidth; H = canvas.clientHeight; canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+    const spawn = init => ({ x: Math.random() * W, y: init ? Math.random() * H : H + 20, r: 2 + Math.random() * 6, vy: 0.12 + Math.random() * 0.42, vx: (Math.random() - 0.5) * 0.12, a: 0.18 + Math.random() * 0.45, ph: Math.random() * Math.PI * 2, s: sprites[Math.random() < 0.55 ? 0 : Math.random() < 0.5 ? 1 : 2] });
+    resize();
+    parts = Array.from({ length: Math.round(Math.min(80, Math.max(30, (W * H) / 20000))) }, () => spawn(true));
+    const step = () => {
+      if (!canvas.isConnected) return;
+      if (canvas.clientWidth !== W || canvas.clientHeight !== H) resize();
+      ctx.clearRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'lighter';
+      for (const p of parts) {
+        p.y -= p.vy; p.ph += 0.02; p.x += p.vx + Math.sin(p.ph) * 0.15;
+        if (p.y < -20) Object.assign(p, spawn(false));
+        ctx.globalAlpha = p.a * (0.55 + 0.45 * Math.sin(p.ph * 1.7));
+        const d = p.r * 4; ctx.drawImage(p.s, p.x - d / 2, p.y - d / 2, d, d);
+      }
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
 
   /* ---------- musik latar ---------- */
   function musicIcon() { return cfg.music ? ICON.musicOn : ICON.musicOff; }
   function refreshMusicButtons() {
     $$('[data-music]').forEach(b => {
-      b.innerHTML = musicIcon();
+      b.innerHTML = b.classList.contains('music-toggle') ? ICON3D.speaker(cfg.music) : musicIcon();
       b.setAttribute('aria-pressed', cfg.music ? 'true' : 'false');
       b.title = cfg.music ? 'Matikan musik latar' : 'Nyalakan musik latar';
     });
@@ -114,19 +298,23 @@ const Game = (() => {
     const canContinue = saveScn && !save.finished;
     app.innerHTML = `<div class="screen menu">
       ${bgPhoto()}
-      <button class="music-toggle" data-music aria-label="Musik latar">${musicIcon()}</button>
+      <canvas class="menu-particles" aria-hidden="true"></canvas>
+      <div class="menu-rays" aria-hidden="true"></div>
+      <button class="music-toggle" data-music aria-label="Musik latar">${ICON3D.speaker(cfg.music)}</button>
       <div class="menu-card">
-        <img class="logo-full" src="${BRAND.logo}" alt="PSM Simulator by Nusa Safety">
+        <div class="logo-wrap"><img class="logo-full" src="${BRAND.logo}" alt="PSM Simulator by Nusa Safety"></div>
         <p class="tagline">${esc(APP_INFO.tagline)}</p>
         <div class="menu-btns">
-          <button class="btn3d primary big" data-act="new">${ICON.play}<span>New Game</span></button>
-          <button class="btn3d dark big" data-act="continue" ${canContinue ? '' : 'disabled'}>${ICON.bolt}<span>Continue</span>${canContinue ? `<small>${esc(saveScn.title)} · Tahap ${save.stage}</small>` : '<small>Belum ada permainan tersimpan</small>'}</button>
-          <button class="btn3d silver big" data-act="config">${ICON.gear}<span>Configuration</span></button>
-          <button class="btn3d silver big" data-act="credit">${ICON.star}<span>Credit</span></button>
+          <button class="btn3d primary big" data-act="new" style="--i:0">${ICON3D.play()}<span>New Game</span></button>
+          <button class="btn3d dark big" data-act="continue" style="--i:1" ${canContinue ? '' : 'disabled'}>${ICON3D.resume()}<span>Continue</span>${canContinue ? `<small>${esc(saveScn.title)} · Tahap ${save.stage}</small>` : '<small>Belum ada permainan tersimpan</small>'}</button>
+          <button class="btn3d silver big" data-act="config" style="--i:2">${ICON3D.gear()}<span>Configuration</span></button>
+          <button class="btn3d silver big" data-act="credit" style="--i:3">${ICON3D.medal()}<span>Credit</span></button>
         </div>
       </div>
       <footer class="menu-foot">${esc(APP_INFO.name)} v${APP_INFO.version} · © ${esc(CREDITS.tahun)} ${esc(CREDITS.organisasi)}</footer>
     </div>`;
+    startParticles($('.menu-particles'));
+    refreshMusicButtons();
     on(app, '[data-act]', 'click', ev => {
       Sfx.click();
       const a = ev.currentTarget.dataset.act;
@@ -289,6 +477,7 @@ const Game = (() => {
     ev2 = null;
     if (sim) { sim.stop(); sim = null; }
     if (chartRaf) { cancelAnimationFrame(chartRaf); chartRaf = 0; }
+    closePopover();
     chart = null; pid = null; tool = null; closeModal();
     $$('.fx-banner-wrap').forEach(n => n.remove());
   }
@@ -324,6 +513,7 @@ const Game = (() => {
       onEquipment: e => onEquipmentClick(e),
       onHotspot: h => onHotspotClick(h),
       onDevice: (h, devId) => onDeviceClick(h, devId),
+      onBackground: () => closePopover(),
     });
     sim = new Simulator(scn, { speed: cfg.speed });
     sim.onTick(onSimTick);
@@ -348,10 +538,10 @@ const Game = (() => {
     const alarmNodes = {};
     Object.keys(scn.vars).forEach(id => { if (s.status(id) !== 'normal') alarmNodes[scn.vars[id].node] = true; });
     scn.equipment.forEach(e => pid.alarmNode(e.id, !!alarmNodes[e.id]));
-    const info = $('#eq-live');
-    if (info && info.dataset.id) {
-      const e = scn.equipment.find(x => x.id === info.dataset.id);
-      if (e && e.vars) info.innerHTML = liveHTML(e);
+    if (pop && pop.eqId && pop.live) {
+      const lw = $('#pop-live');
+      const e = scn.equipment.find(x => x.id === pop.eqId);
+      if (lw && e && e.vars) lw.innerHTML = liveHTML(e);
     }
     updateProdStats();
     if (S && S.stage === 2) handleEvent(s);
@@ -404,6 +594,7 @@ const Game = (() => {
 
   function resetPlant() {
     clearTimers();
+    closePopover();
     runSim(false);
     sim.reset(); sim.clearEvent();
     pid.clearFx();
@@ -444,10 +635,9 @@ const Game = (() => {
         <div class="sliders">${scn.controls.map(c => `<label class="slider"><span>${esc(c.label)} <b id="val-${c.id}">${String(c.def).replace('.', ',')} ${esc(c.unit)}</b></span><input type="range" data-ctl="${c.id}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.def}"></label>`).join('')}</div>
       </div>
       <div class="card"><h4>Peralatan <span class="pill" id="read-count">0/${req.length}</span></h4>
-        <p class="muted small">Klik peralatan di P&amp;ID atau di daftar ini.</p>
+        <p class="muted small">Klik peralatan di P&amp;ID atau di daftar ini untuk membuka pop-up informasi.</p>
         <ul class="eq-list">${req.map(e => `<li data-id="${e.id}"><span class="dot"></span><b>${esc(e.id)}</b><span>${esc(e.name)}</span></li>`).join('')}</ul>
       </div>
-      <div class="card" id="eq-info"><h4>Informasi Peralatan</h4><p class="muted">Belum ada peralatan dipilih.</p></div>
       <div class="card"><h4>Legenda Jalur</h4><ul class="legend">${PID.fluidsIn(scn).map(f => `<li><span class="sw" style="--c:${f.c}"></span>${esc(f.name)}</li>`).join('')}<li><span class="sw ro"></span>Pembacaan DCS (kuning/merah saat alarm)</li></ul></div>
       <div class="card action"><button class="btn3d dark wide" id="btn-quiz" disabled>${ICON.check}<span>Mulai Kuis Pemahaman</span></button><p class="muted small" id="quiz-hint">Pelajari semua peralatan terlebih dahulu.</p></div>`;
     S.read.forEach(id => markRead(id, true));
@@ -483,11 +673,11 @@ const Game = (() => {
   function onEquipmentClick(e) {
     if (S.stage >= 3) { onEquipmentBarrier(e); return; }
     Sfx.click();
+    if (S.stage === 1) { markRead(e.id); updateReadCount(); }
+    if (pop && pop.eqId === e.id) { closePopover(); return; }
     scn.equipment.forEach(x => pid.highlight(x.id, false));
     pid.highlight(e.id, true);
-    const info = $('#eq-info');
-    if (info) info.innerHTML = `<h4>${esc(e.id)} <small>${esc(e.name)}</small></h4><p>${esc(e.desc)}</p>${e.vars ? `<div class="live-wrap" id="eq-live" data-id="${e.id}">${liveHTML(e)}</div>` : ''}`;
-    if (S.stage === 1) { markRead(e.id); updateReadCount(); }
+    openPopover(pid.eqNode(e.id), eqPopHTML(e, true), { eqId: e.id, live: true });
   }
   function startQuiz() { S.quizIdx = 0; S.quizCorrect = 0; nextQuiz(); }
   function nextQuiz() {
@@ -533,7 +723,7 @@ const Game = (() => {
       <div class="card warn-card"><h4>Peringatan Lapangan <span class="pill warn" id="warn-count">0</span></h4>
         <ul class="warn-log" id="warn-log"><li class="empty">Belum ada peringatan. Proses berjalan normal.</li></ul>
       </div>
-      <div class="card" id="eq-info"><h4>Informasi Peralatan</h4><p class="muted">Klik peralatan untuk melihat detail dan nilai proses.</p></div>
+      <p class="side-tip">${ICON.bulb}<span>Klik peralatan di P&amp;ID untuk membuka pop-up informasi dan nilai proses terkini.</span></p>
       <div class="card"><h4>Tabel HAZOP Anda</h4><table class="hazop" id="hazop"><thead><tr><th>#</th><th>Node</th><th>Parameter</th><th>Guideword</th><th>Skor</th></tr></thead><tbody>${S.eventResults.map((r, i) => hazopRow(r, i)).join('')}</tbody></table></div>`;
     updateEvTrack();
     $('#btn-run-prod').addEventListener('click', () => { Sfx.start(); beginEvent(); });
@@ -653,9 +843,43 @@ const Game = (() => {
         <label>Guideword<select id="rp-guide"><option value="">-- pilih --</option>${Object.keys(GUIDEWORDS).map(k => `<option value="${k}">${esc(GUIDEWORDS[k])}</option>`).join('')}</select></label>
       </div>
       <div class="rp-sec"><b>Penyebab yang paling mungkin</b>${shuffledOpts(evt.causes, evt.causeAns, 'rp-cause')}</div>
-      <div class="rp-sec"><b>Konsekuensi bila tidak ada proteksi</b>${shuffledOpts(evt.cons, evt.consAns, 'rp-cons')}</div>`;
-    showModal({ title: `Laporan Abnormalitas ${S.eventIdx + 1}${auto ? ' (otomatis)' : ''}`, cls: 'report', body,
-      buttons: [{ label: 'Kirim Laporan', cls: 'btn3d primary', keep: true, onClick: () => submitReport() }] });
+      <div class="rp-sec"><b>Konsekuensi bila tidak ada proteksi</b>${shuffledOpts(evt.cons, evt.consAns, 'rp-cons')}</div>
+      <div class="hint-box">
+        <div class="hint-head"><span class="hint-ico">${ICON.bulb}</span><div><b>Butuh petunjuk?</b><small>${cfg.difficulty === 'mudah' ? 'Mode Mudah: petunjuk tidak mengurangi poin.' : 'Setiap petunjuk mengurangi ' + HINT_COST + ' poin dari laporan ini.'}</small></div><button class="btn3d silver small" id="btn-hint">Buka petunjuk 1 dari 3</button></div>
+        <ol class="hint-list" id="hint-list"></ol>
+      </div>
+      <p class="muted small min-tip">Lupa detail proses? Tekan tombol perkecil di kanan atas untuk melihat P&amp;ID, tren, dan peringatan lapangan. Isian Anda tidak akan hilang.</p>`;
+    ev2.hintsUsed = 0;
+    const hints = eventHints(evt);
+    showModal({ title: `Laporan Abnormalitas ${S.eventIdx + 1}${auto ? ' (otomatis)' : ''}`, cls: 'report', body, minimizable: true,
+      dockTitle: `Laporan Abnormalitas ${S.eventIdx + 1} sedang diisi`,
+      buttons: [{ label: 'Kirim Laporan', cls: 'btn3d primary', keep: true, onClick: () => submitReport() }],
+      onMount: m => {
+        const btn = m.querySelector('#btn-hint');
+        btn.addEventListener('click', () => {
+          if (!ev2 || ev2.hintsUsed >= hints.length) return;
+          Sfx.click();
+          const li = document.createElement('li');
+          li.textContent = hints[ev2.hintsUsed];
+          m.querySelector('#hint-list').appendChild(li);
+          ev2.hintsUsed++;
+          if (ev2.hintsUsed >= hints.length) { btn.disabled = true; btn.textContent = 'Semua petunjuk terbuka'; }
+          else btn.textContent = `Buka petunjuk ${ev2.hintsUsed + 1} dari ${hints.length}`;
+        });
+      } });
+  }
+  function eventHints(evt) {
+    const early = Math.min(...evt.effects.map(f => f.delay));
+    const norm = f => Math.abs(f.to - scn.vars[f.var].normal) / (scn.vars[f.var].max - scn.vars[f.var].min);
+    const first = evt.hintVar ? evt.effects.find(f => f.var === evt.hintVar) || evt.effects[0]
+      : evt.effects.filter(f => f.delay === early).sort((a, b) => norm(b) - norm(a))[0];
+    const v = scn.vars[first.var];
+    const node = scn.equipment.find(e => e.id === evt.answer.node[0]);
+    return [
+      `Perhatikan tren ${v.label}. Variabel ini paling awal ${first.to > v.normal ? 'naik' : 'turun'} dari nilai normalnya.`,
+      evt.hint,
+      `Deviasi utama berpusat di ${node.id}, ${node.name}.`,
+    ];
   }
   function shuffledOpts(opts, ansIdx, name) {
     const idx = opts.map((_, i) => i).sort(() => Math.random() - 0.5);
@@ -672,8 +896,11 @@ const Game = (() => {
     if (ev2.phase === 'early' && base >= 60) { mod = 10; modTxt = '<p class="note ok"><b>Bonus deteksi dini +10.</b> Abnormalitas dikenali dari tren proses sebelum muncul peringatan kritis di lapangan.</p>'; }
     else if (ev2.phase === 'late') { mod = -20; modTxt = '<p class="warn"><b>Penalti -20.</b> Insiden telah terjadi sebelum abnormalitas dilaporkan.</p>'; }
     else if (ev2.phase === 'mid') modTxt = '<p class="note">Dilaporkan setelah peringatan kritis. Insiden masih dapat dicegah, tetapi margin waktunya sempit.</p>';
-    const score = Math.max(0, Math.min(100, base + mod));
-    S.eventResults.push({ node, param, guide, score, phase: ev2.phase });
+    const hintsUsed = ev2.hintsUsed || 0;
+    const hintPenalty = cfg.difficulty === 'mudah' ? 0 : HINT_COST * hintsUsed;
+    const hintTxt = hintsUsed ? `<p class="note">Petunjuk dipakai: <b>${hintsUsed}</b>${hintPenalty ? `, pengurangan ${hintPenalty} poin` : ', tanpa pengurangan poin pada Mode Mudah'}.</p>` : '';
+    const score = Math.max(0, Math.min(100, base + mod - hintPenalty));
+    S.eventResults.push({ node, param, guide, score, phase: ev2.phase, hints: hintsUsed });
     closeModal();
     if (score >= 60) Sfx.success(); else Sfx.fail();
     const row = (lbl, ok, ans) => `<tr><td>${lbl}</td><td class="${ok ? 'ok' : 'bad'}">${ok ? 'Benar' : 'Salah'}</td><td>${esc(ans)}</td></tr>`;
@@ -682,7 +909,7 @@ const Game = (() => {
     showModal({ title: `Hasil Laporan ${S.eventIdx + 1}: ${score} poin`, cls: 'report',
       body: `<table class="result-table"><tr><th>Unsur</th><th>Penilaian</th><th>Jawaban yang diharapkan</th></tr>
         ${row('Node', pts.node, a.node.join(' / '))}${row('Parameter', pts.param, a.param.map(p => PARAMS[p]).join(' / '))}${row('Guideword', pts.guide, a.guide.map(g => GUIDEWORDS[g].split(' (')[0]).join(' / '))}${row('Penyebab', pts.cause, evt.causes[evt.causeAns])}${row('Konsekuensi', pts.cons, evt.cons[evt.consAns])}</table>
-        ${modTxt}<p class="explain">${esc(evt.explain)}</p>
+        ${modTxt}${hintTxt}<p class="explain">${esc(evt.explain)}</p>
         <h4 class="chain-h">Rangkaian eskalasi kejadian ini (${seen.length} dari ${evt.warnings.length} tahap terjadi)</h4><ul class="chain">${chain}</ul>`,
       buttons: [{ label: 'Lanjut', cls: 'btn3d primary', onClick: () => {
         S.eventIdx++; updateEvTrack();
@@ -799,6 +1026,7 @@ const Game = (() => {
     else pid.setTargets({ eq: eqInspectable(stage).filter(e => t.fitsEq.includes(e.type)).map(e => e.id) });
   }
   function refreshBarrierUI(stage) {
+    closePopover();
     const b = budgetFor(stage), sp = spent(stage);
     const bv = $('#budget-val'); if (bv) bv.textContent = `${b - sp} / ${b}`;
     const bf = $('#budget-fill'); if (bf) { bf.style.width = Math.min(100, sp / b * 100) + '%'; bf.classList.toggle('low', b - sp <= 2); }
@@ -861,18 +1089,21 @@ const Game = (() => {
     if (tool && tool.kind === 'dev') { placeDevice(stage, h, tool.id); return; }
     const st = devState(stage, h.id);
     const it = S.itpm[stage][h.id];
-    const btns = [{ label: 'Lepas Perangkat', cls: 'btn3d red', onClick: () => { delete S.placements[stage][h.id]; delete S.itpm[stage][h.id]; Sfx.remove(); save(); refreshBarrierUI(stage); } }];
-    if (it) btns.push({ label: 'Lepas Program Uji', cls: 'btn3d silver', onClick: () => { delete S.itpm[stage][h.id]; Sfx.remove(); save(); refreshBarrierUI(stage); } });
-    btns.push({ label: 'Tutup', cls: 'btn3d primary' });
-    showModal({ title: esc(st.d.name), cls: 'detail',
-      body: `<p>${esc(st.d.desc)}</p>
+    if (pop && pop.devHs === h.id) { closePopover(); return; }
+    Sfx.click();
+    const el = openPopover(pid.devNode(h.id), `<div class="pop-head"><b>${esc(st.d.code)}</b><span>${esc(st.d.name)}</span></div>
+        <p>${esc(st.d.desc)}</p>
         <table class="kv"><tr><th>Lokasi</th><td>${esc(h.label)}</td></tr>
         <tr><th>PFD desain</th><td>${String(st.d.pfd).replace('.', ',')} (faktor pengurangan risiko ${num(1 / st.d.pfd)})</td></tr>
         <tr><th>Program uji</th><td>${it ? esc(ITPM[it].name) : '<span class="bad">Belum ada</span>'}</td></tr>
         <tr><th>PFD efektif</th><td>${String(+st.pfd.toFixed(3)).replace('.', ',')}${st.tested ? '' : ' (naik karena tidak diuji)'}</td></tr>
         <tr><th>Keandalan yang dapat dikreditkan</th><td><b>${pct(st.rel)}</b></td></tr></table>
-        ${st.tested ? '' : `<p class="note">Dalam LOPA, barier yang tidak diuji secara berkala tidak dapat dikreditkan sepenuhnya karena kegagalan tersembunyinya tidak pernah terungkap. Terapkan <b>${esc(ITPM[st.d.itpm].name)}</b> agar barier ini dapat diklaim sebagai lapisan proteksi independen.</p>`}`,
-      buttons: btns });
+        ${st.tested ? '' : `<p class="note">Dalam LOPA, barier yang tidak diuji secara berkala tidak dapat dikreditkan sepenuhnya karena kegagalan tersembunyinya tidak pernah terungkap. Terapkan <b>${esc(ITPM[st.d.itpm].name)}</b> agar barier ini dapat diklaim sebagai lapisan proteksi independen.</p>`}
+        <div class="pop-actions"><button class="btn3d red small" data-pop="rm-dev">Lepas Perangkat</button>${it ? '<button class="btn3d silver small" data-pop="rm-test">Lepas Program Uji</button>' : ''}</div>`, { devHs: h.id });
+    if (!el) return;
+    el.querySelector('[data-pop="rm-dev"]').addEventListener('click', () => { delete S.placements[stage][h.id]; delete S.itpm[stage][h.id]; Sfx.remove(); save(); refreshBarrierUI(stage); });
+    const rt = el.querySelector('[data-pop="rm-test"]');
+    if (rt) rt.addEventListener('click', () => { delete S.itpm[stage][h.id]; Sfx.remove(); save(); refreshBarrierUI(stage); });
   }
   function onEquipmentBarrier(e) {
     const stage = S.stage;
@@ -893,13 +1124,16 @@ const Game = (() => {
       return;
     }
     Sfx.click();
+    if (pop && pop.eqId === e.id) { closePopover(); return; }
     const cur = eqm && eqm[e.id];
-    const btns = [];
-    if (cur && !S.evalDone[stage]) btns.push({ label: 'Lepas Program', cls: 'btn3d red', onClick: () => { delete eqm[e.id]; Sfx.remove(); save(); refreshBarrierUI(stage); } });
-    btns.push({ label: 'Tutup', cls: 'btn3d primary' });
-    showModal({ title: esc(e.id + ' · ' + e.name), cls: 'detail',
-      body: `<p>${esc(e.desc)}</p>${eqm && eqInspectable(stage).some(x => x.id === e.id) ? `<table class="kv"><tr><th>Program inspeksi</th><td>${cur ? esc(ITPM[cur].name) : '<span class="bad">Belum ada</span>'}</td></tr></table>` : ''}`,
-      buttons: btns });
+    const inspectable = eqm && eqInspectable(stage).some(x => x.id === e.id);
+    scn.equipment.forEach(x => pid.highlight(x.id, false));
+    pid.highlight(e.id, true);
+    const el = openPopover(pid.eqNode(e.id), eqPopHTML(e, false)
+      + (inspectable ? `<table class="kv"><tr><th>Program inspeksi</th><td>${cur ? esc(ITPM[cur].name) : '<span class="bad">Belum ada</span>'}</td></tr></table>` : '')
+      + (cur && !S.evalDone[stage] ? '<div class="pop-actions"><button class="btn3d red small" data-pop="rm-eq">Lepas Program</button></div>' : ''), { eqId: e.id });
+    const rb = el && el.querySelector('[data-pop="rm-eq"]');
+    if (rb) rb.addEventListener('click', () => { delete eqm[e.id]; Sfx.remove(); save(); refreshBarrierUI(stage); });
   }
   function confirmEvaluate(stage) {
     const untested = Object.keys(S.placements[stage]).filter(h => !devState(stage, h).tested).length;
@@ -1083,8 +1317,12 @@ const Game = (() => {
     window.addEventListener('pointerdown', unlock, true);
     window.addEventListener('keydown', unlock, true);
     document.addEventListener('click', ev => { if (ev.target.closest('[data-music]')) { Sfx.click(); toggleMusic(); } });
-    window.addEventListener('resize', () => { if (chart) chart.draw(); });
-    window.addEventListener('keydown', ev => { if (ev.key === 'Escape' && tool && S && S.stage >= 3 && $('#tool-desc')) selectTool(null, null); });
+    window.addEventListener('resize', () => { if (chart) chart.draw(); closePopover(); });
+    window.addEventListener('keydown', ev => {
+      if (ev.key !== 'Escape') return;
+      if (pop) { closePopover(); return; }
+      if (tool && S && S.stage >= 3 && $('#tool-desc')) selectTool(null, null);
+    });
   }
   return { init, showMenu };
 })();

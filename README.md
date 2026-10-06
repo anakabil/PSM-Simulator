@@ -28,6 +28,8 @@ Menu awal: New Game, Continue, Configuration, Credit.
 
 Setiap laporan bernilai 100 poin (node, parameter, guideword, penyebab, konsekuensi masing-masing 20). Laporan yang tepat dan dikirim sebelum peringatan kritis mendapat bonus deteksi dini +10. Laporan yang baru dikirim setelah insiden terjadi mendapat penalti -20.
 
+Formulir laporan dapat diperkecil lewat tombol di kanan atas. Selama diperkecil, pemain bisa kembali membaca P&ID, tren, peringatan lapangan, dan pop-up peralatan, lalu melanjutkan isian tanpa kehilangan jawaban. Formulir juga menyediakan tiga petunjuk berurutan, yaitu variabel proses yang paling awal menyimpang, gambaran mekanisme kegagalan, dan lokasi node. Setiap petunjuk mengurangi 5 poin dari laporan tersebut, kecuali pada Mode Mudah yang membebaskan biaya petunjuk.
+
 ### Inspeksi, pengujian, dan keandalan barier
 
 Setiap perangkat memiliki PFD desain indikatif mengikuti rentang tipikal CCPS (2001). Barier tanpa program pengujian dianggap menyimpan kegagalan tersembunyi sehingga PFD-nya dinaikkan 10 kali. Hal ini mencerminkan kriteria IPL pada LOPA, yaitu barier harus dapat diaudit melalui pengujian. Panel Keandalan Sistem Proteksi menampilkan keandalan rata-rata yang dapat dikreditkan. Bobot nilai Tahap 3 terdiri dari ketepatan barier 55 %, pengujian barier 25 %, dan inspeksi peralatan kritis 20 %. Bobot nilai Tahap 4 terdiri dari ketepatan barier 65 % dan pengujian barier 35 %. Setiap pemasangan keliru atau tidak perlu dikurangi 8 poin.
@@ -36,9 +38,13 @@ Setiap perangkat memiliki PFD desain indikatif mengikuti rentang tipikal CCPS (2
 
 Palet mengikuti logo: silver, hitam, dan biru muda. Warna kuning dan merah hanya dipakai untuk kondisi abnormal, sejalan dengan filosofi HMI berperforma tinggi (ANSI/ISA-101). Peralatan digambar sebagai baja silver bergradien dengan bayangan, dan isi cairan di bejana serta tangki berubah sesuai simulasi. Efek kilatan dan guncangan saat ledakan dapat dimatikan di Configuration, dan otomatis dinonaktifkan bila sistem operasi meminta pengurangan gerak. Latar layar menu, pilihan skenario, konfigurasi, Credit, dan hasil memakai foto kilang yang diolah menjadi monokrom silver dan ditampilkan redup.
 
+Ikon tombol menu digambar sebagai SVG bervolume dengan gradien, bevel, dan kilap, sehingga tetap tajam di layar beresolusi tinggi. Halaman menu memiliki animasi ringan berupa partikel cahaya, sinar latar yang berputar pelan, kilau yang melintas di logo, dan tombol yang muncul berurutan. Semua animasi ini ikut mati bila efek animasi dinonaktifkan atau sistem operasi meminta pengurangan gerak.
+
+Informasi peralatan dan perangkat tampil sebagai pop-up di dekat titik yang diklik pada P&ID. Pop-up memuat deskripsi, nilai proses terkini yang diperbarui langsung, serta status PFD dan program uji pada tahap barier. Pop-up ditutup dengan tombol silang di kanan atas, tombol Escape, klik area kosong, atau otomatis berganti saat peralatan lain diklik.
+
 ## Audio
 
-Musik latar memakai lagu Measured Flow yang diputar berulang. Musik baru berbunyi setelah interaksi pertama pengguna, sesuai kebijakan autoplay peramban, lalu naik perlahan selama sekitar 2,5 detik. Lagu ini cukup keras, dengan kekerasan terintegrasi sekitar -12,5 LUFS. Karena itu volume default diatur 45 persen pada kurva kuadratik, setara amplitudo 0,2 atau sekitar 14 dB lebih pelan dari berkas aslinya. Saat insiden terjadi di Tahap 2, musik diredam sementara agar alarm dan peringatan tetap terdengar jelas. Musik juga dijeda saat tab peramban tidak aktif. Musik dapat dimatikan lewat tombol pengeras suara di menu dan bilah atas, atau diatur volumenya di Configuration.
+Musik latar memakai lagu Measured Flow yang diputar berulang. Musik baru berbunyi setelah interaksi pertama pengguna, sesuai kebijakan autoplay peramban, lalu naik perlahan selama sekitar 2,5 detik. Rekaman aslinya memakai efek auto-pan, yaitu sebagian instrumen berpindah dari kanal kiri ke kanan dengan periode sekitar 1,1 detik. Efek ini melelahkan bila didengar lewat earphone, sehingga berkas diubah menjadi mono dengan merata-ratakan kedua kanal, pada 128 kbps dan kekerasan sekitar -14 LUFS. Volume default diatur 45 persen pada kurva kuadratik, setara amplitudo 0,2 atau sekitar 14 dB lebih pelan dari berkas tersebut. Saat insiden terjadi di Tahap 2, musik diredam sementara agar alarm dan peringatan tetap terdengar jelas. Musik juga dijeda saat tab peramban tidak aktif. Musik dapat dimatikan lewat tombol pengeras suara di menu dan bilah atas, atau diatur volumenya di Configuration.
 
 ## Credit dan profil perusahaan
 

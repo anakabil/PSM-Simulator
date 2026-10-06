@@ -483,6 +483,8 @@ const PID = (() => {
         const b = eqBounds(e);
         return { x: b.x + b.w / 2, y: b.y + b.h / 2 };
       },
+      eqNode: id => eqGroups[id] || null,
+      devNode: hsId => gDev.querySelector(`[data-hs="${hsId}"]`),
       setFlow(on) { svg.classList.toggle('flowing', !!on); },
       highlight(id, on) {
         const g = eqGroups[id]; if (!g) return;
