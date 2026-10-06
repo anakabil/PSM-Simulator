@@ -134,7 +134,7 @@ const PID = (() => {
     } else {
       el('rect', { x: e.x + 8, y: e.y + r * 0.6, width: 7, height: e.h - r * 1.2, rx: 3.5, fill: '#fff', opacity: 0.6 }, g);
     }
-    label(g, e.x + e.w / 2, e.y + e.h / 2 + 2, e.id, 18);
+    label(g, e.x + e.w / 2, e.y + e.h / 2 + 2, e.id, e.w < 60 ? 11 : e.w < 90 ? 14 : 18);
   }
   function drawReactor(g, e, ctx) {
     const r = 36;
@@ -490,7 +490,7 @@ const PID = (() => {
     el('path', { d: `M${e.x + 10} ${top + 16} H${e.x + e.w - 10}`, stroke: '#a39274', 'stroke-width': 1.4, 'stroke-dasharray': '10 8', opacity: 0.8 }, g);
     el('path', { d: `M${e.x - 6} ${top + 2} C${e.x + e.w * 0.16} ${e.y - 6} ${e.x + e.w * 0.84} ${e.y - 6} ${e.x + e.w + 6} ${top + 2} Z`, fill: 'url(#gMembrane)', stroke: '#0b1015', 'stroke-width': 1.8, filter: 'url(#fShadow)' }, g);
     el('path', { d: `M${e.x + e.w * 0.2} ${e.y + (top - e.y) * 0.42} C${e.x + e.w * 0.35} ${e.y + 4} ${e.x + e.w * 0.6} ${e.y + 4} ${e.x + e.w * 0.72} ${e.y + (top - e.y) * 0.3}`, fill: 'none', stroke: '#ffffff', 'stroke-width': 3, opacity: 0.25, 'stroke-linecap': 'round' }, g);
-    label(g, cx, e.y + (top - e.y) * 0.62, e.id, 15, { fill: '#e6f2f9' });
+    label(g, cx, e.y + (top - e.y) * 0.62, e.id, 15, { fill: '#e6f2f9', class: 'eq-label on-dark' });
   }
   function drawCooler(g, e) {
     const nf = e.fans || Math.max(1, Math.round(e.w / 50));
@@ -902,7 +902,7 @@ const PID = (() => {
           if (!e || !it) return;
           const b = eqBounds(e);
           const cands = [[b.x + b.w - 6, b.y - 2], [b.x + 8, b.y - 2], [b.x + b.w + 22, b.y + b.h / 2], [b.x - 22, b.y + b.h / 2], [b.x + b.w - 6, b.y + b.h + 4], [b.x + 8, b.y + b.h + 4]];
-          const free = c => !hs.some(h => Math.abs(h.x - c[0]) < 44 && Math.abs(h.y - c[1]) < 28) && !taken.some(t => Math.abs(t[0] - c[0]) < 50 && Math.abs(t[1] - c[1]) < 24);
+          const free = c => !hs.some(h => Math.abs(h.x - c[0]) < 44 && Math.abs(h.y - c[1]) < 32) && !taken.some(t => Math.abs(t[0] - c[0]) < 50 && Math.abs(t[1] - c[1]) < 24);
           const pos = cands.find(free) || cands[0];
           taken.push(pos);
           const tg = el('g', { class: 'eq-badge', transform: `translate(${pos[0]},${pos[1]})` }, gBadge);

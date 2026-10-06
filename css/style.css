@@ -643,3 +643,4 @@ body.no-fx .pid-svg .fx-arc, body.no-fx .pid-svg .fx-spark, body.no-fx .pid-svg 
 .sector-h { display: flex; align-items: center; gap: 8px; font-size: 17px; color: var(--ink); padding-bottom: 6px; border-bottom: 2px solid var(--sv2); }
 .sector-ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: linear-gradient(180deg, #6fd0f5, var(--lb2)); box-shadow: 0 2px 0 #126e9c; }
 .sector-ico svg { width: 18px; height: 18px; fill: #fff; }
+.pid-svg .eq-label.on-dark { stroke: rgba(11, 16, 21, 0.75); }
