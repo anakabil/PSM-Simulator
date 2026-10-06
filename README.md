@@ -34,7 +34,15 @@ Setiap perangkat memiliki PFD desain indikatif mengikuti rentang tipikal CCPS (2
 
 ## Tampilan
 
-Palet mengikuti logo: silver, hitam, dan biru muda. Warna kuning dan merah hanya dipakai untuk kondisi abnormal, sejalan dengan filosofi HMI berperforma tinggi (ANSI/ISA-101). Peralatan digambar sebagai baja silver bergradien dengan bayangan, dan isi cairan di bejana serta tangki berubah sesuai simulasi. Efek kilatan dan guncangan saat ledakan dapat dimatikan di Configuration, dan otomatis dinonaktifkan bila sistem operasi meminta pengurangan gerak.
+Palet mengikuti logo: silver, hitam, dan biru muda. Warna kuning dan merah hanya dipakai untuk kondisi abnormal, sejalan dengan filosofi HMI berperforma tinggi (ANSI/ISA-101). Peralatan digambar sebagai baja silver bergradien dengan bayangan, dan isi cairan di bejana serta tangki berubah sesuai simulasi. Efek kilatan dan guncangan saat ledakan dapat dimatikan di Configuration, dan otomatis dinonaktifkan bila sistem operasi meminta pengurangan gerak. Latar layar menu, pilihan skenario, konfigurasi, Credit, dan hasil memakai foto kilang yang diolah menjadi monokrom silver dan ditampilkan redup.
+
+## Audio
+
+Musik latar memakai lagu Measured Flow yang diputar berulang. Musik baru berbunyi setelah interaksi pertama pengguna, sesuai kebijakan autoplay peramban, lalu naik perlahan selama sekitar 2,5 detik. Lagu ini cukup keras, dengan kekerasan terintegrasi sekitar -12,5 LUFS. Karena itu volume default diatur 45 persen pada kurva kuadratik, setara amplitudo 0,2 atau sekitar 14 dB lebih pelan dari berkas aslinya. Saat insiden terjadi di Tahap 2, musik diredam sementara agar alarm dan peringatan tetap terdengar jelas. Musik juga dijeda saat tab peramban tidak aktif. Musik dapat dimatikan lewat tombol pengeras suara di menu dan bilah atas, atau diatur volumenya di Configuration.
+
+## Credit dan profil perusahaan
+
+Layar Credit hanya menampilkan identitas perusahaan, yaitu PT. Nusa Rendra Jayatama dengan merek Nusa Safety, beserta profil dan layanan yang dihimpun dari situs resmi nusasafety.co.id. Data profil tersimpan pada objek `COMPANY` di `js/data.js` sehingga mudah diperbarui.
 
 ## Skenario
 
@@ -51,11 +59,13 @@ js/data.js                  katalog perangkat, program ITPM, skenario, kuis, kej
 js/pid.js                   penggambar P&ID SVG, isi cairan, efek insiden, lencana program uji
 js/sim.js                   mesin simulasi proses, jam operasi, produksi, grafik tren
 js/game.js                  alur permainan, penilaian, simpan/lanjutkan, bow-tie
-js/audio.js                 efek suara WebAudio (alarm, desis, ledakan, api)
+js/audio.js                 efek suara WebAudio dan pemutar musik latar
 assets/psm-logo.png         logo PSM Simulator by Nusa Safety
 assets/psm-emblem.png       emblem untuk bilah atas
 assets/favicon.png          ikon tab peramban
 assets/nusa-safety-logo.png logo Nusa Safety untuk layar Credit
+assets/menu-bg.jpg          foto latar menu (monokrom silver)
+assets/audio/measured-flow.mp3  musik latar
 ```
 
 ## Menambah skenario

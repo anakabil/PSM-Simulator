@@ -7,7 +7,7 @@ const Game = (() => {
   const SAVE_KEY = 'psm_sim_save_v1';
   const CFG_KEY = 'psm_sim_cfg_v1';
   const HIST_KEY = 'psm_sim_hist_v1';
-  const DEFAULT_CFG = { sound: true, speed: 1, difficulty: 'normal', hints: true, anim: true, fx: true, name: '' };
+  const DEFAULT_CFG = { sound: true, music: true, musicVol: 45, speed: 1, difficulty: 'normal', hints: true, anim: true, fx: true, name: '' };
 
   const app = document.getElementById('app');
   let cfg = Object.assign({}, DEFAULT_CFG, loadJSON(CFG_KEY) || {});
@@ -52,6 +52,9 @@ const Game = (() => {
     gauge: '<svg viewBox="0 0 24 24"><path d="M12 4a9 9 0 0 0-9 9c0 2 .7 3.9 1.8 5.4h14.4A9 9 0 0 0 12 4zm4.6 4.8-3.3 5.1a1.8 1.8 0 1 1-2.6-1.7z"/></svg>',
     factory: '<svg viewBox="0 0 24 24"><path d="M2 21V10l6 3V10l6 3V4h3v17zM19 21V2h3v19z"/></svg>',
     stop: '<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>',
+    musicOn: '<svg viewBox="0 0 24 24"><path d="M3.5 9h4l5-4v14l-5-4h-4z"/><path d="M15.5 8.5a4.5 4.5 0 0 1 0 7M18.3 5.8a8.3 8.3 0 0 1 0 12.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    musicOff: '<svg viewBox="0 0 24 24"><path d="M3.5 9h4l5-4v14l-5-4h-4z"/><path d="m15.8 9.3 5.4 5.4m0-5.4-5.4 5.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    globe: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm6.9 6h-3a15.7 15.7 0 0 0-1.4-4 8 8 0 0 1 4.4 4zM12 4.1c.8 1.1 1.5 2.4 1.9 3.9h-3.8c.4-1.5 1.1-2.8 1.9-3.9zM4.3 14a8 8 0 0 1 0-4h3.4a16.5 16.5 0 0 0 0 4zm.8 2h3a15.7 15.7 0 0 0 1.4 4 8 8 0 0 1-4.4-4zm3-8h-3a8 8 0 0 1 4.4-4A15.7 15.7 0 0 0 8.1 8zM12 19.9c-.8-1.1-1.5-2.4-1.9-3.9h3.8c-.4 1.5-1.1 2.8-1.9 3.9zM14.3 14H9.7a14.7 14.7 0 0 1 0-4h4.6a14.7 14.7 0 0 1 0 4zm.3 6a15.7 15.7 0 0 0 1.4-4h3a8 8 0 0 1-4.4 4zm1.7-6a16.5 16.5 0 0 0 0-4h3.4a8 8 0 0 1 0 4z"/></svg>',
     leak: '<svg viewBox="0 0 24 24"><path d="M7 19a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.6 8.6 4.2 4.2 0 0 1 17 19z"/><path d="M8 6c0-1.5 1.5-1.5 1.5-3M12 6c0-1.5 1.5-1.5 1.5-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
     toxic: '<svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2.5c-4.7 0-8.3 3.2-8.3 7.4 0 2.4 1.2 4.4 3.1 5.8V19c0 .9.7 1.6 1.6 1.6h7.2c.9 0 1.6-.7 1.6-1.6v-3.3c1.9-1.4 3.1-3.4 3.1-5.8 0-4.2-3.6-7.4-8.3-7.4zM8.6 13.4a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4zm6.8 0a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4zM10.6 16l1.4-2.2 1.4 2.2z"/></svg>',
     heat: '<svg viewBox="0 0 24 24"><path d="M12.5 14.5V5a2 2 0 1 0-4 0v9.5a4 4 0 1 0 4 0z"/><path d="M16 5c1 1 1 2 0 3s-1 2 0 3M19.5 5c1 1 1 2 0 3s-1 2 0 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
@@ -83,52 +86,24 @@ const Game = (() => {
   }
   function closeModal() { $$('.modal-wrap').forEach(n => n.remove()); }
 
-  /* ---------- latar industri 3D (silver, hitam, biru muda) ---------- */
-  function sceneSVG() {
-    return `<svg class="scene" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-      <defs>
-        <linearGradient id="skD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1117"/><stop offset=".55" stop-color="#15212b"/><stop offset="1" stop-color="#253747"/></linearGradient>
-        <radialGradient id="glB" cx=".5" cy="1" r=".75"><stop offset="0" stop-color="#29abe2" stop-opacity=".38"/><stop offset="1" stop-color="#29abe2" stop-opacity="0"/></radialGradient>
-        <linearGradient id="flD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a252f"/><stop offset="1" stop-color="#090d11"/></linearGradient>
-        <linearGradient id="stV" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f6f8fa"/><stop offset=".3" stop-color="#cdd5dc"/><stop offset=".7" stop-color="#8b97a3"/><stop offset="1" stop-color="#4b5661"/></linearGradient>
-        <linearGradient id="stH" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6f8fa"/><stop offset=".3" stop-color="#cdd5dc"/><stop offset=".7" stop-color="#8b97a3"/><stop offset="1" stop-color="#4b5661"/></linearGradient>
-        <linearGradient id="stT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#b9c3cc"/></linearGradient>
-        <linearGradient id="flm" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff3d00"/><stop offset=".5" stop-color="#ff9100"/><stop offset="1" stop-color="#ffee58"/></linearGradient>
-        <pattern id="grF" width="60" height="30" patternUnits="userSpaceOnUse"><path d="M60 0H0V30" fill="none" stroke="#29abe2" stroke-opacity=".14"/></pattern>
-        <filter id="sh"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity=".45"/></filter>
-        <filter id="gl"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      </defs>
-      <rect width="1200" height="700" fill="url(#skD)"/>
-      <rect y="250" width="1200" height="450" fill="url(#glB)"/>
-      <path d="M0 470V430h50v-40h30v40h60v-70h24v70h80v-30h40v30h120v-55h20v55h160v-90h28v90h90v-40h50v40h110v-65h26v65h90v-35h60v35h62v40z" fill="#1b2833"/>
-      <rect y="470" width="1200" height="230" fill="url(#flD)"/>
-      <rect y="470" width="1200" height="230" fill="url(#grF)"/>
-      <rect y="468" width="1200" height="3" fill="#29abe2" opacity=".6"/>
-      <g filter="url(#sh)">
-        <rect x="1040" y="160" width="22" height="315" fill="url(#stV)"/>
-        <rect x="1040" y="250" width="22" height="8" fill="#29abe2"/>
-        <rect x="1033" y="150" width="36" height="14" rx="3" fill="url(#stH)"/>
-        <rect x="55" y="325" width="190" height="150" fill="url(#stV)"/><ellipse cx="150" cy="325" rx="95" ry="22" fill="url(#stT)"/>
-        <path d="M55 345a95 22 0 0 0 190 0" fill="none" stroke="#29abe2" stroke-width="5"/>
-        <rect x="275" y="365" width="135" height="110" fill="url(#stV)"/><ellipse cx="342" cy="365" rx="67.5" ry="16" fill="url(#stT)"/>
-        <rect x="520" y="120" width="72" height="355" rx="36" fill="url(#stV)"/>
-        <rect x="640" y="378" width="300" height="100" rx="50" fill="url(#stH)"/>
-        <rect x="690" y="458" width="34" height="18" fill="#2b3640"/><rect x="856" y="458" width="34" height="18" fill="#2b3640"/>
-      </g>
-      <rect x="505" y="300" width="102" height="9" rx="3" fill="#9aa6b1"/><rect x="505" y="215" width="102" height="9" rx="3" fill="#9aa6b1"/>
-      <rect x="690" y="392" width="200" height="10" rx="5" fill="#fff" opacity=".6"/>
-      <rect x="660" y="455" width="260" height="4" fill="#29abe2" opacity=".9"/>
-      <path d="M245 400H275M410 420H520M592 250H640V378M790 378V300H1040" fill="none" stroke="#2b3640" stroke-width="16" stroke-linecap="round"/>
-      <path d="M245 400H275M410 420H520M592 250H640V378M790 378V300H1040" fill="none" stroke="#c7d0d8" stroke-width="10" stroke-linecap="round"/>
-      <path d="M245 400H275M410 420H520M592 250H640V378M790 378V300H1040" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7" transform="translate(-1,-2)"/>
-      <circle cx="470" cy="455" r="22" fill="url(#stV)" filter="url(#sh)"/><path d="M460 443 484 455 460 467z" fill="#29abe2"/>
-      <path class="flame big" d="M1051 66C1085 104 1080 132 1051 148 1022 132 1017 104 1051 66Z" fill="url(#flm)" filter="url(#gl)"/>
-      <g class="lights">
-        <circle cx="556" cy="140" r="4" fill="#29abe2" filter="url(#gl)"/><circle cx="1051" cy="190" r="4" fill="#29abe2" filter="url(#gl)"/>
-        <circle cx="150" cy="320" r="4" fill="#29abe2" filter="url(#gl)"/><circle cx="905" cy="390" r="4" fill="#29abe2" filter="url(#gl)"/>
-      </g>
-      <g class="steam" fill="#e6edf2" opacity=".55"><ellipse cx="556" cy="100" rx="18" ry="10"/><ellipse cx="576" cy="80" rx="14" ry="8"/><ellipse cx="561" cy="60" rx="10" ry="6"/></g>
-    </svg>`;
+  /* ---------- latar foto kilang (monokrom silver, redup) ---------- */
+  function bgPhoto() { return '<div class="bg-photo" aria-hidden="true"></div>'; }
+
+  /* ---------- musik latar ---------- */
+  function musicIcon() { return cfg.music ? ICON.musicOn : ICON.musicOff; }
+  function refreshMusicButtons() {
+    $$('[data-music]').forEach(b => {
+      b.innerHTML = musicIcon();
+      b.setAttribute('aria-pressed', cfg.music ? 'true' : 'false');
+      b.title = cfg.music ? 'Matikan musik latar' : 'Nyalakan musik latar';
+    });
+  }
+  function toggleMusic() {
+    cfg.music = !cfg.music;
+    saveJSON(CFG_KEY, cfg);
+    applyCfg();
+    if (cfg.music) Music.unlock();
+    showToast(cfg.music ? 'Musik latar dinyalakan.' : 'Musik latar dimatikan.');
   }
 
   /* ---------- MENU ---------- */
@@ -138,7 +113,8 @@ const Game = (() => {
     const saveScn = save && SCENARIOS.find(s => s.id === save.scenarioId);
     const canContinue = saveScn && !save.finished;
     app.innerHTML = `<div class="screen menu">
-      ${sceneSVG()}
+      ${bgPhoto()}
+      <button class="music-toggle" data-music aria-label="Musik latar">${musicIcon()}</button>
       <div class="menu-card">
         <img class="logo-full" src="${BRAND.logo}" alt="PSM Simulator by Nusa Safety">
         <p class="tagline">${esc(APP_INFO.tagline)}</p>
@@ -165,7 +141,7 @@ const Game = (() => {
   function showNewGame() {
     const hist = loadJSON(HIST_KEY) || {};
     app.innerHTML = `<div class="screen sub">
-      ${sceneSVG()}
+      ${bgPhoto()}
       <div class="panel wide">
         <div class="panel-head"><h2>Pilih Skenario Proses</h2><button class="btn3d silver small" data-act="back">${ICON.home}<span>Menu</span></button></div>
         <p class="muted">Setiap skenario memuat P&amp;ID, simulasi proses produksi, kejadian abnormal dengan peringatan lapangan, serta titik pemasangan barier dan program inspeksi. Mulailah dari tingkat Pemula bila baru mengenal keselamatan proses.</p>
@@ -203,11 +179,13 @@ const Game = (() => {
   /* ---------- KONFIGURASI ---------- */
   function showConfig() {
     app.innerHTML = `<div class="screen sub">
-      ${sceneSVG()}
+      ${bgPhoto()}
       <div class="panel">
         <div class="panel-head"><h2>Konfigurasi</h2><button class="btn3d silver small" data-act="back">${ICON.home}<span>Menu</span></button></div>
         <div class="cfg-row"><label for="cfg-name">Nama pemain</label><input type="text" id="cfg-name" maxlength="30" value="${esc(cfg.name)}" placeholder="Opsional, tampil di hasil"></div>
         <div class="cfg-row"><label>Efek suara</label><label class="switch"><input type="checkbox" id="cfg-sound" ${cfg.sound ? 'checked' : ''}><span></span></label></div>
+        <div class="cfg-row"><label>Musik latar<small>${esc(CREDITS.musik)}, diputar berulang</small></label><label class="switch"><input type="checkbox" id="cfg-music" ${cfg.music ? 'checked' : ''}><span></span></label></div>
+        <div class="cfg-row"><label for="cfg-mvol">Volume musik</label><div class="range-wrap"><input type="range" id="cfg-mvol" min="0" max="100" step="5" value="${cfg.musicVol}"><b id="cfg-mvol-val">${cfg.musicVol}%</b></div></div>
         <div class="cfg-row"><label>Animasi latar dan aliran</label><label class="switch"><input type="checkbox" id="cfg-anim" ${cfg.anim ? 'checked' : ''}><span></span></label></div>
         <div class="cfg-row"><label>Efek kilatan dan guncangan saat insiden<small>Matikan bila sensitif terhadap cahaya berkedip</small></label><label class="switch"><input type="checkbox" id="cfg-fx" ${cfg.fx ? 'checked' : ''}><span></span></label></div>
         <div class="cfg-row"><label>Petunjuk titik pemasangan dan penanda barier belum diuji</label><label class="switch"><input type="checkbox" id="cfg-hints" ${cfg.hints ? 'checked' : ''}><span></span></label></div>
@@ -218,9 +196,13 @@ const Game = (() => {
           <button class="btn3d red" data-act="reset">${ICON.x}<span>Hapus Semua Data</span></button>
         </div>
       </div></div>`;
-    on(app, '[data-act=back]', 'click', () => { Sfx.click(); showMenu(); });
+    const preview = () => { Music.configure($('#cfg-music').checked, +$('#cfg-mvol').value / 100); if ($('#cfg-music').checked) Music.unlock(); };
+    $('#cfg-mvol').addEventListener('input', ev => { $('#cfg-mvol-val').textContent = ev.target.value + '%'; preview(); });
+    $('#cfg-music').addEventListener('change', preview);
+    on(app, '[data-act=back]', 'click', () => { Sfx.click(); applyCfg(); showMenu(); });
     on(app, '[data-act=save]', 'click', () => {
       cfg.name = $('#cfg-name').value.trim();
+      cfg.music = $('#cfg-music').checked; cfg.musicVol = +$('#cfg-mvol').value;
       cfg.sound = $('#cfg-sound').checked; cfg.anim = $('#cfg-anim').checked; cfg.fx = $('#cfg-fx').checked; cfg.hints = $('#cfg-hints').checked;
       cfg.speed = parseFloat($('#cfg-speed').value); cfg.difficulty = $('#cfg-diff').value;
       saveJSON(CFG_KEY, cfg); applyCfg(); Sfx.success();
@@ -233,33 +215,38 @@ const Game = (() => {
   }
   function applyCfg() {
     Sfx.setEnabled(cfg.sound);
+    Music.configure(cfg.music, cfg.musicVol / 100);
+    refreshMusicButtons();
     document.body.classList.toggle('no-anim', !cfg.anim);
     document.body.classList.toggle('no-fx', !fxOn());
   }
 
   /* ---------- CREDIT ---------- */
   function showCredits() {
+    const C = COMPANY;
     app.innerHTML = `<div class="screen sub">
-      ${sceneSVG()}
+      ${bgPhoto()}
       <div class="panel">
         <div class="panel-head"><h2>Credit</h2><button class="btn3d silver small" data-act="back">${ICON.home}<span>Menu</span></button></div>
         <div class="credit-hero"><img src="${BRAND.logo}" alt="PSM Simulator by Nusa Safety"><p>${esc(APP_INFO.tagline)} · versi ${esc(APP_INFO.version)}</p></div>
-        <div class="credit-company">
+        <section class="company">
           <span class="lbl">Dipersembahkan oleh</span>
-          <div class="brand-plate"><img src="${BRAND.company}" alt="Nusa Safety"></div>
-          <span class="org">PT. Nusa Rendra Jayatama</span>
-        </div>
-        <dl class="credit-list">
-          <dt>Konsep dan materi keselamatan proses</dt><dd>${esc(CREDITS.konsep)}</dd>
-          <dt>Organisasi</dt><dd>${esc(CREDITS.organisasi)}</dd>
-          <dt>Pengembangan perangkat lunak</dt><dd>${esc(CREDITS.pengembang)}</dd>
-          <dt>Tahun</dt><dd>${esc(CREDITS.tahun)}</dd>
-        </dl>
+          <img class="company-logo" src="${BRAND.company}" alt="${esc(C.brand)}">
+          <h3>${esc(C.legalName)}</h3>
+          <div class="taglines">${C.taglines.map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>
+        </section>
+        <h4>Profil Perusahaan</h4>
+        ${C.profile.map(p => `<p>${esc(p)}</p>`).join('')}
+        <h4>Layanan</h4>
+        <ul class="svc-grid">${C.services.map(v => `<li><span class="svc-ico">${ICON[v.icon]}</span><div><b>${esc(v.name)}</b><small class="svc-desc">${esc(v.desc)}</small></div></li>`).join('')}</ul>
+        <div class="company-links"><a class="btn3d primary small" href="${C.website}" target="_blank" rel="noopener noreferrer">${ICON.globe}<span>Kunjungi ${esc(C.websiteLabel)}</span></a><span class="muted small">Sumber profil: ${esc(C.source)}.</span></div>
         <h4>Kerangka konsep</h4>
         <p class="muted">Alur permainan mengikuti model lapisan proteksi dan diagram bow-tie: memahami kondisi normal (BPCS), mengenali deviasi dan tanda-tanda lapangan (HAZOP), memasang barier pencegahan dan mitigasi, serta menjaga keandalan barier melalui inspeksi, pengujian, dan perawatan (elemen integritas aset pada Risk Based Process Safety). Tampilan mengikuti filosofi HMI berperforma tinggi: warna mencolok hanya untuk kondisi abnormal.</p>
         <h4>Referensi</h4>
         <ol class="refs">${CREDITS.referensi.map(r => `<li>${esc(r)}</li>`).join('')}</ol>
+        <p class="muted small">Musik latar: ${esc(CREDITS.musik)}.</p>
         <p class="muted small">Skenario, nilai parameter, nilai PFD, dan tata letak P&amp;ID disederhanakan untuk tujuan pelatihan dan bukan rancangan rekayasa yang dapat dipakai langsung di lapangan.</p>
+        <p class="credit-foot">© ${esc(CREDITS.tahun)} ${esc(C.legalName)} · ${esc(C.brand)}</p>
       </div></div>`;
     on(app, '[data-act=back]', 'click', () => { Sfx.click(); showMenu(); });
   }
@@ -317,7 +304,7 @@ const Game = (() => {
       <header class="topbar">
         <div class="brand"><span class="emblem-plate"><img src="${BRAND.emblem}" alt=""></span><div><b>PSM Simulator</b><small>${esc(scn.title)}</small></div></div>
         <ol class="stepper">${STAGES.map(st => `<li class="step" data-stage="${st.n}"><span class="ico">${ICON[st.icon]}</span><span class="lbl">${st.n}. ${esc(st.short)}</span><span class="sc"></span></li>`).join('')}</ol>
-        <div class="top-actions"><button class="btn3d silver small" data-act="menu">${ICON.home}<span>Menu</span></button></div>
+        <div class="top-actions"><button class="btn3d silver small icon-only" data-music aria-label="Musik latar">${musicIcon()}</button><button class="btn3d silver small" data-act="menu">${ICON.home}<span>Menu</span></button></div>
       </header>
       <main class="play-main">
         <section class="pid-area" id="pid-area">
@@ -609,6 +596,7 @@ const Game = (() => {
     ev2.incident = true; ev2.reported = true;
     sim.halted = true;
     runSim(false);
+    Music.duck(8000);
     if (w.type === 'explosion') {
       Sfx.boom();
       if (fxOn()) { const pw = $('#pid'); pw.classList.remove('boom'); void pw.offsetWidth; pw.classList.add('boom'); }
@@ -1022,7 +1010,7 @@ const Game = (() => {
     const relAll = [...prev, ...mit];
     const relAvg = relAll.length ? relAll.reduce((s, x) => s + x.rel, 0) / relAll.length : 0;
     app.innerHTML = `<div class="screen sub result">
-      ${sceneSVG()}
+      ${bgPhoto()}
       <div class="panel wide">
         <div class="panel-head"><h2>Hasil Akhir: ${esc(scn.title)}</h2><button class="btn3d silver small" data-act="menu">${ICON.home}<span>Menu</span></button></div>
         <div class="result-top">
@@ -1091,6 +1079,10 @@ const Game = (() => {
   function init() {
     applyCfg();
     showMenu();
+    const unlock = () => { Music.unlock(); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); };
+    window.addEventListener('pointerdown', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    document.addEventListener('click', ev => { if (ev.target.closest('[data-music]')) { Sfx.click(); toggleMusic(); } });
     window.addEventListener('resize', () => { if (chart) chart.draw(); });
     window.addEventListener('keydown', ev => { if (ev.key === 'Escape' && tool && S && S.stage >= 3 && $('#tool-desc')) selectTool(null, null); });
   }

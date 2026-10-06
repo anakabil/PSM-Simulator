@@ -7,7 +7,7 @@
 
 const APP_INFO = {
   name: 'PSM Simulator',
-  version: '1.1.0',
+  version: '1.2.0',
   tagline: 'Simulasi Keselamatan Proses: Pahami, Kenali, Lindungi',
 };
 
@@ -15,13 +15,14 @@ const BRAND = {
   logo: 'assets/psm-logo.png',
   emblem: 'assets/psm-emblem.png',
   company: 'assets/nusa-safety-logo.png',
+  menuBg: 'assets/menu-bg.jpg',
+  music: 'assets/audio/measured-flow.mp3',
 };
 
 const CREDITS = {
-  konsep: 'M Reza Huzain, SKM, MKKK',
   organisasi: 'Nusa Safety | PT. Nusa Rendra Jayatama',
-  pengembang: 'Trustie (asisten pengembangan)',
   tahun: '2026',
+  musik: 'Measured Flow',
   referensi: [
     'Undang-Undang No. 1 Tahun 1970 tentang Keselamatan Kerja.',
     'Peraturan Pemerintah No. 50 Tahun 2012 tentang Penerapan Sistem Manajemen Keselamatan dan Kesehatan Kerja (SMK3).',
@@ -44,6 +45,30 @@ const CREDITS = {
     'API RP 2350, Overfill Protection for Storage Tanks in Petroleum Facilities.',
     'NFPA 25, Standard for the Inspection, Testing, and Maintenance of Water-Based Fire Protection Systems; NFPA 58, Liquefied Petroleum Gas Code.',
   ],
+};
+
+/* ---------------------------------------------------------------------
+   Profil perusahaan. Sumber: halaman resmi nusasafety.co.id (beranda,
+   About, serta Training dan Sertifikasi BNSP), dihimpun 6 Oktober 2026.
+   --------------------------------------------------------------------- */
+const COMPANY = {
+  legalName: 'PT. Nusa Rendra Jayatama',
+  brand: 'Nusa Safety',
+  website: 'https://nusasafety.co.id',
+  websiteLabel: 'nusasafety.co.id',
+  taglines: ['A Resilient Company', 'Partner in Safety & Sustainability'],
+  profile: [
+    'PT. Nusa Rendra Jayatama, dengan merek Nusa Safety, adalah perusahaan konsultan dan pelatihan di bidang Keselamatan, Kesehatan Kerja, dan Lingkungan (HSE). Perusahaan menyediakan solusi menyeluruh yang memadukan kepatuhan teknis dengan implementasi praktis.',
+    'Tim Nusa Safety terdiri atas tenaga ahli berpengalaman dari sektor konstruksi, minyak dan gas, serta manufaktur.',
+  ],
+  services: [
+    { icon: 'shield', name: 'Sistem SMK3 dan ISO', desc: 'Konsultasi sistem manajemen SMK3 dan standar ISO.' },
+    { icon: 'gauge', name: 'Kajian Rekayasa', desc: 'Kajian teknis (engineering studies).' },
+    { icon: 'book', name: 'Pelatihan Bersertifikat', desc: 'Pelatihan intensif untuk meningkatkan kompetensi, dengan sertifikasi BNSP sesuai SKKNI.' },
+    { icon: 'wrench', name: 'Inspeksi Peralatan', desc: 'Inspeksi peralatan (equipment inspection).' },
+    { icon: 'check', name: 'Audit Keselamatan', desc: 'Audit keselamatan (safety audit).' },
+  ],
+  source: 'situs resmi nusasafety.co.id',
 };
 
 /* ---------------------------------------------------------------------

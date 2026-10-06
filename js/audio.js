@@ -63,3 +63,70 @@ const Sfx = (() => {
     start() { tone(392, 0.12, 'triangle', 0.1); tone(523, 0.2, 'triangle', 0.1, 0.1); },
   };
 })();
+
+/* ---------------------------------------------------------------------
+   Musik latar "Measured Flow": diputar berulang dengan volume rendah,
+   mulai setelah interaksi pertama pengguna (kebijakan autoplay peramban),
+   diredam saat insiden, dan dijeda ketika tab tidak aktif. Level 0 sampai
+   1 dipetakan secara kuadratik agar pengaturan volume rendah lebih halus.
+   --------------------------------------------------------------------- */
+const Music = (() => {
+  let a = null, enabled = true, level = 0.45, unlocked = false, raf = 0, duckUntil = 0, duckTimer = 0, resumeOnShow = false;
+  const gain = l => Math.max(0, Math.min(1, l * l));
+  function el() {
+    if (!a) {
+      a = document.createElement('audio');
+      a.id = 'bgm';
+      a.src = (typeof BRAND !== 'undefined' && BRAND.music) || 'assets/audio/measured-flow.mp3';
+      a.loop = true; a.preload = 'none'; a.volume = 0; a.hidden = true;
+      document.body.appendChild(a);
+    }
+    return a;
+  }
+  function target() { return gain(level) * (Date.now() < duckUntil ? 0.3 : 1); }
+  function fadeTo(v, ms, done) {
+    const m = el();
+    cancelAnimationFrame(raf);
+    const from = m.volume, t0 = performance.now();
+    const step = now => {
+      const k = Math.min(1, (now - t0) / Math.max(1, ms));
+      m.volume = Math.max(0, Math.min(1, from + (v - from) * k));
+      if (k < 1) raf = requestAnimationFrame(step); else if (done) done();
+    };
+    raf = requestAnimationFrame(step);
+  }
+  function play() {
+    const m = el();
+    if (!m.paused) { fadeTo(target(), 500); return; }
+    m.volume = 0;
+    const p = m.play();
+    if (p && p.then) p.then(() => fadeTo(target(), 2500)).catch(() => {});
+    else fadeTo(target(), 2500);
+  }
+  function stop() {
+    if (!a || a.paused) return;
+    fadeTo(0, 700, () => a.pause());
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!a) return;
+    if (document.hidden) { resumeOnShow = !a.paused; if (resumeOnShow) a.pause(); }
+    else if (resumeOnShow && enabled && unlocked) { resumeOnShow = false; play(); }
+  });
+  return {
+    configure(on, lvl) {
+      enabled = !!on;
+      if (typeof lvl === 'number') level = Math.max(0, Math.min(1, lvl));
+      if (!enabled) stop();
+      else if (unlocked) play();
+    },
+    unlock() { unlocked = true; if (enabled) play(); },
+    duck(ms) {
+      duckUntil = Date.now() + ms;
+      if (!a || a.paused) return;
+      fadeTo(target(), 400);
+      clearTimeout(duckTimer);
+      duckTimer = setTimeout(() => { if (a && !a.paused) fadeTo(target(), 2000); }, ms + 50);
+    },
+    state() { return { playing: !!a && !a.paused, volume: a ? a.volume : 0, target: target(), enabled, unlocked }; },
+  };
+})();
