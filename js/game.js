@@ -1343,8 +1343,15 @@ const Game = (() => {
       const r = el.getBoundingClientRect(), d = pad || 0;
       if (r.width && r.height) rs.push({ x: r.left - ar.left - d, y: r.top - ar.top - d, w: r.width + 2 * d, h: r.height + 2 * d, wt });
     };
-    /* spanduk peringatan, termasuk yang melayang di atas layar pada tata letak bertumpuk */
-    $$('#fx-banners .fx-banner').forEach(n => add(n, 100, 6));
+    /* spanduk peringatan, termasuk yang melayang di atas layar pada tata letak bertumpuk. Posisinya diambil
+       dari tata letak akhir karena spanduk baru masih bergeser masuk (translateY) saat balon disusun. */
+    const fw = $('#fx-banners');
+    if (fw) {
+      const wr = fw.getBoundingClientRect();
+      $$('#fx-banners .fx-banner').forEach(n => {
+        if (n.offsetWidth && n.offsetHeight) rs.push({ x: wr.left - ar.left + n.offsetLeft - 6, y: wr.top - ar.top + n.offsetTop - 6, w: n.offsetWidth + 12, h: n.offsetHeight + 12, wt: 100 });
+      });
+    }
     add($('#pid .pid-zoom'), 50, 6);
     /* bilah aksi melayang di ponsel dan tablet tegak menutupi bagian bawah layar */
     const mb = $('.m-bar'); if (mb && getComputedStyle(mb).display !== 'none') add(mb, 100, 6);
