@@ -152,9 +152,17 @@ for (const s of SCENARIOS) {
     seenV.add(key);
     const hs = [byId[v[2]], byId[v[4]]];
     if (hs[0] && hs[1] && hs[0].hf && hs[1].hf && hs[0].hf.threat === hs[1].hf.threat) warn(`${tag}: kedua kasus faktor manusia memakai ancaman bow-tie yang sama`);
+    /* Dua kejadian teknis atau dua kasus faktor manusia dengan deviasi yang sama persis dalam satu
+       variasi terasa berulang. Satu pasangan kejadian teknis dan kasus faktor manusia dengan deviasi
+       sama tetapi penyebab berbeda masih diperbolehkan sebagai pembanding. */
+    let mixed = 0;
     for (let a = 0; a < v.length; a++) for (let b = a + 1; b < v.length; b++) {
-      if (byId[v[a]] && byId[v[b]] && sig(byId[v[a]]) === sig(byId[v[b]])) warn(`${tag}: ${v[a]} dan ${v[b]} memiliki deviasi yang sama persis`);
+      const A = byId[v[a]], B = byId[v[b]];
+      if (!A || !B || sig(A) !== sig(B)) continue;
+      if (!!A.hf === !!B.hf) warn(`${tag}: ${v[a]} dan ${v[b]} memiliki deviasi yang sama persis`);
+      else mixed++;
     }
+    if (mixed > 1) warn(`${tag}: lebih dari satu pasangan kejadian teknis dan kasus faktor manusia dengan deviasi yang sama`);
   });
   s.events.forEach(ev => { if (!usedEv.has(ev.id)) warn(`${s.id} ${ev.id}: tidak dipakai di variasi mana pun`); });
   V.forEach((v, i) => { const n = V[(i + 1) % V.length]; if (V.length > 1 && Array.isArray(v) && Array.isArray(n) && v[0] === n[0]) warn(`${s.id}: variasi ${i + 1} dan ${(i + 1) % V.length + 1} diawali kejadian yang sama`); });
