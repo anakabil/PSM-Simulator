@@ -106,11 +106,11 @@ const SCN_DEBU = {
         { t: 12, type: 'heat', sev: 'crit', at: 'DC-901', pos: [600, 118], text: 'Percikan api terlihat di ducting aspirasi menuju dust collector; suhu masuk naik.' },
         { t: 19, type: 'explosion', sev: 'final', at: 'DC-901', pos: [620, 118], text: 'LEDAKAN di dust collector DC-901: kantong filter terbakar dan panel dinding terlempar.' },
       ],
-      answer: { node: ['HM-901', 'DC-901'], param: ['C', 'T'], guide: ['other', 'high'] },
+      answer: { node: ['HM-901', 'DC-901'], param: ['C', 'T'], guide: ['aswell', 'high'] },
       hint: 'Getaran mill melonjak tiba-tiba disertai bunyi logam. Ada benda asing yang seharusnya tidak ikut masuk ke mesin.',
       causes: ['Logam asing seperti baut atau potongan besi ikut masuk ke hammer mill dan memercikkan api', 'Kadar air jagung tinggi', 'Sabuk elevator selip', 'Silo terlalu penuh'], causeAns: 0,
       cons: ['Percikan terbawa ke ducting dan menyulut debu di dust collector sehingga terjadi kebakaran dan ledakan', 'Laju produksi naik', 'Suhu silo naik tanpa dampak', 'Kecepatan elevator naik'], consAns: 0,
-      explain: 'Getaran mill melonjak lalu suhu masuk dust collector naik. Ini pola percikan dari logam asing yang terbawa aliran aspirasi. Dust collector berisi awan debu halus sehingga sangat mudah meledak. Proteksi yang tepat adalah pemisah magnet sebelum mill dan deteksi percikan dengan pemadam otomatis di ducting (NFPA 61). Dalam HAZOP, kejadian ini dibaca sebagai komposisi umpan selain dari yang seharusnya.' },
+      explain: 'Getaran mill melonjak lalu suhu masuk dust collector naik. Ini pola percikan dari logam asing yang terbawa aliran aspirasi. Dust collector berisi awan debu halus sehingga sangat mudah meledak. Proteksi yang tepat adalah pemisah magnet sebelum mill dan deteksi percikan dengan pemadam otomatis di ducting (NFPA 61). Menurut makna guideword CCPS, kejadian ini dibaca sebagai komposisi umpan yang disertai material asing (As well as), bukan penggantian material secara menyeluruh (Other than).' },
     { id: 'e3', effects: [{ var: 'TSL', to: 80, delay: 2, dur: 20 }],
       warnings: [
         { t: 12, type: 'heat', sev: 'warn', at: 'SL-901', text: 'Bau hangus dan uap keluar dari ventilasi atap silo SL-901.' },

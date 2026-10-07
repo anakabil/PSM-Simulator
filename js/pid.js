@@ -2,7 +2,7 @@
    PID: penggambar P&ID berbasis SVG.
    Peralatan digambar sebagai baja silver dengan gradien dan bayangan
    (kesan tiga dimensi), aksen biru muda, isi cairan dinamis, lapisan
-   efek insiden, dan lencana program inspeksi/pengujian.
+   efek insiden, dan lencana escalation factor.
    ===================================================================== */
 const PID = (() => {
   const NS = 'http://www.w3.org/2000/svg';
@@ -658,7 +658,7 @@ const PID = (() => {
       el('circle', { r: 7.5, fill: '#f0a500', stroke: '#fff', 'stroke-width': 1.6 }, b);
       text(b, 0, 0.8, '!', { 'font-size': 11, 'font-weight': 900, fill: '#1f2a35' });
     }
-    el('title', null, grp).textContent = dev.name + ' @ ' + h.label + (state === 'tested' ? ' (teruji)' : state === 'untested' ? ' (belum diuji)' : '');
+    el('title', null, grp).textContent = dev.name + ' @ ' + h.label + (state === 'tested' ? ' (escalation factor dikendalikan)' : state === 'untested' ? ' (escalation factor belum dikendalikan)' : '');
     return grp;
   }
 
@@ -1014,7 +1014,8 @@ const PID = (() => {
           const placedId = placements && placements[h.id];
           if (placedId && DEVICES[placedId]) {
             const dev = DEVICES[placedId];
-            const tested = itpmMap && itpmMap[h.id] && itpmMap[h.id] === dev.itpm;
+            /* o.credit: status kredit dari game (klaim sebelum evaluasi, hasil verifikasi sesudahnya) */
+            const tested = o.credit ? !!o.credit[h.id] : !!(itpmMap && itpmMap[h.id] && itpmMap[h.id] === dev.itpm);
             const state = tested ? 'tested' : (o.flagUntested ? 'untested' : 'none');
             const d = drawDevice(gDev, h, dev, state);
             d.addEventListener('click', ev => { ev.stopPropagation(); handlers && handlers.onDevice && handlers.onDevice(h, placedId); });

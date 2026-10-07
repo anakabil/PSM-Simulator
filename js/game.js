@@ -9,6 +9,8 @@ const Game = (() => {
   const HIST_KEY = 'psm_sim_hist_v1';
   const HINT_COST = 5;
   const ZOOM_HINT_KEY = 'psm_sim_zoomhint_v1';
+  const VAR_KEY = 'psm_sim_var_v1';      // variasi abnormalitas terakhir per skenario
+  const PROMO_KEY = 'psm_sim_promo_v1';  // jeda iklan sebelum misi berikutnya
   const DEFAULT_CFG = { sound: true, music: true, musicVol: 45, speed: 1, difficulty: 'normal', hints: true, anim: true, fx: true, name: '', currency: 'IDR', rate: COST_MODEL.idrPerUsd };
 
   const app = document.getElementById('app');
@@ -396,6 +398,56 @@ const Game = (() => {
     });
   }
 
+  /* ---------- JEDA IKLAN SEBELUM MISI BERIKUTNYA ----------
+     Setelah satu misi selesai, misi berikutnya didahului jeda singkat berisi pesan Nusa Safety.
+     Jeda tampil sekali untuk setiap misi yang selesai. Tombol Lanjut aktif setelah hitung mundur,
+     sedangkan Profil Nusa Safety dan Pilih misi dapat langsung dipakai. */
+  function promoState() { return Object.assign({ due: null, n: 0 }, loadJSON(PROMO_KEY) || {}); }
+  function markPromoDue() {
+    const p = promoState(), total = totalScore();
+    p.due = { id: scn.id, title: scn.title, total, grade: grade(total) };
+    saveJSON(PROMO_KEY, p);
+  }
+  function showPromo(p, next) {
+    stopAll();
+    const C = COMPANY, msgs = PROMO.messages, m = msgs[(p.n || 0) % msgs.length], prev = p.due;
+    saveJSON(PROMO_KEY, { due: null, n: (p.n || 0) + 1 });
+    app.innerHTML = `<div class="screen sub promo-screen">
+      ${bgPhoto()}
+      <section class="promo" role="dialog" aria-modal="true" aria-labelledby="promo-title" aria-describedby="promo-body">
+        <span class="promo-tag">${esc(PROMO.label)}</span>
+        <div class="promo-head"><span class="promo-logo"><img src="${BRAND.company}" alt="${esc(C.brand)}"></span><h2 id="promo-title">${esc(m.title)}</h2></div>
+        <p class="promo-body" id="promo-body">${esc(m.body)}</p>
+        <p class="promo-cta">${esc(PROMO.cta)}</p>
+        <ul class="promo-contact">
+          <li><a href="mailto:${esc(C.email)}">${esc(C.email)}</a></li>
+          <li><a href="${esc(C.website)}" target="_blank" rel="noopener noreferrer">www.${esc(C.websiteLabel)}</a></li>
+          <li><a href="https://www.instagram.com/${esc(C.instagram)}/" target="_blank" rel="noopener noreferrer">Instagram @${esc(C.instagram)}</a></li>
+        </ul>
+        <div class="promo-actions">
+          <button class="promo-btn primary" type="button" data-act="go" disabled>Lanjut dalam ${PROMO.seconds} detik</button>
+          <a class="promo-btn" href="${esc(C.website)}" target="_blank" rel="noopener noreferrer">Profil Nusa Safety</a>
+          <button class="promo-btn" type="button" data-act="pick">Pilih misi</button>
+        </div>
+        ${prev ? `<p class="promo-prev">Misi sebelumnya: ${esc(prev.title)}, skor ${prev.total} (${esc(prev.grade)}).</p>` : ''}
+      </section>
+    </div>`;
+    const go = $('[data-act=go]', app);
+    let left = PROMO.seconds;
+    const tick = () => {
+      if (!go.isConnected) return;
+      left--;
+      if (left > 0) { go.textContent = `Lanjut dalam ${left} detik`; later(tick, 1000); }
+      else { go.disabled = false; go.textContent = 'Lanjut ke misi'; go.focus(); }
+    };
+    later(tick, 1000);
+    go.addEventListener('click', () => { if (go.disabled) return; Sfx.start(); clearTimers(); next(); });
+    $('[data-act=pick]', app).addEventListener('click', () => { Sfx.click(); clearTimers(); showNewGame(); });
+    const dlg = $('.promo', app);
+    dlg.setAttribute('tabindex', '-1');
+    dlg.focus({ preventScroll: true });
+  }
+
   /* ---------- PILIH SKENARIO ---------- */
   function showNewGame() {
     const hist = loadJSON(HIST_KEY) || {};
@@ -414,7 +466,7 @@ const Game = (() => {
       ${bgPhoto()}
       <div class="panel wide">
         <div class="panel-head"><h2>Pilih Skenario</h2><button class="btn3d silver small" data-act="back">${ICON.home}<span>Menu</span></button></div>
-        <p class="muted">Setiap skenario memuat P&amp;ID atau potongan fasilitas, simulasi operasi, kejadian abnormal dengan peringatan lapangan, serta titik pemasangan barier dan program inspeksi. Skenario dikelompokkan menurut sektor industri, dari unit proses migas hingga gedung komersial dan proyek konstruksi. Mulailah dari tingkat Pemula bila baru mengenal keselamatan proses.</p>
+        <p class="muted">Setiap skenario memuat P&amp;ID atau potongan fasilitas, simulasi operasi, kejadian abnormal dengan peringatan lapangan, serta titik pemasangan barier dan escalation factor yang harus dikendalikan. Setiap skenario memiliki lima variasi abnormalitas yang bergiliran setiap kali dimainkan. Skenario dikelompokkan menurut sektor industri, dari unit proses migas hingga gedung komersial dan proyek konstruksi. Mulailah dari tingkat Pemula bila baru mengenal keselamatan proses.</p>
         <div class="sector-tabs" role="tablist" aria-label="Filter sektor">
           <button class="chip-tab" data-sec="all" role="tab">Semua Sektor<b>${SCENARIOS.length}</b></button>
           ${sectors.map(x => `<button class="chip-tab" data-sec="${x.key}" role="tab">${ICON[SECTOR_ICON[x.key]] || ''}<span>${esc(x.name)}</span><b>${listOf(x.key).length}</b></button>`).join('')}
@@ -476,7 +528,7 @@ const Game = (() => {
         <div class="cfg-row"><label for="cfg-mvol">Volume musik</label><div class="range-wrap"><input type="range" id="cfg-mvol" min="0" max="100" step="5" value="${cfg.musicVol}"><b id="cfg-mvol-val">${cfg.musicVol}%</b></div></div>
         <div class="cfg-row"><label>Animasi latar dan aliran</label><label class="switch"><input type="checkbox" id="cfg-anim" ${cfg.anim ? 'checked' : ''}><span></span></label></div>
         <div class="cfg-row"><label>Efek kilatan dan guncangan saat insiden<small>Matikan bila sensitif terhadap cahaya berkedip</small></label><label class="switch"><input type="checkbox" id="cfg-fx" ${cfg.fx ? 'checked' : ''}><span></span></label></div>
-        <div class="cfg-row"><label>Petunjuk titik pemasangan dan penanda barier belum diuji</label><label class="switch"><input type="checkbox" id="cfg-hints" ${cfg.hints ? 'checked' : ''}><span></span></label></div>
+        <div class="cfg-row"><label>Petunjuk titik pemasangan dan penanda barier tanpa kontrol escalation factor</label><label class="switch"><input type="checkbox" id="cfg-hints" ${cfg.hints ? 'checked' : ''}><span></span></label></div>
         <div class="cfg-row"><label for="cfg-speed">Kecepatan simulasi</label><select id="cfg-speed"><option value="0.5" ${cfg.speed == 0.5 ? 'selected' : ''}>Lambat (0,5x)</option><option value="1" ${cfg.speed == 1 ? 'selected' : ''}>Normal (1x)</option><option value="2" ${cfg.speed == 2 ? 'selected' : ''}>Cepat (2x)</option></select></div>
         <div class="cfg-row"><label for="cfg-cur">Mata uang anggaran<small>Biaya perangkat dan program ditampilkan sebagai nilai indikatif</small></label><select id="cfg-cur"><option value="IDR" ${cfg.currency !== 'USD' ? 'selected' : ''}>Rupiah (Rp)</option><option value="USD" ${cfg.currency === 'USD' ? 'selected' : ''}>Dolar AS (USD)</option></select></div>
         <div class="cfg-row"><label for="cfg-rate">Kurs Rupiah per USD<small>1 satuan biaya setara USD ${num(COST_MODEL.usdPerUnit)} (pengadaan, pemasangan, rekayasa)</small></label><input type="number" id="cfg-rate" min="5000" max="50000" step="50" value="${cfg.rate || COST_MODEL.idrPerUsd}"></div>
@@ -532,9 +584,9 @@ const Game = (() => {
         ${C.profile.map(p => `<p>${esc(p)}</p>`).join('')}
         <h4>Layanan</h4>
         <ul class="svc-grid">${C.services.map(v => `<li><span class="svc-ico">${ICON[v.icon]}</span><div><b>${esc(v.name)}</b><small class="svc-desc">${esc(v.desc)}</small></div></li>`).join('')}</ul>
-        <div class="company-links"><a class="btn3d primary small" href="${C.website}" target="_blank" rel="noopener noreferrer">${ICON.globe}<span>Kunjungi ${esc(C.websiteLabel)}</span></a><span class="muted small">Sumber profil: ${esc(C.source)}.</span></div>
+        <div class="company-links"><a class="btn3d primary small" href="${C.website}" target="_blank" rel="noopener noreferrer">${ICON.globe}<span>Kunjungi ${esc(C.websiteLabel)}</span></a><span class="muted small">Email <a href="mailto:${esc(C.email)}">${esc(C.email)}</a> · Instagram <a href="https://www.instagram.com/${esc(C.instagram)}/" target="_blank" rel="noopener noreferrer">@${esc(C.instagram)}</a> · Sumber profil: ${esc(C.source)}.</span></div>
         <h4>Kerangka konsep</h4>
-        <p class="muted">Alur permainan mengikuti model lapisan proteksi dan diagram bow-tie: memahami kondisi normal (BPCS), mengenali deviasi dan tanda-tanda lapangan (HAZOP), memasang barier pencegahan dan mitigasi, serta menjaga keandalan barier melalui inspeksi, pengujian, dan perawatan (elemen integritas aset pada Risk Based Process Safety). Tampilan mengikuti filosofi HMI berperforma tinggi: warna mencolok hanya untuk kondisi abnormal.</p>
+        <p class="muted">Alur permainan mengikuti model lapisan proteksi dan diagram bow-tie: memahami kondisi normal (BPCS), mengenali deviasi dan tanda-tanda lapangan dengan tujuh guideword HAZOP menurut CCPS (2008), memasang barier pencegahan dan mitigasi, serta mengendalikan escalation factor, yaitu kondisi yang dapat melumpuhkan barier, melalui inspeksi, pengujian, dan perawatan (CCPS dan Energy Institute, 2018; elemen integritas aset pada Risk Based Process Safety). Tampilan mengikuti filosofi HMI berperforma tinggi: warna mencolok hanya untuk kondisi abnormal. Durasi balon obrolan disesuaikan dengan kecepatan baca (Tarigan, 1985; Brysbaert, 2019).</p>
         <h4>Referensi</h4>
         <ol class="refs">${CREDITS.referensi.map(r => `<li>${esc(r)}</li>`).join('')}</ol>
         <p class="muted small">Musik latar: ${esc(CREDITS.musik)}.</p>
@@ -545,14 +597,40 @@ const Game = (() => {
   }
 
   /* ---------- SESI PERMAINAN ---------- */
+  /* Variasi abnormalitas: setiap skenario memiliki beberapa susunan lima kejadian dengan kasus
+     faktor manusia pada urutan ke-3 dan ke-5. Permainan baru memakai variasi berikutnya secara
+     bergiliran, dimulai dari variasi acak, sehingga mencoba ulang skenario yang sama memberi
+     pengalaman yang berbeda. */
+  function defaultPlan(s) {
+    const tech = s.events.filter(e => !e.hf).map(e => e.id), hf = s.events.filter(e => e.hf).map(e => e.id);
+    return tech.length >= 3 && hf.length >= 2 ? [tech[0], tech[1], hf[0], tech[2], hf[1]] : s.events.map(e => e.id);
+  }
+  function validPlan(s, plan) { return Array.isArray(plan) && plan.length > 0 && plan.every(id => s.events.some(e => e.id === id)); }
+  function pickVariant(s) {
+    const V = (s.variants || []).filter(v => validPlan(s, v));
+    if (!V.length) return { variant: 0, plan: defaultPlan(s) };
+    const last = loadJSON(VAR_KEY) || {};
+    const prev = last[s.id];
+    const idx = Number.isInteger(prev) ? (prev + 1) % V.length : Math.floor(Math.random() * V.length);
+    last[s.id] = idx; saveJSON(VAR_KEY, last);
+    return { variant: idx, plan: V[idx].slice() };
+  }
+  function planEvents() {
+    if (!S || !scn) return [];
+    return (S.plan || []).map(id => scn.events.find(e => e.id === id)).filter(Boolean);
+  }
   function newSession(s) {
+    const v = pickVariant(s);
     return {
       scenarioId: s.id, stage: 1, scores: {}, read: [], quizIdx: 0, quizCorrect: 0,
+      variant: v.variant, plan: v.plan,
       eventIdx: 0, eventResults: [], placements: { 3: {}, 4: {} }, itpm: { 3: {}, 4: {} }, eqItpm: { 3: {} },
       evalDone: { 3: false, 4: false }, evalRows: {}, finished: false, startedAt: Date.now(),
     };
   }
   function migrate(sv) {
+    const s = SCENARIOS.find(x => x.id === sv.scenarioId);
+    if (s && !validPlan(s, sv.plan)) { sv.plan = defaultPlan(s); sv.variant = 0; }
     sv.placements = sv.placements || { 3: {}, 4: {} };
     sv.itpm = sv.itpm || { 3: {}, 4: {} };
     sv.eqItpm = sv.eqItpm || { 3: {} };
@@ -564,6 +642,11 @@ const Game = (() => {
   }
   function save() { if (S) saveJSON(SAVE_KEY, S); }
   function startScenario(s) {
+    const p = promoState();
+    if (p.due) { showPromo(p, () => launchScenario(s)); return; }
+    launchScenario(s);
+  }
+  function launchScenario(s) {
     scn = s; S = newSession(s); save(); showPlay(); stageIntro();
   }
   function continueGame() {
@@ -598,7 +681,7 @@ const Game = (() => {
     stopAll();
     app.innerHTML = `<div class="screen play">
       <header class="topbar">
-        <div class="brand"><span class="emblem-plate"><img src="${BRAND.emblem}" alt=""></span><div><b>PSM Simulator</b><small>${esc(scn.title)}</small></div></div>
+        <div class="brand"><img class="brand-logo" src="${BRAND.logoDark}" alt="PSM Simulator by Nusa Safety" width="453" height="180"></div>
         <ol class="stepper">${STAGES.map(st => `<li class="step" data-stage="${st.n}"><span class="ico">${ICON[st.icon]}</span><span class="lbl">${st.n}. ${esc(st.short)}</span><span class="sc"></span></li>`).join('')}</ol>
         <div class="top-actions"><button class="btn3d silver small icon-only" data-music aria-label="Musik latar">${musicIcon()}</button><button class="btn3d silver small" data-act="menu" aria-label="Kembali ke menu">${ICON.home}<span>Menu</span></button></div>
       </header>
@@ -699,13 +782,17 @@ const Game = (() => {
   function stageTips(n) {
     const tips = {
       1: [`Klik setiap peralatan pada P&ID atau daftar di ${panelName()} untuk membaca fungsinya.`, `Tekan Jalankan ${opName()} dan ubah set point untuk melihat respons proses serta isi cairan di bejana.`, 'Setelah semua peralatan dipelajari, kerjakan kuis pemahaman proses. Urutan pilihan jawaban diacak dan pengecohnya terdengar masuk akal, jadi baca setiap pilihan dengan cermat.'],
-      2: [`Tekan Jalankan ${opName()}, lalu amati tren, pembacaan, dan isi bejana di P&ID.`, 'Saat terjadi kegagalan, peringatan lapangan muncul bertahap: getaran, kebocoran gas, gas beracun, panas berlebih, hingga ledakan.', 'Laporkan sedini mungkin. Laporan sebelum peringatan kritis mendapat bonus, sedangkan laporan setelah insiden terjadi mendapat penalti.', 'Satu kejadian berawal dari obrolan tim operasi, maintenance, atau pihak lain. Baca balon obrolan di P&ID atau buka Lihat Komik untuk menemukan tindakan manusia yang memicu abnormalitas, lalu tentukan jenis kesalahannya di laporan.'],
-      3: ['Klik titik pemasangan (+) pada P&ID untuk memilih perangkat barier langsung dari pop-up. Cara lain, pilih perangkat di Kotak Alat lalu klik titiknya.', 'Setelah perangkat terpasang, pop-up perangkat menampilkan program inspeksi dan pengujian yang dapat langsung diterapkan. Klik bejana, tangki, atau mesin berputar untuk menerapkan program inspeksi peralatan.', 'Barier tanpa pengujian berkala tidak dapat diandalkan. Pantau indikator keandalan dan sisa anggaran, yang ditampilkan dalam mata uang pilihan Anda di Configuration.', 'Klik perangkat atau peralatan untuk melihat detail, mengganti, atau melepasnya.'],
-      4: ['Pikirkan apa yang terjadi bila pencegahan gagal: deteksi, isolasi, proteksi kebakaran, dan tanggap darurat.', 'Perhatikan sifat bahan, karena tidak semua media pemadam cocok untuk semua bahan.', 'Klik titik (+) untuk memilih perangkat mitigasi, lalu lengkapi dengan program uji yang sesuai, misalnya bump test detektor, uji sistem pemadam, uji fungsi ESD, dan latihan tanggap darurat.'],
+      2: [`Tekan Jalankan ${opName()}, lalu amati tren, pembacaan, dan isi bejana di P&ID.`, 'Saat terjadi kegagalan, peringatan lapangan muncul bertahap: getaran, kebocoran gas, gas beracun, panas berlebih, hingga ledakan.', 'Laporkan sedini mungkin. Laporan sebelum peringatan kritis mendapat bonus, sedangkan laporan setelah insiden terjadi mendapat penalti.', 'Kejadian ke-3 dan ke-5 berawal dari obrolan tim operasi, maintenance, atau pihak lain. Baca balon obrolan di P&ID atau buka Lihat Komik untuk menemukan tindakan manusia yang memicu abnormalitas, lalu tentukan jenis kesalahannya di laporan. Selama obrolan berlangsung, simulasi berjalan pada kecepatan normal agar pesan sempat dibaca.', 'Guideword mengikuti tujuh guideword HAZOP menurut CCPS: No, More, Less, As well as, Part of, Reverse, dan Other than. Makna setiap guideword tampil di formulir laporan.', 'Setiap permainan baru memakai variasi kejadian berikutnya, sehingga jenis dan urutan abnormalitas berbeda saat skenario diulang.'],
+      3: ['Klik titik pemasangan (+) pada P&ID untuk memilih perangkat barier langsung dari pop-up. Cara lain, pilih perangkat di Kotak Alat lalu klik titiknya.', 'Setiap barier memiliki escalation factor, yaitu kondisi yang dapat melumpuhkannya tanpa terlihat, misalnya sensor menyimpang atau katup lengket. Setelah perangkat terpasang, pilih escalation factor yang sesuai beserta kontrolnya dari pop-up perangkat.', 'Daftar escalation factor memuat banyak pilihan dari berbagai jenis fasilitas. Pilihan yang keliru tetap memakai anggaran dan baru terungkap saat evaluasi, jadi cocokkan dengan teknologi perangkatnya.', 'Klik bejana, tangki, mesin berputar, atau peralatan lain untuk mengendalikan escalation factor peralatan kritis. Pantau keandalan yang diklaim dan sisa anggaran, yang ditampilkan dalam mata uang pilihan Anda di Configuration.'],
+      4: ['Pikirkan apa yang terjadi bila pencegahan gagal: deteksi, isolasi, proteksi kebakaran, dan tanggap darurat.', 'Perhatikan sifat bahan, karena tidak semua media pemadam cocok untuk semua bahan.', 'Klik titik (+) untuk memilih perangkat mitigasi, lalu kendalikan escalation factor-nya, misalnya sensor detektor yang teracuni, nozel tersumbat, katup darurat yang lengket, atau personel yang tidak terlatih.'],
     };
     return `<ul class="tips">${tips[n].map(t => `<li>${esc(tt(t))}</li>`).join('')}</ul>`;
   }
 
+  /* Kepala panel samping: nama tahap dan nama skenario. Bilah atas hanya memuat logo. */
+  function sideHead(icon, title) {
+    return `<div class="side-head"><h2>${icon}<span>${esc(title)}</span></h2><p class="side-scn">${esc(scn.title)}</p></div>`;
+  }
   function resetPlant() {
     clearTimers();
     closePopover();
@@ -714,6 +801,7 @@ const Game = (() => {
     pid.clearFx();
     $('#fx-banners').innerHTML = '';
     const cf = $('#chat-float'); if (cf) cf.innerHTML = '';
+    chatQ = [];
     closeComic();
     $('#pid').classList.remove('boom');
     scn.equipment.forEach(e => pid.alarmNode(e.id, false));
@@ -744,7 +832,7 @@ const Game = (() => {
   function renderStage1() {
     const req = requiredEq();
     const side = $('#side');
-    side.innerHTML = tt(`<div class="side-head"><h2>${ICON.book}<span>Tahap 1: Kondisi Normal</span></h2></div>
+    side.innerHTML = tt(`${sideHead(ICON.book, 'Tahap 1: Kondisi Normal')}
       <div class="card"><h4>Gambaran Proses</h4>${scn.overview.map(p => `<p>${esc(p)}</p>`).join('')}</div>
       <div class="card"><h4>Proses Produksi</h4>
         <button class="btn3d primary wide" id="btn-run">${ICON.play}<span>Jalankan ${esc(opName())}</span></button>
@@ -826,12 +914,15 @@ const Game = (() => {
   /* ---------- TAHAP 2: proses produksi dan peringatan lapangan ---------- */
   function renderStage2() {
     const side = $('#side');
-    const n = scn.events.length;
-    side.innerHTML = tt(`<div class="side-head"><h2>${ICON.alert}<span>Tahap 2: Abnormalitas</span></h2></div>
+    const evs = planEvents();
+    const n = evs.length;
+    const nv = (scn.variants || []).length;
+    side.innerHTML = tt(`${sideHead(ICON.alert, 'Tahap 2: Abnormalitas')}
       <div class="card"><h4>Kejadian <span class="pill" id="ev-count">${S.eventIdx}/${n}</span></h4>
         <p class="muted small">Setiap kali ${esc(opLower())} dijalankan, satu kegagalan akan muncul pada waktu yang tidak diketahui. Amati tren, pembacaan, dan peringatan lapangan, lalu laporkan secepatnya.</p>
-        <div class="ev-track">${scn.events.map((e, i) => `<span class="ev-dot${e.chat ? ' hf' : ''}" data-i="${i}" title="${e.chat ? 'Kasus dari laporan tim' : 'Kejadian ' + (i + 1)}">${e.chat ? ICON.chat : i + 1}</span>`).join('')}</div>
-        ${scn.events.some(e => e.chat) ? `<p class="muted small hf-note">${ICON.chat}<span>Kejadian bertanda balon obrolan berasal dari laporan tim operasi atau maintenance. Baca obrolan antartim untuk menemukan tindakan manusia yang memicu abnormalitas.</span></p>` : ''}
+        <div class="ev-track">${evs.map((e, i) => `<span class="ev-dot${e.chat ? ' hf' : ''}" data-i="${i}" title="${e.chat ? 'Kejadian ' + (i + 1) + ': kasus dari laporan tim' : 'Kejadian ' + (i + 1)}">${e.chat ? ICON.chat : i + 1}</span>`).join('')}</div>
+        ${nv > 1 ? `<p class="muted small var-note">Variasi abnormalitas <b>${(S.variant || 0) + 1}</b> dari ${nv}. Permainan berikutnya memakai variasi lain.</p>` : ''}
+        ${evs.some(e => e.chat) ? `<p class="muted small hf-note">${ICON.chat}<span>Kejadian bertanda balon obrolan, yaitu kejadian ke-3 dan ke-5, berasal dari laporan tim operasi, maintenance, atau pihak lain. Baca obrolan antartim untuk menemukan tindakan manusia yang memicu abnormalitas.</span></p>` : ''}
       </div>
       <div class="card prod-card">
         <button class="btn3d primary wide run-big" id="btn-run-prod">${ICON.factory}<span>Jalankan ${esc(opName())}</span></button>
@@ -907,21 +998,24 @@ const Game = (() => {
   }
   function updateEvTrack() {
     $$('.ev-dot').forEach(d => { const i = +d.dataset.i; d.classList.toggle('done', i < S.eventIdx); d.classList.toggle('active', i === S.eventIdx); });
-    const c = $('#ev-count'); if (c) c.textContent = `${S.eventIdx}/${scn.events.length}`;
+    const c = $('#ev-count'); if (c) c.textContent = `${S.eventIdx}/${planEvents().length}`;
   }
   function beginEvent() {
-    if (S.eventIdx >= scn.events.length) return;
+    const evs = planEvents();
+    if (S.eventIdx >= evs.length) return;
     resetPlant();
     const wl = $('#warn-log'); wl.innerHTML = '<li class="empty">Belum ada peringatan. Proses berjalan normal.</li>';
     $('#warn-count').textContent = '0';
-    const evt = scn.events[S.eventIdx];
+    const evt = evs[S.eventIdx];
+    /* obrolan tim dibaca dalam waktu nyata, jadi kasus faktor manusia tidak dipercepat */
+    sim.opts.speed = evt.chat ? Math.min(cfg.speed, 1) : cfg.speed;
     ev2 = { evt, delay: evt.start !== undefined ? evt.start : 5 + Math.random() * 4, started: false, alarmed: false, warnIdx: 0, nWarn: 0, crit: false, incident: false, reported: false, reportOpen: false, chatIdx: 0, chatLog: [] };
     const cc = $('#chat-card');
     if (cc) {
       cc.hidden = !evt.chat;
       $('#chat-log').innerHTML = '<li class="empty">Belum ada pesan dari tim.</li>';
       $('#chat-count').textContent = '0';
-      if (evt.chat) showToast(`Kasus dari tim: perhatikan obrolan antartim di P&ID dan ${panelName()}.`);
+      if (evt.chat) showToast(`Kasus dari tim: perhatikan obrolan antartim di P&ID dan ${panelName()}.${cfg.speed > 1 ? ' Simulasi berjalan pada kecepatan normal agar pesan sempat dibaca.' : ''}`);
     }
     runSim(true);
     const b = $('#btn-run-prod'); b.disabled = true; b.innerHTML = `${ICON.factory}<span>${esc(opName())} berjalan...</span>`;
@@ -932,7 +1026,7 @@ const Game = (() => {
   function handleEvent(s) {
     if (!ev2 || ev2.reported) return;
     const evt = ev2.evt;
-    if (evt.chat) while (ev2.chatIdx < evt.chat.length && s.t >= evt.chat[ev2.chatIdx].t) postChat(evt.chat[ev2.chatIdx++]);
+    if (evt.chat) while (ev2.chatIdx < evt.chat.length && s.t >= evt.chat[ev2.chatIdx].t) queueChat(evt.chat[ev2.chatIdx++]);
     if (!ev2.started && s.t >= ev2.delay) { ev2.started = true; s.startEvent(evt); }
     if (!ev2.started) return;
     if (!ev2.alarmed && Object.keys(scn.vars).some(id => s.status(id) !== 'normal')) {
@@ -997,6 +1091,8 @@ const Game = (() => {
     b.innerHTML = `<span class="wi">${ICON[w.type]}</span><div><b>${w.sev === 'final' ? 'INSIDEN: ' : 'PERINGATAN: '}${esc(WARN_TYPES[w.type].title)}</b><span>${esc(w.text)}</span></div><time>${sim.clock()}</time>`;
     wrap.prepend(b);
     while (wrap.children.length > 2) wrap.lastChild.remove();
+    /* kotak pembungkus spanduk tidak ikut animasi, jadi balon dapat langsung disesuaikan */
+    repositionBubbles();
     requestAnimationFrame(() => b.classList.add('show'));
     if (w.sev !== 'final') later(() => { b.classList.remove('show'); later(() => b.remove(), 400); }, 6500);
   }
@@ -1023,6 +1119,7 @@ const Game = (() => {
         <label>Parameter<select id="rp-param"><option value="">-- pilih --</option>${Object.keys(PARAMS).map(k => `<option value="${k}">${esc(PARAMS[k])}</option>`).join('')}</select></label>
         <label>Guideword<select id="rp-guide"><option value="">-- pilih --</option>${Object.keys(GUIDEWORDS).map(k => `<option value="${k}">${esc(GUIDEWORDS[k])}</option>`).join('')}</select></label>
       </div>
+      <p class="gw-info" id="rp-gw-info">${GW_HINT}</p>
       <div class="rp-sec"><b>Penyebab yang paling mungkin</b>${shuffledOpts(evt.causes, evt.causeAns, 'rp-cause')}</div>
       <div class="rp-sec"><b>Konsekuensi bila tidak ada proteksi</b>${shuffledOpts(evt.cons, evt.consAns, 'rp-cons')}</div>
       ${evt.hf ? `<div class="rp-sec hf-sec"><b>${ICON.person}Jenis kesalahan manusia pada tindakan pemicu</b><div class="radios">${Object.keys(HF_TYPES).map(k => `<label><input type="radio" name="rp-hf" value="${k}"><span><b>${esc(HF_TYPES[k].name)}.</b> ${esc(HF_TYPES[k].desc)}</span></label>`).join('')}</div></div>` : ''}
@@ -1037,6 +1134,11 @@ const Game = (() => {
       dockTitle: `Laporan Abnormalitas ${S.eventIdx + 1} sedang diisi`,
       buttons: [{ label: 'Kirim Laporan', cls: 'btn3d primary', keep: true, onClick: () => submitReport() }],
       onMount: m => {
+        const gi = m.querySelector('#rp-gw-info');
+        m.querySelector('#rp-guide').addEventListener('change', ev => {
+          const k = ev.target.value;
+          gi.innerHTML = k ? `<b>${esc(GUIDEWORDS[k])}.</b> ${esc(GUIDE_INFO[k])}` : GW_HINT;
+        });
         const btn = m.querySelector('#btn-hint');
         btn.addEventListener('click', () => {
           if (!ev2 || ev2.hintsUsed >= hints.length) return;
@@ -1050,6 +1152,7 @@ const Game = (() => {
         });
       } });
   }
+  const GW_HINT = 'Guideword mengikuti CCPS (2008). Pilih guideword untuk melihat maknanya.';
   function eventHints(evt) {
     const early = Math.min(...evt.effects.map(f => f.delay));
     const norm = f => Math.abs(f.to - scn.vars[f.var].normal) / (scn.vars[f.var].max - scn.vars[f.var].min);
@@ -1085,7 +1188,7 @@ const Game = (() => {
     const hintPenalty = cfg.difficulty === 'mudah' ? 0 : HINT_COST * hintsUsed;
     const hintTxt = hintsUsed ? `<p class="note">Petunjuk dipakai: <b>${hintsUsed}</b>${hintPenalty ? `, pengurangan ${hintPenalty} poin` : ', tanpa pengurangan poin pada Mode Mudah'}.</p>` : '';
     const score = Math.max(0, Math.min(100, base + mod - hintPenalty));
-    S.eventResults.push({ node, param, guide, score, phase: ev2.phase, hints: hintsUsed, hf: evt.hf ? { type: hfIn.value, ok: !!pts.hf } : undefined });
+    S.eventResults.push({ id: evt.id, node, param, guide, score, phase: ev2.phase, hints: hintsUsed, hf: evt.hf ? { type: hfIn.value, ok: !!pts.hf } : undefined });
     closeModal();
     if (score >= 60) Sfx.success(); else Sfx.fail();
     const row = (lbl, ok, ans) => `<tr><td>${lbl}</td><td class="${ok ? 'ok' : 'bad'}">${ok ? 'Benar' : 'Salah'}</td><td>${esc(ans)}</td></tr>`;
@@ -1093,7 +1196,7 @@ const Game = (() => {
     const chain = evt.warnings.map((w, i) => `<li class="sev-${w.sev} ${i < ev2.warnIdx ? 'seen' : 'unseen'}"><span class="wi">${ICON[w.type]}</span><div><b>${esc(WARN_TYPES[w.type].title)}</b> <small>${i < ev2.warnIdx ? 'terjadi' : 'dicegah'}</small><p>${esc(w.text)}</p></div></li>`).join('');
     showModal({ title: `Hasil Laporan ${S.eventIdx + 1}: ${score} poin`, cls: 'report',
       body: `<table class="result-table"><tr><th>Unsur</th><th>Penilaian</th><th>Jawaban yang diharapkan</th></tr>
-        ${row('Node', pts.node, a.node.join(' / '))}${row('Parameter', pts.param, a.param.map(p => PARAMS[p]).join(' / '))}${row('Guideword', pts.guide, a.guide.map(g => GUIDEWORDS[g].split(' (')[0]).join(' / '))}${row('Penyebab', pts.cause, evt.causes[evt.causeAns])}${row('Konsekuensi', pts.cons, evt.cons[evt.consAns])}${evt.hf ? row('Jenis kesalahan', pts.hf, HF_TYPES[evt.hf.type].name + ': ' + HF_TYPES[evt.hf.type].desc) : ''}</table>
+        ${row('Node', pts.node, a.node.join(' / '))}${row('Parameter', pts.param, a.param.map(p => PARAMS[p]).join(' / '))}${row('Guideword', pts.guide, a.guide.map(g => GUIDEWORDS[g]).join(' / '))}${row('Penyebab', pts.cause, evt.causes[evt.causeAns])}${row('Konsekuensi', pts.cons, evt.cons[evt.consAns])}${evt.hf ? row('Jenis kesalahan', pts.hf, HF_TYPES[evt.hf.type].name + ': ' + HF_TYPES[evt.hf.type].desc) : ''}</table>
         ${modTxt}${hintTxt}<p class="explain">${esc(evt.explain)}</p>
         ${evt.hf ? `<div class="hf-lesson"><h4>${ICON.person}<span>Faktor manusia: ${esc(evt.hf.title)}</span></h4><p>${esc(evt.hf.lesson)}</p><div class="hf-controls"><b>Kontrol yang seharusnya mencegah:</b>${evt.hf.controls.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>${ev2.chatLog.length ? '<button class="btn3d silver small" id="btn-comic-res" type="button">' + ICON.comic + '<span>Lihat ulang komik obrolan</span></button>' : ''}</div>` : ''}
         <h4 class="chain-h">Rangkaian eskalasi kejadian ini (${seen.length} dari ${evt.warnings.length} tahap terjadi)</h4><ul class="chain">${chain}</ul>`,
@@ -1106,7 +1209,7 @@ const Game = (() => {
         setStatus('Siap', 'idle');
         setAlarm('Proses belum berjalan', false);
         $('#btn-report').disabled = true;
-        if (S.eventIdx >= scn.events.length) {
+        if (S.eventIdx >= planEvents().length) {
           const avg = Math.round(S.eventResults.reduce((s, r) => s + r.score, 0) / S.eventResults.length);
           finishStage(2, avg, `<p>Rata-rata skor identifikasi dari <b>${S.eventResults.length}</b> kejadian.</p>`);
         } else {
@@ -1163,6 +1266,33 @@ const Game = (() => {
     const c = castOf(evt, m.who), tm = TEAMS[c.team] || TEAMS.ops;
     return `<li class="chat-msg" style="--team:${tm.color}"><span class="av">${avatarSVG(m.who, m.mood)}</span><div class="bub"><div class="ch"><b>${esc(c.name)}</b><small>${esc(c.role)}</small><time>${esc(m.clock || '')}</time></div><p>${esc(m.text)}</p></div></li>`;
   }
+  /* Balon obrolan tampil selama waktu baca manusia. Kecepatan efektif membaca siswa SMA sekitar
+     250 kata per menit (Tarigan, 1985) dan rata-rata membaca senyap orang dewasa 238 kata per menit
+     (Brysbaert, 2019). Pemain membaca sambil memantau proses, jadi dipakai 150 kata per menit
+     ditambah 1,5 detik untuk memindahkan pandangan. Durasi dihitung dalam waktu nyata. */
+  const CHAT_READ = { wpm: 150, lead: 1500, min: 4500, max: 15000, gap: 1200 };
+  function readMs(text) {
+    const words = String(text).trim().split(/\s+/).length;
+    return Math.round(Math.max(CHAT_READ.min, Math.min(CHAT_READ.max, CHAT_READ.lead + words * 60000 / CHAT_READ.wpm)));
+  }
+  /* jumlah balon yang boleh tampil bersamaan menurut ukuran layar */
+  function bubbleCap() { return isCompact() || isStacked() ? 2 : 3; }
+  let chatQ = [], chatT = 0, lastBubbleAt = 0;
+  function queueChat(m) { chatQ.push(m); pumpChat(); }
+  /* Pesan berikutnya baru tampil bila masih ada tempat dan jeda dari balon sebelumnya cukup,
+     sehingga balon tidak pernah dilepas sebelum sempat dibaca. */
+  function pumpChat() {
+    if (!ev2 || ev2.reported) { chatQ = []; return; }
+    if (!chatQ.length) return;
+    const wrap = $('#chat-float');
+    const vis = wrap ? wrap.querySelectorAll('.cf-bub:not(.out)').length : 0;
+    if (vis >= bubbleCap()) return;
+    const wait = CHAT_READ.gap - (performance.now() - lastBubbleAt);
+    if (wait > 0) { clearTimeout(chatT); chatT = later(pumpChat, wait + 20); return; }
+    postChat(chatQ.shift());
+    lastBubbleAt = performance.now();
+    if (chatQ.length) { clearTimeout(chatT); chatT = later(pumpChat, CHAT_READ.gap + 20); }
+  }
   function postChat(m) {
     if (!ev2) return;
     const evt = ev2.evt;
@@ -1178,7 +1308,9 @@ const Game = (() => {
     Sfx.chat();
     floatBubble(evt, msg);
   }
-  /* Balon komik di P&ID, diletakkan di atas peralatan tempat tokoh berada. */
+  /* Balon komik di P&ID. Balon menunjuk peralatan tempat tokoh berada dan diletakkan di sisi yang
+     masih kosong: atas, kanan, kiri, atau bawah peralatan, tanpa menutupi balon lain, spanduk
+     peringatan, atau tombol zoom. Di ponsel balon boleh turun ke area tren di bawah P&ID. */
   function floatBubble(evt, m) {
     const wrap = $('#chat-float');
     if (!wrap || !$('#pid')) return;
@@ -1189,32 +1321,93 @@ const Game = (() => {
     b.style.setProperty('--team', (TEAMS[c.team] || TEAMS.ops).color);
     b.innerHTML = `<span class="av">${avatarSVG(m.who, m.mood)}</span><div><b>${esc(c.name)}</b><p>${esc(m.text)}</p></div>`;
     wrap.appendChild(b);
-    placeBubble(b);
+    placeBubble(b, bubbleObstacles(b));
     requestAnimationFrame(() => b.classList.add('show'));
-    /* di ponsel P&ID kecil, jadi cukup satu balon pada satu waktu */
-    while (wrap.children.length > (isCompact() ? 1 : 2)) wrap.firstChild.remove();
-    later(() => { b.classList.remove('show'); later(() => b.remove(), 350); }, 7500);
+    later(() => {
+      b.classList.add('out'); b.classList.remove('show');
+      later(() => { b.remove(); pumpChat(); }, 350);
+    }, readMs(m.text));
   }
-  function placeBubble(b) {
+  function rectOf(b) { return { x: +b.dataset.x || 0, y: +b.dataset.y || 0, w: b.offsetWidth, h: b.offsetHeight }; }
+  function overlapArea(a, b) {
+    const ix = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)), iy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+    return ix * iy;
+  }
+  /* Rintangan tetap dengan bobot: spanduk peringatan dan tombol zoom tidak boleh tertutup,
+     pembacaan DCS sebaiknya tetap terlihat, dan peralatan lain boleh sedikit tertutup. */
+  function fixedObstacles(anchorId) {
+    const area = $('#pid-area'); if (!area) return [];
+    const ar = area.getBoundingClientRect(), rs = [];
+    const add = (el, wt, pad) => {
+      if (!el) return;
+      const r = el.getBoundingClientRect(), d = pad || 0;
+      if (r.width && r.height) rs.push({ x: r.left - ar.left - d, y: r.top - ar.top - d, w: r.width + 2 * d, h: r.height + 2 * d, wt });
+    };
+    /* spanduk peringatan, termasuk yang melayang di atas layar pada tata letak bertumpuk */
+    $$('#fx-banners .fx-banner').forEach(n => add(n, 100, 6));
+    add($('#pid .pid-zoom'), 50, 6);
+    /* bilah aksi melayang di ponsel dan tablet tegak menutupi bagian bawah layar */
+    const mb = $('.m-bar'); if (mb && getComputedStyle(mb).display !== 'none') add(mb, 100, 6);
+    $$('#pid .readout').forEach(n => add(n, 1.2, 2));
+    $$('#pid .eq').forEach(n => { if (n.dataset.id !== anchorId) add(n, 0.08, 0); });
+    return rs;
+  }
+  function bubbleObstacles(except) {
+    return fixedObstacles(except.dataset.at).concat($$('#chat-float .cf-bub').filter(o => o !== except && o.dataset.placed && !o.classList.contains('out')).map(b => Object.assign(rectOf(b), { wt: 100 })));
+  }
+  function placeBubble(b, obs) {
     const area = $('#pid-area'), pidEl = $('#pid');
     if (!area || !pidEl || !pid) return;
     const ar = area.getBoundingClientRect(), pr = pidEl.getBoundingClientRect();
+    const bw = b.offsetWidth, bh = b.offsetHeight, m = 6, T = 14;
+    const R = { x0: pr.left - ar.left + m, y0: pr.top - ar.top + m, x1: pr.right - ar.left - m, y1: pr.bottom - ar.top - m };
+    if (isCompact()) R.y1 = Math.max(R.y1, ar.height - m);
     const node = b.dataset.at && pid.eqNode(b.dataset.at);
     let nr = node ? node.getBoundingClientRect() : null;
-    /* peralatan di luar bagian P&ID yang sedang terlihat: balon diletakkan di tengah atas */
+    /* peralatan di luar bagian P&ID yang sedang terlihat: balon tanpa ekor di tepi P&ID */
     if (nr && (nr.right < pr.left || nr.left > pr.right || nr.bottom < pr.top || nr.top > pr.bottom)) nr = null;
-    b.classList.remove('below');
-    const bw = b.offsetWidth, bh = b.offsetHeight;
-    let x = nr ? nr.left + nr.width / 2 - ar.left : pr.left + pr.width / 2 - ar.left;
-    let y = nr ? nr.top - ar.top - 8 : pr.top - ar.top + bh + 14;
-    const minX = pr.left - ar.left + bw / 2 + 6, maxX = pr.right - ar.left - bw / 2 - 6;
-    const ax = x;
-    x = Math.max(minX, Math.min(maxX, x));
-    if (y - bh < pr.top - ar.top + 6) { b.classList.add('below'); y = (nr ? nr.bottom - ar.top : y) + 10; }
-    b.style.left = x + 'px'; b.style.top = y + 'px';
-    b.style.setProperty('--tail', Math.max(18, Math.min(bw - 18, bw / 2 + (ax - x))) + 'px');
+    const cands = [];
+    let anchor = null;
+    if (nr) {
+      anchor = { x: nr.left - ar.left, y: nr.top - ar.top, w: nr.width, h: nr.height };
+      const cx = anchor.x + anchor.w / 2, cy = anchor.y + anchor.h / 2;
+      /* urutan sisi: atas, kanan, kiri, bawah; setiap sisi dicoba dengan ekor di tengah lalu di dekat ujung */
+      [0.5, 0.18, 0.82].forEach(f => cands.push({ side: 'tail-down', x: cx - bw * f, y: anchor.y - T - bh, ax: cx }));
+      [0.5, 0.25, 0.75].forEach(f => cands.push({ side: 'tail-left', x: anchor.x + anchor.w + T, y: cy - bh * f, ay: cy }));
+      [0.5, 0.25, 0.75].forEach(f => cands.push({ side: 'tail-right', x: anchor.x - T - bw, y: cy - bh * f, ay: cy }));
+      [0.5, 0.18, 0.82].forEach(f => cands.push({ side: 'tail-up', x: cx - bw * f, y: anchor.y + anchor.h + T, ax: cx }));
+    }
+    const mx = (R.x0 + R.x1 - bw) / 2;
+    [[mx, R.y0], [R.x0, R.y0], [R.x1 - bw, R.y0], [R.x0, R.y1 - bh], [R.x1 - bw, R.y1 - bh], [mx, R.y1 - bh]].forEach(q => cands.push({ side: 'free', x: q[0], y: q[1] }));
+    let best = null;
+    cands.forEach((c, i) => {
+      const x = Math.max(R.x0, Math.min(R.x1 - bw, c.x)), y = Math.max(R.y0, Math.min(R.y1 - bh, c.y));
+      const box = { x, y, w: bw, h: bh };
+      const ov = obs.reduce((sum, o) => sum + overlapArea(box, o) * (o.wt || 1), 0);
+      const cover = anchor ? overlapArea(box, anchor) : 0;
+      /* ekor harus tetap menunjuk peralatan setelah balon digeser ke dalam P&ID */
+      const lost = (c.side === 'tail-down' && y + bh > anchor.y) || (c.side === 'tail-up' && y < anchor.y + anchor.h) || (c.side === 'tail-left' && x < anchor.x + anchor.w) || (c.side === 'tail-right' && x + bw > anchor.x);
+      const cost = ov + cover * 4 + (lost ? 8000 : 0) + (c.side === 'free' ? 6000 : 0) + (Math.abs(x - c.x) + Math.abs(y - c.y)) * 2 + i * 12;
+      if (!best || cost < best.cost) best = Object.assign({}, c, { x, y, cost });
+    });
+    b.classList.remove('tail-down', 'tail-up', 'tail-left', 'tail-right', 'free', 'below');
+    b.classList.add(best.side);
+    b.style.left = Math.round(best.x) + 'px'; b.style.top = Math.round(best.y) + 'px';
+    if (best.side === 'tail-down' || best.side === 'tail-up') {
+      const t = Math.max(18, Math.min(bw - 18, best.ax - best.x));
+      b.style.setProperty('--tail', t + 'px'); b.style.setProperty('--ox', t + 'px'); b.style.setProperty('--oy', best.side === 'tail-down' ? '100%' : '0%');
+    } else if (best.side === 'tail-left' || best.side === 'tail-right') {
+      const t = Math.max(16, Math.min(bh - 16, best.ay - best.y));
+      b.style.setProperty('--tail', t + 'px'); b.style.setProperty('--ox', best.side === 'tail-left' ? '0%' : '100%'); b.style.setProperty('--oy', t + 'px');
+    } else { b.style.setProperty('--ox', '50%'); b.style.setProperty('--oy', '50%'); }
+    b.dataset.x = Math.round(best.x); b.dataset.y = Math.round(best.y); b.dataset.placed = '1';
   }
-  function repositionBubbles() { $$('#chat-float .cf-bub').forEach(placeBubble); }
+  /* dipanggil saat ukuran layar, zoom P&ID, atau spanduk berubah: balon disusun ulang dari yang tertua */
+  function repositionBubbles() {
+    const list = $$('#chat-float .cf-bub').filter(b => !b.classList.contains('out'));
+    const placed = [];
+    list.forEach(b => { placeBubble(b, fixedObstacles(b.dataset.at).concat(placed)); placed.push(Object.assign(rectOf(b), { wt: 100 })); });
+  }
   let comicResume = false;
   function closeComic() {
     const w = $('.comic-wrap'); if (!w) return;
@@ -1246,19 +1439,32 @@ const Game = (() => {
     w.addEventListener('click', ev => { if (ev.target === w || ev.target.closest('[data-close]')) { Sfx.click(); closeComic(); } });
   }
 
-  /* ---------- TAHAP 3 & 4: barier, inspeksi, dan pengujian ---------- */
+  /* ---------- TAHAP 3 & 4: barier dan escalation factor ----------
+     Setiap perangkat memiliki satu escalation factor utama (DEVICES[k].itpm). Pemain memilih
+     escalation factor beserta kontrolnya dari daftar lengkap, termasuk yang tidak cocok. Sebelum
+     evaluasi, keandalan dihitung dari klaim pemain (ada kontrol atau belum); saat evaluasi klaim
+     diverifikasi, dan kontrol yang tidak sesuai tidak dikreditkan, seperti audit IPL pada LOPA. */
   function devState(stage, hsId) {
     const dev = S.placements[stage][hsId];
     if (!dev) return null;
     const d = DEVICES[dev];
-    const tested = S.itpm[stage][hsId] === d.itpm;
-    const pfd = tested ? d.pfd : Math.min(1, d.pfd * UNTESTED_FACTOR);
-    return { dev, d, tested, pfd, rel: 1 - pfd };
+    const ef = S.itpm[stage][hsId] || null;
+    const tested = ef === d.itpm;
+    const claimed = !!ef;
+    const verified = !!S.evalDone[stage];
+    const credited = verified ? tested : claimed;
+    const pfd = credited ? d.pfd : Math.min(1, d.pfd * UNTESTED_FACTOR);
+    return { dev, d, ef, tested, claimed, wrongEf: claimed && !tested, verified, credited, pfd, rel: 1 - pfd };
   }
   function reliability(stage) {
     const items = Object.keys(S.placements[stage]).map(h => devState(stage, h)).filter(Boolean);
-    if (!items.length) return { avg: 0, n: 0, tested: 0 };
-    return { avg: items.reduce((s, x) => s + x.rel, 0) / items.length, n: items.length, tested: items.filter(x => x.tested).length };
+    if (!items.length) return { avg: 0, n: 0, credited: 0 };
+    return { avg: items.reduce((s, x) => s + x.rel, 0) / items.length, n: items.length, credited: items.filter(x => x.credited).length };
+  }
+  function creditMap(stage) {
+    const m = {};
+    Object.keys(S.placements[stage]).forEach(h => { const st = devState(stage, h); if (st) m[h] = st.credited; });
+    return m;
   }
   function spent(stage) {
     let s = 0;
@@ -1267,10 +1473,17 @@ const Game = (() => {
     Object.values((S.eqItpm && S.eqItpm[stage]) || {}).forEach(k => { if (ITPM[k]) s += ITPM[k].cost; });
     return s;
   }
+  /* Peralatan yang dapat diberi kontrol escalation factor: semua peralatan di dalam batas unit.
+     Sengaja tidak disaring menurut kecocokan agar pemain menilai sendiri peralatan yang kritis. */
+  const NO_EF_TYPES = ['muster', 'building', 'sink'];
   function eqInspectable(stage) {
-    const types = new Set();
-    Object.values(ITPM).filter(t => t.stage === stage && t.target === 'equipment').forEach(t => t.fitsEq.forEach(x => types.add(x)));
-    return scn.equipment.filter(e => types.has(e.type));
+    return stage === 3 ? scn.equipment.filter(e => !NO_EF_TYPES.includes(e.type)) : [];
+  }
+  /* daftar kontrol dikelompokkan menurut keluarga barier */
+  function efGroups(keys, item) {
+    const groups = [];
+    keys.forEach(k => { const g = ITPM[k].grp; let x = groups.find(y => y.name === g); if (!x) groups.push(x = { name: g, items: [] }); x.items.push(k); });
+    return groups.map(g => `<h5 class="tb-grp">${esc(g.name)}</h5>${g.items.map(item).join('')}`).join('');
   }
   function renderStageBarrier(stage) {
     const devs = stageDevices(stage);
@@ -1279,23 +1492,23 @@ const Game = (() => {
     const insp = eqInspectable(stage);
     const done = S.evalDone[stage];
     const side = $('#side');
-    side.innerHTML = tt(`<div class="side-head"><h2>${ICON[stage === 3 ? 'shield' : 'fire']}<span>Tahap ${stage}: Barier ${stage === 3 ? 'Pencegahan' : 'Mitigasi'}</span></h2></div>
+    side.innerHTML = tt(`${sideHead(ICON[stage === 3 ? 'shield' : 'fire'], `Tahap ${stage}: Barier ${stage === 3 ? 'Pencegahan' : 'Mitigasi'}`)}
       <div class="card budget"><div class="budget-row"><span>${ICON.coin} Anggaran</span><b id="budget-val"></b></div><div class="budget-bar"><div id="budget-fill"></div></div><p class="muted small budget-note" id="budget-note"></p><p class="muted small">${stage === 3 ? 'Pasang instrumen deteksi dan proteksi yang memutus rantai kejadian sebelum kehilangan kontainmen, lalu jaga keandalannya.' : 'Pasang perangkat yang membatasi dampak bila kehilangan kontainmen tetap terjadi, lalu jaga keandalannya.'}</p></div>
-      <div class="card rel"><h4>${ICON.gauge}<span>Keandalan Sistem Proteksi</span></h4>
+      <div class="card rel"><h4>${ICON.gauge}<span>Keandalan Sistem Proteksi</span><small id="rel-kind"></small></h4>
         <div class="rel-row"><b id="rel-val">0%</b><span id="rel-sub">Belum ada barier terpasang</span></div>
         <div class="rel-bar"><div id="rel-fill"></div></div>
-        <p class="muted small">Barier tanpa inspeksi dan pengujian berkala menyimpan kegagalan tersembunyi sehingga PFD-nya naik sekitar ${UNTESTED_FACTOR} kali. Kriteria IPL pada LOPA mensyaratkan barier dapat diaudit melalui pengujian.</p>
+        <p class="muted small">Barier yang escalation factor-nya tidak dikendalikan menyimpan kegagalan tersembunyi sehingga PFD-nya naik sekitar ${UNTESTED_FACTOR} kali. Sebelum evaluasi angka ini adalah klaim Anda. Saat evaluasi klaim diverifikasi, dan kontrol yang tidak sesuai dengan escalation factor perangkat tidak dikreditkan, sejalan dengan kriteria IPL pada LOPA yang mensyaratkan barier dapat diaudit.</p>
       </div>
       <div class="card"><h4>Kotak Alat</h4>
-        <div class="tabs" role="tablist"><button class="tab" data-tab="dev">${ICON.shield}<span>Perangkat Barier</span></button><button class="tab" data-tab="itpm">${ICON.wrench}<span>Inspeksi &amp; Pengujian</span></button></div>
+        <div class="tabs" role="tablist"><button class="tab" data-tab="dev">${ICON.shield}<span>Perangkat Barier</span></button><button class="tab" data-tab="itpm">${ICON.wrench}<span>Escalation Factor</span></button></div>
         <div class="toolbox" id="tb-dev">${devs.map(k => `<button class="tool" data-kind="dev" data-id="${k}" style="--c:${DEVICES[k].color}"><span class="tcode">${esc(DEVICES[k].code)}</span><span class="tname">${esc(DEVICES[k].name)}</span><span class="tcost">${money(DEVICES[k].cost)}</span></button>`).join('')}</div>
-        <div class="toolbox" id="tb-itpm">${progs.map(k => `<button class="tool itpm" data-kind="itpm" data-id="${k}"><span class="tcode">${esc(ITPM[k].code)}</span><span class="tname">${esc(ITPM[k].name)}</span><span class="tcost">${money(ITPM[k].cost)}</span></button>`).join('')}</div>
+        <div class="toolbox ef" id="tb-itpm">${efGroups(progs, k => `<button class="tool itpm" data-kind="itpm" data-id="${k}" title="Kontrol: ${esc(ITPM[k].name)}"><span class="tcode">${esc(ITPM[k].code)}</span><span class="tname">${esc(ITPM[k].ef)}</span><span class="tcost">${money(ITPM[k].cost)}</span></button>`)}</div>
         <div class="tool-desc" id="tool-desc">Pilih alat untuk membaca fungsinya, atau klik titik (+) pada P&amp;ID untuk memilih perangkat lewat pop-up.</div>
       </div>
       <div class="card"><h4>Titik Pemasangan <span class="pill" id="hs-count"></span></h4>
         <ul class="hs-list" id="hs-list">${hs.map(h => `<li data-hs="${h.id}"><span class="dot"></span><div><b>${cfg.hints || cfg.difficulty === 'mudah' ? esc(h.label) : 'Titik ' + esc(h.id.toUpperCase())}</b><small class="placed"></small></div></li>`).join('')}</ul>
       </div>
-      ${insp.length ? `<div class="card"><h4>Inspeksi Peralatan <span class="pill" id="eq-count"></span></h4><p class="muted small">Pilih program pada tab Inspeksi &amp; Pengujian, lalu klik peralatan di P&amp;ID.</p><ul class="eq-insp" id="eq-insp">${insp.map(e => `<li data-eq="${e.id}"><span class="dot"></span><div><b>${esc(e.id)}</b> <span>${esc(e.name)}</span><small class="placed"></small></div></li>`).join('')}</ul></div>` : ''}
+      ${insp.length ? `<div class="card"><h4>Escalation Factor Peralatan <span class="pill" id="eq-count"></span></h4><p class="muted small">Kegagalan integritas peralatan, misalnya korosi dinding atau keausan bantalan, juga merupakan escalation factor. Klik peralatan di P&amp;ID atau di daftar ini untuk memilih kontrolnya. Tentukan sendiri peralatan yang kritis.</p><ul class="eq-insp" id="eq-insp">${insp.map(e => `<li data-eq="${e.id}"><span class="dot"></span><div><b>${esc(e.id)}</b> <span>${esc(e.name)}</span><small class="placed"></small></div></li>`).join('')}</ul></div>` : ''}
       <div class="card action"><button class="btn3d ${done ? 'primary' : 'dark'} wide" id="btn-eval">${ICON.check}<span>${done ? 'Lanjut' : 'Evaluasi Pemasangan'}</span></button></div>`);
     on(side, '.tab', 'click', ev => { Sfx.click(); setTab(ev.currentTarget.dataset.tab); });
     on(side, '.tool', 'click', ev => { Sfx.click(); selectTool(ev.currentTarget.dataset.kind, ev.currentTarget.dataset.id); });
@@ -1324,22 +1537,26 @@ const Game = (() => {
     $('#pid').classList.toggle('placing', !!tool);
     const desc = $('#tool-desc');
     if (!tool) { desc.innerHTML = tt('Pilih alat untuk membaca fungsinya, atau klik titik (+) pada P&amp;ID untuk memilih perangkat lewat pop-up.'); pid.setTargets(null); return; }
+    const easy = cfg.difficulty === 'mudah';
     if (tool.kind === 'dev') {
       const d = DEVICES[tool.id];
-      desc.innerHTML = `<b>${esc(d.name)}</b><br>${esc(d.desc)}<div class="meta"><span>Biaya ${money(d.cost)}</span><span>PFD desain ${String(d.pfd).replace('.', ',')}</span><span>Program uji: ${esc(ITPM[d.itpm].name)}</span></div>`;
+      desc.innerHTML = `<b>${esc(d.name)}</b><br>${esc(d.desc)}<div class="meta"><span>Biaya ${money(d.cost)}</span><span>PFD desain ${String(d.pfd).replace('.', ',')}</span>${easy ? `<span>Escalation factor utama: ${esc(ITPM[d.itpm].ef)}</span>` : ''}</div>`;
       pid.setTargets(null);
     } else {
       const t = ITPM[tool.id];
-      const fitTxt = t.target === 'device' ? t.fits.filter(k => kitOk(DEVICES[k])).map(k => DEVICES[k].code).join(', ') : t.fitsEq.filter(x => scn.equipment.some(e => e.type === x)).map(x => EQ_TYPE_NAMES[x] || x).join(', ');
-      desc.innerHTML = `<b>${esc(t.name)}</b><br>${esc(t.desc)}<div class="meta"><span>Biaya ${money(t.cost)}</span><span>Berlaku untuk: ${esc(fitTxt)}</span></div><p class="muted small">${tt(t.target === 'device' ? 'Klik perangkat terpasang yang berbingkai biru di P&amp;ID.' : 'Klik peralatan yang berbingkai biru di P&amp;ID.')}</p>`;
+      /* kecocokan hanya diungkap pada Mode Mudah */
+      const fitTxt = t.target === 'device' ? t.fits.map(k => DEVICES[k].code).join(', ') : t.fitsEq.map(x => EQ_TYPE_NAMES[x] || x).join(', ');
+      desc.innerHTML = `<b>Escalation factor: ${esc(t.ef)}</b><br><span class="ctl">Kontrol: ${esc(t.name)}.</span> ${esc(t.desc)}<div class="meta"><span>Biaya ${money(t.cost)}</span><span>${t.target === 'device' ? 'Untuk perangkat barier' : 'Untuk peralatan proses'}</span>${easy ? `<span>Sesuai untuk: ${esc(fitTxt)}</span>` : ''}</div><p class="muted small">${tt(t.target === 'device' ? 'Klik perangkat terpasang yang berbingkai biru di P&amp;ID.' : 'Klik peralatan yang berbingkai biru di P&amp;ID.')}</p>`;
       updateTargets();
     }
   }
   function updateTargets() {
     if (!tool || tool.kind !== 'itpm') { pid.setTargets(null); return; }
     const t = ITPM[tool.id]; const stage = S.stage;
-    if (t.target === 'device') pid.setTargets({ hs: Object.keys(S.placements[stage]).filter(h => t.fits.includes(S.placements[stage][h])) });
-    else pid.setTargets({ eq: eqInspectable(stage).filter(e => t.fitsEq.includes(e.type)).map(e => e.id) });
+    /* semua sasaran yang mungkin diberi bingkai; hanya Mode Mudah yang menyaring menurut kecocokan */
+    const easy = cfg.difficulty === 'mudah';
+    if (t.target === 'device') pid.setTargets({ hs: Object.keys(S.placements[stage]).filter(h => !easy || t.fits.includes(S.placements[stage][h])) });
+    else pid.setTargets({ eq: eqInspectable(stage).filter(e => !easy || t.fitsEq.includes(e.type)).map(e => e.id) });
   }
   function refreshBarrierUI(stage) {
     closePopover();
@@ -1348,26 +1565,29 @@ const Game = (() => {
     const bn = $('#budget-note'); if (bn) bn.textContent = `Terpakai ${money(sp)}. ${costNote()}`;
     const bf = $('#budget-fill'); if (bf) { bf.style.width = Math.min(100, sp / b * 100) + '%'; bf.classList.toggle('low', b - sp <= 2); }
     const r = reliability(stage);
+    const done = !!S.evalDone[stage];
+    const rk = $('#rel-kind'); if (rk) rk.textContent = done ? 'terverifikasi' : 'diklaim';
     const rv = $('#rel-val'); if (rv) rv.textContent = r.n ? pct(r.avg) : '0%';
-    const rs = $('#rel-sub'); if (rs) rs.textContent = r.n ? `${r.tested} dari ${r.n} barier teruji` : 'Belum ada barier terpasang';
+    const rs = $('#rel-sub'); if (rs) rs.textContent = !r.n ? 'Belum ada barier terpasang' : done ? `${r.credited} dari ${r.n} barier dengan kontrol escalation factor yang tepat` : `${r.credited} dari ${r.n} barier memiliki kontrol escalation factor`;
     const rf = $('#rel-fill'); if (rf) { rf.style.width = (r.n ? r.avg * 100 : 0) + '%'; rf.className = r.avg >= 0.9 ? 'good' : r.avg >= 0.6 ? 'mid' : 'low'; }
     const hs = scn.hotspots.filter(h => h.stage === stage);
     hs.forEach(h => {
       const li = $(`.hs-list li[data-hs="${h.id}"]`); if (!li) return;
       const st = devState(stage, h.id);
       li.classList.toggle('placed', !!st);
-      li.classList.toggle('tested', !!st && st.tested);
-      li.querySelector('.placed').innerHTML = st ? `${esc(st.d.name)}<em class="${st.tested ? 'ok' : 'warnc'}">${st.tested ? 'teruji' : 'belum diuji'}</em>` : 'belum terpasang';
+      li.classList.toggle('tested', !!st && st.credited);
+      const tag = !st ? '' : !st.claimed ? '<em class="warnc">EF belum dikendalikan</em>' : !done ? `<em class="efc">EF: ${esc(ITPM[st.ef].code)}</em>` : st.tested ? '<em class="ok">EF terkendali</em>' : '<em class="badc">EF keliru</em>';
+      li.querySelector('.placed').innerHTML = st ? `${esc(st.d.name)}${tag}` : 'belum terpasang';
     });
     const hc = $('#hs-count'); if (hc) hc.textContent = `${Object.keys(S.placements[stage]).length}/${hs.length}`;
     const eqm = (S.eqItpm && S.eqItpm[stage]) || {};
     $$('.eq-insp li').forEach(li => {
       const k = eqm[li.dataset.eq];
       li.classList.toggle('placed', !!k);
-      li.querySelector('.placed').textContent = k ? ITPM[k].name : 'belum ada program';
+      li.querySelector('.placed').textContent = k ? `${ITPM[k].code} · ${ITPM[k].name}` : 'belum ada kontrol escalation factor';
     });
     const ec = $('#eq-count'); if (ec) ec.textContent = `${Object.keys(eqm).length}`;
-    pid.showHotspots(stage, S.placements[stage], S.itpm[stage], { flagUntested: cfg.hints });
+    pid.showHotspots(stage, S.placements[stage], S.itpm[stage], { flagUntested: cfg.hints, credit: creditMap(stage) });
     pid.setEqBadges(eqm, stage);
     updateTargets();
   }
@@ -1380,12 +1600,13 @@ const Game = (() => {
     const cat = stage === 3 ? 'prevent' : 'mitigate';
     return Object.keys(DEVICES).filter(k => DEVICES[k].cat === cat && kitOk(DEVICES[k]));
   }
+  /* Semua escalation factor tahap ini ditampilkan, termasuk yang tidak relevan dengan skenario,
+     sehingga pemain harus memilah sendiri. Peralatan hanya mendapat EF di Tahap 3. */
   function stagePrograms(stage, target) {
-    const devs = stageDevices(stage);
     return Object.keys(ITPM).filter(k => {
       const t = ITPM[k];
       if (t.stage !== stage || (target && t.target !== target)) return false;
-      return t.target === 'device' ? t.fits.some(f => devs.includes(f)) : scn.equipment.some(e => t.fitsEq.includes(e.type));
+      return t.target === 'device' || eqInspectable(stage).length > 0;
     });
   }
   function placeDevice(stage, h, devId) {
@@ -1397,29 +1618,34 @@ const Game = (() => {
     S.placements[stage][h.id] = devId;
     delete S.itpm[stage][h.id];
     Sfx.place(); save(); refreshBarrierUI(stage);
-    if (cur) showToast(`${cur.d.name} diganti dengan ${d.name}. Program uji sebelumnya dilepas.`);
+    if (cur) showToast(`${cur.d.name} diganti dengan ${d.name}. Kontrol escalation factor sebelumnya dilepas.`);
     return true;
   }
+  /* Kecocokan kontrol tidak diperiksa di sini: pilihan keliru diperbolehkan, memakai anggaran,
+     dan baru dinilai saat evaluasi. */
   function applyProgram(stage, h, progId) {
     const st = devState(stage, h.id);
     const t = ITPM[progId];
     if (!st || !t) return false;
-    if (t.target !== 'device') { showToast(`${t.name} diterapkan pada peralatan proses, bukan pada perangkat barier.`); return false; }
-    if (!t.fits.includes(st.dev)) { Sfx.fail(); showToast(`${t.name} tidak sesuai untuk ${st.d.name}.`); return false; }
-    if (st.tested) { showToast('Program ini sudah diterapkan pada perangkat tersebut.'); return false; }
-    if (t.cost > remaining(stage)) { Sfx.fail(); showToast(`Anggaran tidak cukup untuk ${t.name}. Sisa ${money(remaining(stage))}.`); return false; }
+    if (S.evalDone[stage]) { showToast('Tahap ini sudah dievaluasi.'); return false; }
+    if (t.target !== 'device') { showToast('Escalation factor ini milik peralatan proses. Terapkan pada peralatan, bukan pada perangkat barier.'); return false; }
+    const cur = S.itpm[stage][h.id];
+    if (cur === progId) { showToast('Kontrol escalation factor ini sudah diterapkan pada perangkat tersebut.'); return false; }
+    const refund = cur ? ITPM[cur].cost : 0;
+    if (t.cost - refund > remaining(stage)) { Sfx.fail(); showToast(`Anggaran tidak cukup untuk ${t.name}. Sisa ${money(remaining(stage) + refund)}.`); return false; }
     S.itpm[stage][h.id] = progId;
     Sfx.test(); save(); refreshBarrierUI(stage);
+    if (cur) showToast(`Kontrol ${ITPM[cur].code} diganti dengan ${t.code} pada ${st.d.code}.`);
     return true;
   }
   function applyEqProgram(stage, e, progId) {
     const eqm = (S.eqItpm && S.eqItpm[stage]) || null;
     const t = ITPM[progId];
     if (S.evalDone[stage]) { showToast('Tahap ini sudah dievaluasi.'); return false; }
-    if (t.target !== 'equipment' || !eqm) { showToast(`${t.name} diterapkan pada perangkat barier terpasang.`); return false; }
-    if (!t.fitsEq.includes(e.type)) { Sfx.fail(); showToast(`${t.name} tidak sesuai untuk ${e.name}.`); return false; }
+    if (t.target !== 'equipment' || !eqm) { showToast('Escalation factor ini milik perangkat barier. Terapkan pada perangkat terpasang.'); return false; }
+    if (!eqInspectable(stage).some(x => x.id === e.id)) { showToast(`${e.name} berada di luar batas unit sehingga tidak dinilai.`); return false; }
     const cur = eqm[e.id];
-    if (cur === progId) { showToast('Program ini sudah diterapkan pada peralatan tersebut.'); return false; }
+    if (cur === progId) { showToast('Kontrol escalation factor ini sudah diterapkan pada peralatan tersebut.'); return false; }
     const refund = cur ? ITPM[cur].cost : 0;
     if (t.cost - refund > remaining(stage)) { Sfx.fail(); showToast(`Anggaran tidak cukup untuk ${t.name}. Sisa ${money(remaining(stage) + refund)}.`); return false; }
     eqm[e.id] = progId;
@@ -1429,7 +1655,7 @@ const Game = (() => {
   function onHotspotClick(h) {
     const stage = S.stage;
     if (S.evalDone[stage]) { showToast(h.label + ': ' + h.why); return; }
-    if (tool && tool.kind === 'itpm') { showToast('Pasang perangkat barier di titik ini terlebih dahulu, lalu terapkan program pengujiannya.'); return; }
+    if (tool && tool.kind === 'itpm') { showToast('Pasang perangkat barier di titik ini terlebih dahulu, lalu kendalikan escalation factor-nya.'); return; }
     if (tool) { placeDevice(stage, h, tool.id); return; }
     if (pop && pop.pickHs === h.id) { closePopover(); return; }
     Sfx.click();
@@ -1437,7 +1663,10 @@ const Game = (() => {
   }
   function onDeviceClick(h, devId) {
     const stage = S.stage;
-    if (S.evalDone[stage]) { showToast(h.label + ': ' + h.why); return; }
+    if (S.evalDone[stage]) {
+      if (pop && pop.devHs === h.id) { closePopover(); return; }
+      Sfx.click(); openDevicePop(stage, h); showToast(h.label + ': ' + h.why); return;
+    }
     if (tool && tool.kind === 'itpm') { applyProgram(stage, h, tool.id); return; }
     if (tool && tool.kind === 'dev') { placeDevice(stage, h, tool.id); return; }
     if (pop && pop.devHs === h.id) { closePopover(); return; }
@@ -1445,10 +1674,38 @@ const Game = (() => {
     openDevicePop(stage, h);
   }
 
-  /* ---------- pop-up pemilih perangkat dan program ---------- */
-  function progBtn(k, fit, left) {
+  /* ---------- pop-up pemilih perangkat dan escalation factor ---------- */
+  /* huruf pertama kecil untuk dipakai di tengah kalimat, kecuali singkatan seperti APAR atau BMS */
+  function lc(x) { const w = String(x).split(' ')[0]; return w.length > 1 && w === w.toUpperCase() ? x : x.charAt(0).toLowerCase() + x.slice(1); }
+  function progBtn(k, fit, left, current) {
     const t = ITPM[k];
-    return `<button class="prog${fit ? ' fit' : ''}${t.cost > left ? ' poor' : ''}" data-prog="${k}"><span class="pcode">${esc(t.code)}</span><span class="pname">${esc(t.name)}${fit ? '<em>sesuai</em>' : ''}</span><span class="tcost">${money(t.cost)}</span></button>`;
+    return `<button class="prog${fit ? ' fit' : ''}${current ? ' current' : ''}${!current && t.cost > left ? ' poor' : ''}" data-prog="${k}" title="Kontrol: ${esc(t.name)}"><span class="pcode">${esc(t.code)}</span><span class="pname">${esc(t.ef)}${current ? '<em class="cur">terpasang</em>' : fit ? '<em>sesuai</em>' : ''}</span><span class="tcost">${money(t.cost)}</span></button>`;
+  }
+  /* Daftar escalation factor di pop-up: arahkan kursor untuk membaca kontrolnya. Di layar sentuh
+     ketukan pertama hanya menampilkan keterangan, ketukan kedua menerapkan kontrol. */
+  function wireProgList(el, onApply) {
+    const desc = el.querySelector('.pick-desc');
+    let armed = null, lastPtr = 'mouse';
+    $$('.prog', el).forEach(b => {
+      const k = b.dataset.prog, t = ITPM[k];
+      const show = () => { if (desc) desc.innerHTML = `<b>${esc(t.code)}: ${esc(t.ef)}</b>. Kontrol: ${esc(lc(t.name))}.`; };
+      b.addEventListener('mouseenter', show);
+      b.addEventListener('focus', show);
+      b.addEventListener('pointerdown', ev => { lastPtr = ev.pointerType || 'mouse'; });
+      b.addEventListener('click', () => {
+        if (b.classList.contains('current')) { show(); return; }
+        if (lastPtr !== 'mouse' && armed !== k) {
+          armed = k; Sfx.click(); show();
+          if (desc) desc.insertAdjacentHTML('beforeend', '<span class="pick-go">Ketuk sekali lagi untuk menerapkan.</span>');
+          $$('.prog', el).forEach(x => x.classList.toggle('armed', x === b));
+          return;
+        }
+        onApply(k);
+      });
+    });
+  }
+  function efFoot() {
+    return `<div class="pick-desc">${isTouch() ? 'Ketuk escalation factor untuk membaca kontrolnya, lalu ketuk sekali lagi untuk menerapkan.' : 'Arahkan kursor ke escalation factor untuk membaca kontrolnya, lalu klik untuk menerapkan.'}</div>`;
   }
   function openPicker(stage, h, anchor) {
     const cur = S.placements[stage][h.id];
@@ -1495,19 +1752,25 @@ const Game = (() => {
     if (!st) return;
     const it = S.itpm[stage][h.id];
     const easy = cfg.difficulty === 'mudah';
+    const done = !!S.evalDone[stage];
     const progs = stagePrograms(stage, 'device');
+    const left = remaining(stage) + (it ? ITPM[it].cost : 0);
+    const pfdTxt = x => String(+x.toFixed(3)).replace('.', ',');
+    const why = st.credited ? '' : done && it ? ' (naik karena kontrol tidak sesuai escalation factor perangkat)' : ' (naik karena escalation factor belum dikendalikan)';
     const el = openPopover(pid.devNode(h.id), `<div class="pop-head"><b>${esc(st.d.code)}</b><span>${esc(st.d.name)}</span></div>
         <p>${esc(st.d.desc)}</p>
         <table class="kv"><tr><th>Lokasi</th><td>${esc(hsLabel(h))}</td></tr>
-        <tr><th>Biaya</th><td>${money(st.d.cost)}${it ? ` + program ${money(ITPM[it].cost)}` : ''}</td></tr>
-        <tr><th>PFD desain</th><td>${String(st.d.pfd).replace('.', ',')} (faktor pengurangan risiko ${num(1 / st.d.pfd)})</td></tr>
-        <tr><th>Program uji</th><td>${it ? esc(ITPM[it].name) : '<span class="bad">Belum ada</span>'}</td></tr>
-        <tr><th>PFD efektif</th><td>${String(+st.pfd.toFixed(3)).replace('.', ',')}${st.tested ? '' : ' (naik karena tidak diuji)'}</td></tr>
-        <tr><th>Keandalan yang dapat dikreditkan</th><td><b>${pct(st.rel)}</b></td></tr></table>
-        ${st.tested ? '' : `<div class="pick-grp"><h5>Terapkan program inspeksi &amp; pengujian</h5><p class="note">Barier yang tidak diuji berkala tidak dapat dikreditkan penuh dalam LOPA karena kegagalan tersembunyinya tidak pernah terungkap. Pilih program yang sesuai untuk perangkat ini.</p><div class="prog-list">${progs.map(k => progBtn(k, easy && ITPM[k].fits.includes(st.dev), remaining(stage))).join('')}</div></div>`}
-        <div class="pop-actions"><button class="btn3d silver small" data-pop="swap">Ganti Perangkat</button><button class="btn3d red small" data-pop="rm-dev">Lepas Perangkat</button>${it ? '<button class="btn3d silver small" data-pop="rm-test">Lepas Program Uji</button>' : ''}</div>`, { devHs: h.id });
-    if (!el) return;
-    $$('.prog', el).forEach(b => b.addEventListener('click', () => { if (applyProgram(stage, h, b.dataset.prog)) openDevicePop(stage, h); }));
+        <tr><th>Biaya</th><td>${money(st.d.cost)}${it ? ` + kontrol EF ${money(ITPM[it].cost)}` : ''}</td></tr>
+        <tr><th>PFD desain</th><td>${pfdTxt(st.d.pfd)} (faktor pengurangan risiko ${num(1 / st.d.pfd)})</td></tr>
+        <tr><th>Escalation factor</th><td>${it ? `${esc(ITPM[it].code)}: ${esc(ITPM[it].ef)}${done ? (st.tested ? ' <span class="ok">(tepat)</span>' : ' <span class="bad">(keliru)</span>') : ''}` : '<span class="bad">Belum dikendalikan</span>'}</td></tr>
+        ${it ? `<tr><th>Kontrol</th><td>${esc(ITPM[it].name)}</td></tr>` : ''}
+        ${done && !st.tested ? `<tr><th>Seharusnya</th><td>${esc(ITPM[st.d.itpm].code)}: ${esc(ITPM[st.d.itpm].ef)}</td></tr>` : ''}
+        <tr><th>${done ? 'PFD terverifikasi' : 'PFD yang diklaim'}</th><td>${pfdTxt(st.pfd)}${why}</td></tr>
+        <tr><th>${done ? 'Keandalan terverifikasi' : 'Keandalan yang diklaim'}</th><td><b>${pct(st.rel)}</b></td></tr></table>
+        ${done ? '' : `<div class="pick-grp"><h5>${it ? 'Ganti escalation factor yang dikendalikan' : 'Kendalikan escalation factor perangkat ini'}</h5><p class="note">Pilih kondisi yang paling mungkin melumpuhkan perangkat ini tanpa terlihat, beserta kontrolnya. Barier yang escalation factor-nya tidak dikendalikan tidak dapat dikreditkan penuh dalam LOPA. Pilihan keliru tetap memakai anggaran dan baru terungkap saat evaluasi.</p><div class="prog-list">${efGroups(progs, k => progBtn(k, easy && ITPM[k].fits.includes(st.dev), left, k === it))}</div></div>`}
+        ${done ? '' : `<div class="pop-actions"><button class="btn3d silver small" data-pop="swap">Ganti Perangkat</button><button class="btn3d red small" data-pop="rm-dev">Lepas Perangkat</button>${it ? '<button class="btn3d silver small" data-pop="rm-test">Lepas Kontrol EF</button>' : ''}</div>`}`, { devHs: h.id }, { cls: done ? '' : 'ef-pop', foot: done ? '' : efFoot() });
+    if (!el || done) return;
+    wireProgList(el, k => { if (applyProgram(stage, h, k)) openDevicePop(stage, h); });
     el.querySelector('[data-pop="swap"]').addEventListener('click', () => { Sfx.click(); openPicker(stage, h, pid.devNode(h.id)); });
     el.querySelector('[data-pop="rm-dev"]').addEventListener('click', () => { delete S.placements[stage][h.id]; delete S.itpm[stage][h.id]; Sfx.remove(); save(); refreshBarrierUI(stage); });
     const rt = el.querySelector('[data-pop="rm-test"]');
@@ -1522,28 +1785,37 @@ const Game = (() => {
     if (pop && pop.eqId === e.id) { closePopover(); return; }
     openEqPop(stage, e);
   }
+  /* penilaian kontrol escalation factor pada peralatan: peralatan kritis (scn.inspect) harus
+     memakai kontrol yang ditetapkan; peralatan lain boleh diberi kontrol yang sesuai jenisnya */
+  function eqVerdict(e, k) {
+    const t = (scn.inspect || []).find(x => x.id === e.id);
+    if (t) return k === t.itpm ? 'ok' : 'wrong';
+    return ITPM[k].fitsEq.includes(e.type) ? 'extra' : 'wrong';
+  }
   function openEqPop(stage, e) {
     const eqm = (S.eqItpm && S.eqItpm[stage]) || null;
     const cur = eqm && eqm[e.id];
     const inspectable = eqm && eqInspectable(stage).some(x => x.id === e.id);
-    const open = inspectable && !S.evalDone[stage];
+    const done = !!S.evalDone[stage];
+    const open = inspectable && !done;
     const easy = cfg.difficulty === 'mudah';
     const left = remaining(stage) + (cur ? ITPM[cur].cost : 0);
+    const verdict = done && cur ? { ok: ' <span class="ok">(tepat)</span>', extra: ' <span class="muted">(tambahan, tidak dinilai)</span>', wrong: ' <span class="bad">(keliru)</span>' }[eqVerdict(e, cur)] : '';
     scn.equipment.forEach(x => pid.highlight(x.id, false));
     pid.highlight(e.id, true);
     const el = openPopover(pid.eqNode(e.id), eqPopHTML(e, false)
-      + (inspectable ? `<table class="kv"><tr><th>Program inspeksi</th><td>${cur ? esc(ITPM[cur].name) + ' (' + money(ITPM[cur].cost) + ')' : '<span class="bad">Belum ada</span>'}</td></tr></table>` : '')
-      + (open ? `<div class="pick-grp"><h5>${cur ? 'Ganti program inspeksi' : 'Terapkan program inspeksi peralatan'}</h5><div class="prog-list">${stagePrograms(stage, 'equipment').filter(k => k !== cur).map(k => progBtn(k, easy && ITPM[k].fitsEq.includes(e.type), left)).join('')}</div></div>` : '')
-      + (cur && open ? '<div class="pop-actions"><button class="btn3d red small" data-pop="rm-eq">Lepas Program</button></div>' : ''), { eqId: e.id });
+      + (inspectable ? `<table class="kv"><tr><th>Escalation factor</th><td>${cur ? `${esc(ITPM[cur].code)}: ${esc(ITPM[cur].ef)}${verdict}` : '<span class="bad">Belum dikendalikan</span>'}</td></tr>${cur ? `<tr><th>Kontrol</th><td>${esc(ITPM[cur].name)} (${money(ITPM[cur].cost)})</td></tr>` : ''}</table>` : '')
+      + (open ? `<div class="pick-grp"><h5>${cur ? 'Ganti escalation factor peralatan' : 'Kendalikan escalation factor peralatan'}</h5><p class="note">Tidak semua peralatan kritis. Pilih kontrol hanya untuk peralatan yang kegagalannya dapat memicu skenario berbahaya.</p><div class="prog-list">${efGroups(stagePrograms(stage, 'equipment'), k => progBtn(k, easy && ITPM[k].fitsEq.includes(e.type), left, k === cur))}</div></div>` : '')
+      + (cur && open ? '<div class="pop-actions"><button class="btn3d red small" data-pop="rm-eq">Lepas Kontrol EF</button></div>' : ''), { eqId: e.id }, open ? { cls: 'ef-pop', foot: efFoot() } : {});
     if (!el) return;
-    $$('.prog', el).forEach(b => b.addEventListener('click', () => { if (applyEqProgram(stage, e, b.dataset.prog)) openEqPop(stage, e); }));
+    if (open) wireProgList(el, k => { if (applyEqProgram(stage, e, k)) openEqPop(stage, e); });
     const rb = el.querySelector('[data-pop="rm-eq"]');
     if (rb) rb.addEventListener('click', () => { delete eqm[e.id]; Sfx.remove(); save(); refreshBarrierUI(stage); openEqPop(stage, e); });
   }
   function confirmEvaluate(stage) {
-    const untested = Object.keys(S.placements[stage]).filter(h => !devState(stage, h).tested).length;
+    const untested = Object.keys(S.placements[stage]).filter(h => !devState(stage, h).claimed).length;
     if (untested) {
-      showModal({ title: 'Evaluasi sekarang?', body: `<p>Masih ada <b>${untested}</b> barier yang belum memiliki program inspeksi dan pengujian. Barier tersebut tidak dapat dikreditkan penuh.</p>`,
+      showModal({ title: 'Evaluasi sekarang?', body: `<p>Masih ada <b>${untested}</b> barier yang escalation factor-nya belum dikendalikan. Barier tersebut tidak dapat dikreditkan penuh.</p><p class="muted small">Setelah evaluasi, pemasangan dan kontrol escalation factor pada tahap ini tidak dapat diubah lagi.</p>`,
         buttons: [{ label: 'Evaluasi', cls: 'btn3d primary', onClick: () => evaluate(stage) }, { label: 'Kembali', cls: 'btn3d silver' }] });
     } else evaluate(stage);
   }
@@ -1551,53 +1823,69 @@ const Game = (() => {
     const hs = scn.hotspots.filter(h => h.stage === stage);
     const needed = hs.filter(h => h.accept.length);
     const names = arr => arr.map(k => DEVICES[k].name).join(' atau ');
-    let correct = 0, tested = 0, wrong = 0, unnecessary = 0;
+    let correct = 0, tested = 0, wrong = 0, unnecessary = 0, efWrong = 0;
+    const efNote = st => st.wrongEf ? ` Kontrol ${ITPM[st.ef].code} yang dipasang juga tidak sesuai dengan escalation factor perangkat tersebut.` : '';
+    const claimed = reliability(stage);
     const rows = hs.map(h => {
       const st = devState(stage, h.id);
+      if (st && st.wrongEf) efWrong++;
       if (h.accept.length) {
         if (!st) return { h, st: 'missing', msg: 'Tidak terpasang. Diharapkan: ' + names(h.accept) + '.' };
         if (h.accept.includes(st.dev)) {
           correct++;
-          if (st.tested) { tested++; return { h, st: 'ok', msg: `Tepat dan teruji (${ITPM[st.d.itpm].name}).` }; }
-          return { h, st: 'partial', msg: `Tepat, tetapi belum ada ${ITPM[st.d.itpm].name}. Keandalan barier tidak dapat dibuktikan sehingga tidak dapat dikreditkan sebagai IPL.` };
+          const ef = ITPM[st.d.itpm];
+          if (st.tested) { tested++; return { h, st: 'ok', msg: `Tepat, escalation factor terkendali: ${lc(ef.name)}.` }; }
+          if (st.wrongEf) return { h, st: 'partial', msg: `Perangkat tepat, tetapi kontrol escalation factor keliru. ${ITPM[st.ef].code} menangani ${lc(ITPM[st.ef].ef)}, sedangkan escalation factor ${st.d.code} adalah ${lc(ef.ef)} dengan kontrol ${lc(ef.name)}. Barier tidak dapat dikreditkan sebagai IPL.` };
+          return { h, st: 'partial', msg: `Perangkat tepat, tetapi escalation factor belum dikendalikan: ${lc(ef.ef)}. Kontrol yang diharapkan: ${lc(ef.name)}. Keandalan barier tidak dapat dibuktikan sehingga tidak dapat dikreditkan sebagai IPL.` };
         }
-        wrong++; return { h, st: 'wrong', msg: `${st.d.name} kurang tepat di sini. Diharapkan: ${names(h.accept)}.` };
+        wrong++; return { h, st: 'wrong', msg: `${st.d.name} kurang tepat di sini. Diharapkan: ${names(h.accept)}.${efNote(st)}` };
       }
-      if (st) { unnecessary++; return { h, st: 'wrong', msg: `${st.d.name} tidak diperlukan di titik ini.` }; }
+      if (st) { unnecessary++; return { h, st: 'wrong', msg: `${st.d.name} tidak diperlukan di titik ini.${efNote(st)}` }; }
       return { h, st: 'ok', msg: 'Benar dibiarkan kosong.' };
     });
     const targets = stage === 3 ? (scn.inspect || []) : [];
     const eqm = (S.eqItpm && S.eqItpm[stage]) || {};
     const eqRows = targets.map(t => {
-      const e = scn.equipment.find(x => x.id === t.id);
-      const ok = eqm[t.id] === t.itpm;
-      return { t, e, st: ok ? 'ok' : 'missing', msg: ok ? `Tepat: ${ITPM[t.itpm].name}.` : `Belum ada ${ITPM[t.itpm].name}.` };
+      const e = scn.equipment.find(x => x.id === t.id), k = eqm[t.id], ef = ITPM[t.itpm];
+      if (k === t.itpm) return { t, e, st: 'ok', msg: `Tepat, escalation factor terkendali: ${lc(ef.name)}.` };
+      if (k) { efWrong++; return { t, e, st: 'wrong', msg: `Kontrol keliru. ${ITPM[k].code} menangani ${lc(ITPM[k].ef)}, sedangkan escalation factor utama peralatan ini adalah ${lc(ef.ef)} dengan kontrol ${lc(ef.name)}.` }; }
+      return { t, e, st: 'missing', msg: `Escalation factor belum dikendalikan: ${lc(ef.ef)}. Kontrol yang diharapkan: ${lc(ef.name)}.` };
     });
+    const extraRows = Object.keys(eqm).filter(id => !targets.some(t => t.id === id)).map(id => {
+      const e = scn.equipment.find(x => x.id === id), k = eqm[id];
+      if (!e || !ITPM[k]) return null;
+      const v = eqVerdict(e, k);
+      if (v === 'wrong') efWrong++;
+      return { e, st: v === 'extra' ? 'extra' : 'wrong', msg: v === 'extra' ? `${ITPM[k].name} sesuai untuk jenis peralatan ini, tetapi peralatan ini tidak termasuk peralatan kritis pada skenario. Tidak menambah nilai, hanya memakai anggaran.` : `${ITPM[k].code} menangani ${lc(ITPM[k].ef)}, yang tidak sesuai untuk ${EQ_TYPE_NAMES[e.type] || e.type}.` };
+    }).filter(Boolean);
     const eqOk = eqRows.filter(r => r.st === 'ok').length;
     const hw = correct / needed.length, cov = tested / needed.length, eqc = targets.length ? eqOk / targets.length : 0;
     const raw = stage === 3 ? 55 * hw + 25 * cov + 20 * eqc : 65 * hw + 35 * cov;
-    const score = Math.max(0, Math.min(100, Math.round(raw - 8 * (wrong + unnecessary))));
-    const rel = reliability(stage);
+    const score = Math.max(0, Math.min(100, Math.round(raw - 8 * (wrong + unnecessary) - 4 * efWrong)));
     S.evalDone[stage] = true;
+    const rel = reliability(stage);
     S.evalRows[stage] = rows.map(r => ({ id: r.h.id, st: r.st }));
     S.pendingScore = { stage, score };
     save();
+    selectTool(null, null);
+    refreshBarrierUI(stage);
     showEvalMarks(stage);
     const be = $('#btn-eval'); be.innerHTML = `${ICON.check}<span>Lanjut</span>`; be.className = 'btn3d primary wide';
-    selectTool(null, null);
     if (score >= 70) Sfx.success(); else Sfx.fail();
     showModal({ title: `Evaluasi Tahap ${stage}: ${score} poin`, cls: 'report',
       body: `<div class="eval-sum">
           <div><span>Barier tepat</span><b>${correct}/${needed.length}</b></div>
-          <div><span>Tepat dan teruji</span><b>${tested}/${needed.length}</b></div>
-          ${stage === 3 ? `<div><span>Inspeksi peralatan kritis</span><b>${eqOk}/${targets.length}</b></div>` : ''}
-          <div><span>Keliru / tidak perlu</span><b>${wrong + unnecessary}</b></div>
-          <div><span>Keandalan rata-rata</span><b>${rel.n ? pct(rel.avg) : '0%'}</b></div>
+          <div><span>Tepat dan EF terkendali</span><b>${tested}/${needed.length}</b></div>
+          ${stage === 3 ? `<div><span>EF peralatan kritis</span><b>${eqOk}/${targets.length}</b></div>` : ''}
+          <div><span>Barier keliru / tidak perlu</span><b>${wrong + unnecessary}</b></div>
+          <div><span>Kontrol EF keliru</span><b>${efWrong}</b></div>
+          <div><span>Keandalan diklaim / terverifikasi</span><b>${claimed.n ? pct(claimed.avg) : '0%'} / ${rel.n ? pct(rel.avg) : '0%'}</b></div>
           <div><span>Anggaran terpakai</span><b>${money(spent(stage))} dari ${money(budgetFor(stage))}</b></div>
         </div>
-        <p class="muted small">Bobot nilai: ${stage === 3 ? 'ketepatan barier 55%, pengujian barier 25%, inspeksi peralatan 20%' : 'ketepatan barier 65%, pengujian barier 35%'}, dikurangi 8 poin untuk setiap pemasangan keliru atau tidak perlu.</p>
+        <p class="muted small">Bobot nilai: ${stage === 3 ? 'ketepatan barier 55%, escalation factor barier terkendali 25%, escalation factor peralatan kritis 20%' : 'ketepatan barier 65%, escalation factor barier terkendali 35%'}, dikurangi 8 poin untuk setiap barier keliru atau tidak perlu dan 4 poin untuk setiap kontrol escalation factor yang keliru.</p>
         <ul class="eval-list">${rows.map(r => `<li class="${r.st}"><b>${esc(r.h.label)}</b><span>${esc(r.msg)}</span><em>${esc(r.h.why)}</em></li>`).join('')}</ul>
-        ${eqRows.length ? `<h4 class="chain-h">Inspeksi peralatan kritis</h4><ul class="eval-list">${eqRows.map(r => `<li class="${r.st}"><b>${esc(r.e.id)} · ${esc(r.e.name)}</b><span>${esc(r.msg)}</span><em>${esc(r.t.why)}</em></li>`).join('')}</ul>` : ''}`,
+        ${eqRows.length ? `<h4 class="chain-h">Escalation factor peralatan kritis</h4><ul class="eval-list">${eqRows.map(r => `<li class="${r.st}"><b>${esc(r.e.id)} · ${esc(r.e.name)}</b><span>${esc(r.msg)}</span><em>${esc(r.t.why)}</em></li>`).join('')}</ul>` : ''}
+        ${extraRows.length ? `<h4 class="chain-h">Kontrol escalation factor pada peralatan lain</h4><ul class="eval-list">${extraRows.map(r => `<li class="${r.st}"><b>${esc(r.e.id)} · ${esc(r.e.name)}</b><span>${esc(r.msg)}</span></li>`).join('')}</ul>` : ''}`,
       buttons: [{ label: 'Lihat P&ID', cls: 'btn3d silver' }, { label: 'Lanjut', cls: 'btn3d primary', onClick: () => finishStage(stage, score, '') }] });
   }
   function showEvalMarks(stage) {
@@ -1620,7 +1908,7 @@ const Game = (() => {
   }
   function advanceStage() {
     S.stage++;
-    if (S.stage > 4) { S.finished = true; save(); recordHistory(); showResult(); return; }
+    if (S.stage > 4) { S.finished = true; save(); recordHistory(); markPromoDue(); showResult(); return; }
     save(); renderStage(); stageIntro();
   }
   function totalScore() {
@@ -1643,9 +1931,12 @@ const Game = (() => {
     S = migrate(S);
     const total = totalScore(), g = grade(total);
     const prev = barrierList(3), mit = barrierList(4);
-    const progs = [];
-    [3, 4].forEach(st => Object.values(S.itpm[st]).forEach(k => { if (ITPM[k] && !progs.includes(ITPM[k].name)) progs.push(ITPM[k].name); }));
-    const eqProgs = Object.keys(S.eqItpm[3] || {}).map(id => `${ITPM[S.eqItpm[3][id]].name} pada ${id}`);
+    /* kontrol escalation factor dikelompokkan per kontrol, dengan sasaran yang tepat dan yang keliru */
+    const efMap = new Map();
+    const addEf = (k, on, ok) => { if (!ITPM[k]) return; const key = k + (ok ? '+' : '-'); if (!efMap.has(key)) efMap.set(key, { k, ok, on: [] }); efMap.get(key).on.push(on); };
+    [3, 4].forEach(st => Object.keys(S.itpm[st] || {}).forEach(h => { const ds = devState(st, h); if (ds && ds.ef) addEf(ds.ef, ds.d.code, ds.tested); }));
+    Object.keys(S.eqItpm[3] || {}).forEach(id => { const e = scn.equipment.find(x => x.id === id), k = S.eqItpm[3][id]; if (e && ITPM[k]) addEf(k, id, eqVerdict(e, k) !== 'wrong'); });
+    const efChips = [...efMap.values()];
     const relAll = [...prev, ...mit];
     const relAvg = relAll.length ? relAll.reduce((s, x) => s + x.rel, 0) / relAll.length : 0;
     app.innerHTML = `<div class="screen sub result">
@@ -1660,16 +1951,16 @@ const Game = (() => {
         ${cfg.name ? `<p class="muted">Pemain: <b>${esc(cfg.name)}</b></p>` : ''}
         <h4>Diagram Bow-Tie Anda</h4>
         <div class="bowtie-wrap">${bowtieSVG(prev, mit)}</div>
-        <div class="bt-legend"><span><i class="lg solid"></i>Barier teruji (terkredit)</span><span><i class="lg dashed"></i>Barier belum diuji (keandalan tidak terbukti)</span>${scn.events.some(e => e.hf) ? '<span><i class="lg hf"></i>Faktor manusia dari kasus obrolan tim (pemicu ancaman atau pelemah barier)</span>' : ''}</div>
-        <div class="degr"><b>Kontrol degradasi (inspeksi, pengujian, dan perawatan):</b> ${progs.length || eqProgs.length ? [...progs, ...eqProgs].map(p => `<span class="chip">${esc(p)}</span>`).join('') : '<span class="muted">tidak ada</span>'}</div>
+        <div class="bt-legend"><span><i class="lg solid"></i>Barier dengan escalation factor terkendali (terkredit)</span><span><i class="lg dashed"></i>Barier yang escalation factor-nya belum atau keliru dikendalikan (keandalan tidak terbukti)</span>${planEvents().some(e => e.hf) ? '<span><i class="lg hf"></i>Faktor manusia dari kasus obrolan tim (pemicu ancaman atau pelemah barier)</span>' : ''}</div>
+        <div class="degr"><b>Escalation factor dan kontrolnya (inspeksi, pengujian, dan perawatan):</b> ${efChips.length ? efChips.map(c => `<span class="chip${c.ok ? '' : ' bad'}" title="${esc(ITPM[c.k].ef)}">${esc(ITPM[c.k].name)}: ${esc(c.on.join(', '))}${c.ok ? '' : ' (keliru)'}</span>`).join('') : '<span class="muted">tidak ada</span>'}</div>
         <h4>Catatan Pembelajaran</h4>
         <ul class="notes">
-          <li>Barier pencegahan yang terpasang: ${prev.length ? prev.map(x => esc(x.d.name) + (x.tested ? '' : ' (belum diuji)')).join('; ') : 'tidak ada'}.</li>
-          <li>Barier mitigasi yang terpasang: ${mit.length ? mit.map(x => esc(x.d.name) + (x.tested ? '' : ' (belum diuji)')).join('; ') : 'tidak ada'}.</li>
-          <li>Investasi barier dan program pengujian: pencegahan ${money(spent(3))}, mitigasi ${money(spent(4))}, total ${money(spent(3) + spent(4))}. ${esc(costNote())}</li>
+          <li>Barier pencegahan yang terpasang: ${prev.length ? prev.map(x => esc(x.d.name) + (x.tested ? '' : x.ef ? ' (kontrol EF keliru)' : ' (EF belum dikendalikan)')).join('; ') : 'tidak ada'}.</li>
+          <li>Barier mitigasi yang terpasang: ${mit.length ? mit.map(x => esc(x.d.name) + (x.tested ? '' : x.ef ? ' (kontrol EF keliru)' : ' (EF belum dikendalikan)')).join('; ') : 'tidak ada'}.</li>
+          <li>Investasi barier dan kontrol escalation factor: pencegahan ${money(spent(3))}, mitigasi ${money(spent(4))}, total ${money(spent(3) + spent(4))}. ${esc(costNote())}</li>
           <li>Lapisan proteksi harus independen, efektif, dan dapat diaudit. Setiap ancaman pada bow-tie idealnya dipotong oleh lebih dari satu barier dengan mekanisme berbeda (instrumen, mekanis, dan prosedural).</li>
-          <li>Barier hanya seandal program inspeksi dan pengujiannya. Tanpa pengujian berkala, kegagalan tersembunyi baru diketahui saat barier dibutuhkan.</li>
-          ${scn.events.some(e => e.hf) ? `<li>Faktor manusia pada diagram bow-tie menunjukkan bahwa barier teknis dapat dilumpuhkan oleh pekerjaan di luar kewenangan, bypass, atau kelalaian. Kontrolnya adalah sistem izin kerja, manajemen perubahan, pengelolaan bypass, kompetensi, dan budaya berani menghentikan pekerjaan.${(() => { const r = S.eventResults.find(x => x.hf); return r ? (r.hf.ok ? ' Anda mengklasifikasikan jenis kesalahan manusia dengan tepat.' : ' Klasifikasi jenis kesalahan manusia Anda masih perlu diperbaiki.') : ''; })()}</li>` : ''}
+          <li>Barier hanya seandal pengendalian escalation factor-nya. Kontrol harus sesuai dengan cara barier itu dapat gagal; inspeksi yang salah sasaran memakai anggaran tanpa mengungkap kegagalan tersembunyi.</li>
+          ${planEvents().some(e => e.hf) ? `<li>Faktor manusia pada diagram bow-tie menunjukkan bahwa barier teknis dapat dilumpuhkan oleh pekerjaan di luar kewenangan, bypass, kelalaian, atau keputusan yang keliru. Kontrolnya adalah sistem izin kerja, manajemen perubahan, pengelolaan bypass, serah terima yang jelas, kompetensi, dan budaya berani menghentikan pekerjaan.${(() => { const r = S.eventResults.filter(x => x.hf); return r.length ? ` Anda mengklasifikasikan ${r.filter(x => x.hf.ok).length} dari ${r.length} jenis kesalahan manusia dengan tepat.` : ''; })()}</li>` : ''}
         </ul>
         <div class="cfg-actions">
           <button class="btn3d primary" data-act="again">${ICON.play}<span>Ulangi Skenario</span></button>
@@ -1703,7 +1994,7 @@ const Game = (() => {
       <text x="658" y="26" text-anchor="middle" font-size="13" font-weight="800" fill="#1f2a35">BARIER MITIGASI</text>
       <text x="865" y="26" text-anchor="middle" font-size="13" font-weight="800" fill="#1f2a35">KONSEKUENSI</text>
       ${th.map((t, i) => `<g><path d="M250 ${rowY(i, th.length)} C 380 ${rowY(i, th.length)}, 400 210, 440 210" fill="none" stroke="#9aa6b1" stroke-width="2"/><rect x="20" y="${rowY(i, th.length) - 20}" width="230" height="40" rx="8" fill="#eef2f5" stroke="#5d6b78" stroke-width="2"/><foreignObject x="26" y="${rowY(i, th.length) - 18}" width="218" height="36"><div xmlns="http://www.w3.org/1999/xhtml" class="bt-txt">${esc(t)}</div></foreignObject></g>`).join('')}
-      ${scn.events.filter(e => e.hf && th[e.hf.threat] !== undefined).map(e => { const y = rowY(e.hf.threat, th.length) + 24; return `<g class="bt-hf"><path d="M135 ${y - 4} V${y}" stroke="#e09b00" stroke-width="2"/><rect x="24" y="${y}" width="222" height="32" rx="7" fill="#fff4dc" stroke="#e09b00" stroke-width="1.6" stroke-dasharray="4 2"/><circle cx="36" cy="${y + 11}" r="3.6" fill="#b26a00"/><path d="M30.2 ${y + 22.5} a5.8 5.2 0 0 1 11.6 0z" fill="#b26a00"/><foreignObject x="46" y="${y + 2}" width="196" height="28"><div xmlns="http://www.w3.org/1999/xhtml" class="bt-hf-txt">${esc(e.hf.factor)}</div></foreignObject></g>`; }).join('')}
+      ${planEvents().filter(e => e.hf && th[e.hf.threat] !== undefined).map(e => { const y = rowY(e.hf.threat, th.length) + 24; return `<g class="bt-hf"><path d="M135 ${y - 4} V${y}" stroke="#e09b00" stroke-width="2"/><rect x="24" y="${y}" width="222" height="32" rx="7" fill="#fff4dc" stroke="#e09b00" stroke-width="1.6" stroke-dasharray="4 2"/><circle cx="36" cy="${y + 11}" r="3.6" fill="#b26a00"/><path d="M30.2 ${y + 22.5} a5.8 5.2 0 0 1 11.6 0z" fill="#b26a00"/><foreignObject x="46" y="${y + 2}" width="196" height="28"><div xmlns="http://www.w3.org/1999/xhtml" class="bt-hf-txt">${esc(e.hf.factor)}</div></foreignObject></g>`; }).join('')}
       ${cs.map((c, i) => `<g><path d="M560 210 C 600 210, 620 ${rowY(i, cs.length)}, 750 ${rowY(i, cs.length)}" fill="none" stroke="#9aa6b1" stroke-width="2"/><rect x="750" y="${rowY(i, cs.length) - 20}" width="230" height="40" rx="8" fill="#fdecec" stroke="#d64541" stroke-width="2"/><foreignObject x="756" y="${rowY(i, cs.length) - 18}" width="218" height="36"><div xmlns="http://www.w3.org/1999/xhtml" class="bt-txt">${esc(c)}</div></foreignObject></g>`).join('')}
       <rect x="440" y="168" width="120" height="84" rx="14" fill="#1f2a35" stroke="#e53935" stroke-width="3"/>
       <foreignObject x="446" y="174" width="108" height="72"><div xmlns="http://www.w3.org/1999/xhtml" class="bt-txt top">${esc(bt.top)}</div></foreignObject>

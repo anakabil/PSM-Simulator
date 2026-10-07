@@ -103,7 +103,7 @@ const SCN_TRAFO = {
         { t: 14, type: 'arc', sev: 'crit', at: 'TR-601', pos: [400, 178], text: 'BUSUR LISTRIK di dalam tangki: minyak menyembur dari pernapasan konservator dan celah tutup tangki.' },
         { t: 21, type: 'explosion', sev: 'final', at: 'TR-601', pos: [400, 240], text: 'LEDAKAN TANGKI TR-601 akibat busur listrik internal; minyak terbakar menyembur ke sekeliling switchyard.' },
       ],
-      answer: { node: ['TR-601'], param: ['C', 'E'], guide: ['high', 'other'] },
+      answer: { node: ['TR-601'], param: ['C', 'E'], guide: ['aswell', 'high', 'other'] },
       hint: 'Gas terlarut dalam minyak naik cepat. Minyak sedang terurai oleh panas berlebih atau busur listrik di dalam tangki.',
       causes: ['Kegagalan isolasi di dalam trafo menimbulkan busur listrik yang menguraikan minyak menjadi gas', 'Beban penyulang turun', 'Suhu lingkungan naik', 'Kipas pendingin terlalu cepat'], causeAns: 0,
       cons: ['Tekanan gas di dalam tangki naik mendadak, tangki robek atau meledak, dan minyak terbakar', 'Level konservator turun tanpa dampak', 'Arus penyulang naik sedikit', 'Trafo menjadi lebih dingin'], consAns: 0,

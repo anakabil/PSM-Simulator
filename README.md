@@ -1,6 +1,6 @@
 # PSM Simulator by Nusa Safety
 
-Permainan simulasi keselamatan proses (Process Safety Management) berbasis web untuk Nusa Safety, PT. Nusa Rendra Jayatama. Pemain diberi P&ID sebuah unit proses dan mempelajari kondisi normalnya. Setelah itu pemain menjalankan proses produksi dan mengenali abnormalitas dari tren serta peringatan lapangan. Tahap berikutnya adalah memasang barier pencegahan dan mitigasi dengan anggaran terbatas, lengkap dengan program inspeksi dan pengujian agar barier tetap andal. Hasil akhir disajikan sebagai diagram bow-tie.
+Permainan simulasi keselamatan proses (Process Safety Management) berbasis web untuk Nusa Safety, PT. Nusa Rendra Jayatama. Pemain diberi P&ID sebuah unit proses dan mempelajari kondisi normalnya. Setelah itu pemain menjalankan proses produksi dan mengenali abnormalitas dari tren serta peringatan lapangan. Tahap berikutnya adalah memasang barier pencegahan dan mitigasi dengan anggaran terbatas, lalu mengendalikan escalation factor setiap barier, yaitu kondisi yang dapat melumpuhkannya tanpa terlihat, melalui inspeksi, pengujian, dan perawatan. Hasil akhir disajikan sebagai diagram bow-tie.
 
 Tersedia 12 skenario dari enam sektor industri, yaitu minyak dan gas bumi, petrokimia, ketenagalistrikan, energi baru terbarukan, manufaktur, serta properti dan konstruksi EPC. Dengan demikian kerangka PSM yang sama dapat dilatihkan pada fasilitas yang tidak selalu disebut unit proses, seperti gardu induk, PLTS dengan baterai, cold storage, gedung komersial, dan asphalt mixing plant.
 
@@ -20,11 +20,31 @@ Progres permainan, riwayat skor, dan konfigurasi disimpan di `localStorage` pera
 | Tahap | Tujuan | Mekanik |
 |---|---|---|
 | 1. Kondisi Normal | Memahami proses produksi | Klik tiap peralatan di P&ID, tekan tombol Jalankan (misalnya Jalankan Proses Produksi, Jalankan Operasi Gedung, atau Jalankan Operasi AMP sesuai fasilitas), ubah set point, amati isi bejana dan tren, lalu kuis lima soal dengan urutan pilihan diacak |
-| 2. Abnormalitas | Mengenali deviasi (HAZOP) | Tekan tombol Jalankan; saat terjadi kegagalan muncul peringatan lapangan bertahap (getaran, kebocoran gas, gas beracun, panas berlebih, tumpahan, asap, busur listrik, awan debu, kebakaran, ledakan); hentikan dan laporkan node, parameter, guideword, penyebab, konsekuensi; satu kejadian berawal dari obrolan tim yang memuat kesalahan manusia, sehingga laporan juga meminta jenis kesalahannya |
-| 3. Barier Pencegahan | Mencegah kehilangan kontainmen atau kehilangan kendali energi | Pasang perangkat yang sesuai sektor, misalnya PT/LT/TT/FT, PSV, SIF, trip level/suhu/aliran, BMS, interlock draft, relai proteksi, BMS baterai, monitor sabuk elevator, sakelar tekanan tinggi kompresor, atau detektor LPG dengan katup solenoid; terapkan program uji (kalibrasi, proof test, uji PSV, uji relai, uji perangkat mekanis) serta inspeksi peralatan (bejana tekan/tangki, pemantauan getaran, termografi panel, pembersihan ducting dapur) |
-| 4. Barier Mitigasi | Mencegah eskalasi menjadi bencana | Pasang detektor gas/api/asap, ESD, deluge, sprinkler, hidran, pemadam gas bersih, wet chemical, tanggul, venting dan isolasi ledakan, ventilasi darurat, tirai air, presurisasi tangga, alarm umum; terapkan bump test detektor, uji sistem pemadam, uji fungsi sistem darurat, inspeksi barier pasif, dan latihan tanggap darurat |
+| 2. Abnormalitas | Mengenali deviasi (HAZOP) | Lima kejadian dari salah satu variasi abnormalitas; tekan tombol Jalankan; saat terjadi kegagalan muncul peringatan lapangan bertahap (getaran, kebocoran gas, gas beracun, panas berlebih, tumpahan, asap, busur listrik, awan debu, kebakaran, ledakan); hentikan dan laporkan node, parameter, guideword CCPS, penyebab, konsekuensi; kejadian ke-3 dan ke-5 berawal dari obrolan tim yang memuat kesalahan manusia, sehingga laporan juga meminta jenis kesalahannya |
+| 3. Barier Pencegahan | Mencegah kehilangan kontainmen atau kehilangan kendali energi | Pasang perangkat yang sesuai sektor, misalnya PT/LT/TT/FT, PSV, SIF, trip level/suhu/aliran, BMS, interlock draft, relai proteksi, BMS baterai, monitor sabuk elevator, sakelar tekanan tinggi kompresor, atau detektor LPG dengan katup solenoid; pilih escalation factor setiap perangkat beserta kontrolnya dari daftar lengkap, serta escalation factor peralatan kritis seperti korosi bejana, keausan mesin berputar, atau degradasi isolasi |
+| 4. Barier Mitigasi | Mencegah eskalasi menjadi bencana | Pasang detektor gas/api/asap, ESD, deluge, sprinkler, hidran, pemadam gas bersih, wet chemical, tanggul, venting dan isolasi ledakan, ventilasi darurat, tirai air, presurisasi tangga, alarm umum; kendalikan escalation factor-nya, misalnya sensor detektor teracuni, nozel tersumbat, katup darurat lengket, atau personel yang tidak terlatih |
 
 Menu awal: New Game, Continue, Configuration, Credit.
+
+### Variasi abnormalitas
+
+Setiap skenario menyimpan kumpulan kejadian berisi lima kegagalan teknis dan tiga kasus faktor manusia, lalu menyusunnya menjadi lima variasi. Setiap variasi berisi lima kejadian dengan kasus faktor manusia selalu berada pada urutan ke-3 dan ke-5, sedangkan urutan ke-1, ke-2, dan ke-4 diisi kegagalan teknis. Kedua kasus faktor manusia dalam satu variasi memicu ancaman bow-tie yang berbeda dan memakai jenis kesalahan yang berbeda. Permainan baru memakai variasi berikutnya secara bergiliran, dimulai dari variasi acak, sehingga mencoba ulang skenario yang sama memberi jenis dan urutan abnormalitas yang berbeda. Nomor variasi tampil di kartu Kejadian pada Tahap 2, dan variasi terakhir per skenario disimpan di `localStorage` dengan kunci `psm_sim_var_v1`.
+
+### Guideword HAZOP menurut CCPS
+
+Pilihan guideword pada formulir laporan mengikuti tujuh guideword asli HAZOP beserta maknanya pada CCPS (2008), Guidelines for Hazard Evaluation Procedures edisi ketiga, yang sejalan dengan IEC 61882.
+
+| Guideword | Makna |
+|---|---|
+| Tidak ada (No) | Negasi tujuan desain, misalnya tidak ada aliran atau nyala |
+| Lebih (More) | Kenaikan kuantitatif, misalnya tekanan, suhu, level, aliran, atau arus lebih besar |
+| Kurang (Less) | Penurunan kuantitatif |
+| Serta (As well as) | Kenaikan kualitatif: tujuan tercapai tetapi disertai sesuatu yang tidak dikehendaki, misalnya kontaminan, fasa tambahan, atau material asing |
+| Sebagian (Part of) | Penurunan kualitatif: hanya sebagian tujuan tercapai, misalnya salah satu komponen tidak ada |
+| Kebalikan (Reverse) | Kebalikan logis dari tujuan desain, misalnya aliran balik |
+| Selain (Other than) | Substitusi menyeluruh, misalnya material salah atau arus melalui jalur yang tidak dirancang |
+
+Makna guideword yang dipilih tampil langsung di bawah isian formulir. Jawaban setiap kejadian ditinjau terhadap makna tersebut. Contohnya, oksigen yang masuk ke biogas dan logam asing yang ikut umpan hammer mill dibaca sebagai As well as, bukan Other than, karena tujuan desainnya tetap tercapai tetapi disertai komponen yang tidak dikehendaki.
 
 ### Penilaian Tahap 2
 
@@ -34,7 +54,9 @@ Formulir laporan dapat diperkecil lewat tombol di kanan atas. Selama diperkecil,
 
 ### Kasus faktor manusia dalam obrolan tim
 
-Setiap skenario memiliki satu kejadian tambahan yang berawal dari tindakan manusia, misalnya pekerjaan di luar kewenangan, bypass tanpa izin, perubahan tanpa MOC, atau langkah yang terlupa. Kasus ini disampaikan sebagai obrolan antara tim operasi, tim maintenance, pengawas, kontraktor, atau pihak luar. Selama operasi berjalan, pesan muncul sebagai balon obrolan di atas peralatan yang dibicarakan pada P&ID dan tercatat di kartu Obrolan Tim pada panel kanan. Tombol Lihat Komik membuka seluruh percakapan sebagai panel komik dan menjeda simulasi selama dibaca.
+Setiap permainan memuat dua kasus yang berawal dari tindakan manusia, yaitu kejadian ke-3 dan ke-5, misalnya pekerjaan di luar kewenangan, bypass tanpa izin, perubahan tanpa MOC, atau langkah yang terlupa. Kasus ini disampaikan sebagai obrolan antara tim operasi, tim maintenance, pengawas, kontraktor, atau pihak luar. Selama operasi berjalan, pesan muncul sebagai balon obrolan yang menunjuk peralatan tempat tokoh berada dan tercatat di kartu Obrolan Tim pada panel samping. Tombol Lihat Komik membuka seluruh percakapan sebagai panel komik dan menjeda simulasi selama dibaca.
+
+Bila beberapa pesan tampil pada waktu yang berdekatan, setiap balon diletakkan di sisi peralatan yang masih kosong, berturut-turut atas, kanan, kiri, atau bawah, tanpa menutupi balon lain, spanduk peringatan, tombol zoom, maupun bilah aksi, dan sedapat mungkin tanpa menutupi pembacaan DCS. Di ponsel, balon boleh turun ke area tren di bawah P&ID. Lama tampil setiap balon mengikuti kecepatan baca dalam waktu nyata: 1,5 detik untuk memindahkan pandangan ditambah 150 kata per menit, minimal 4,5 detik dan maksimal 15 detik. Angka 150 kata per menit dipilih di bawah kecepatan efektif membaca siswa SMA sekitar 250 kata per menit (Tarigan, 1985) dan rata-rata membaca senyap orang dewasa 238 kata per menit (Brysbaert, 2019), karena pemain membaca sambil memantau proses. Pesan berikutnya baru tampil bila masih ada tempat, maksimal tiga balon di layar lebar dan dua balon di tablet tegak maupun ponsel, dengan jeda minimal 1,2 detik, sehingga tidak ada balon yang dilepas sebelum sempat dibaca. Selama kasus obrolan berlangsung, simulasi berjalan paling cepat pada kecepatan normal walaupun Configuration diatur ke 2x.
 
 Sebagian pesan muncul sebelum deviasi terlihat di tren, sehingga pemain yang membaca obrolan dengan cermat dapat mengenali pemicunya lebih awal. Pada formulir laporan, pemain memilih jenis kesalahan manusia menurut klasifikasi Reason (1990) dan HSE UK HSG48 (1999), yaitu slip, lapse, mistake, atau violation. Hasil laporan menampilkan pelajaran kasus, kendali yang seharusnya berlaku, dan komik lengkap dengan label kasusnya. Pada bow-tie hasil akhir, faktor manusia ditampilkan sebagai label kuning di bawah ancaman yang dipicunya.
 
@@ -57,19 +79,33 @@ Tokoh yang tampil adalah Raka (operator panel), Dimas (operator lapangan), Tono 
 
 ### Pemasangan barier lewat pop-up
 
-Pada Tahap 3 dan 4, titik pemasangan (+) pada P&ID dapat diklik langsung tanpa memilih alat terlebih dahulu. Pop-up pemilih menampilkan perangkat yang sesuai untuk tahap tersebut, dikelompokkan menurut fungsinya, lengkap dengan biaya dan sisa anggaran. Setelah perangkat dipasang, pop-up perangkat menawarkan daftar program inspeksi dan pengujian yang dapat langsung diterapkan, serta tombol untuk mengganti atau melepas perangkat. Pop-up peralatan pada Tahap 3 juga menawarkan program inspeksi peralatan. Kotak Alat di panel kanan tetap tersedia sebagai cara alternatif.
+Pada Tahap 3 dan 4, titik pemasangan (+) pada P&ID dapat diklik langsung tanpa memilih alat terlebih dahulu. Pop-up pemilih menampilkan perangkat yang sesuai untuk tahap tersebut, dikelompokkan menurut fungsinya, lengkap dengan biaya dan sisa anggaran. Setelah perangkat dipasang, pop-up perangkat menawarkan daftar escalation factor beserta kontrolnya yang dapat langsung diterapkan, serta tombol untuk mengganti atau melepas perangkat. Pop-up peralatan pada Tahap 3 menawarkan escalation factor peralatan. Kotak Alat di panel kanan tetap tersedia sebagai cara alternatif.
 
 ### Anggaran dalam Rupiah atau USD
 
-Biaya perangkat dan program disimpan dalam satuan anggaran agar penilaian tidak bergantung pada kurs. Untuk tampilan, satu satuan dianggap setara USD 25.000, mencakup pengadaan, pemasangan, dan rekayasa. Untuk program inspeksi dan pengujian, satu satuan mewakili biaya pelaksanaan selama satu siklus 5 tahun. Mata uang tampilan (Rupiah atau USD) dan kurs Rupiah per USD (bawaan Rp 16.000) dapat diubah di Configuration. Nilai ini bersifat indikatif untuk pelatihan dan bukan acuan pengadaan.
+Biaya perangkat dan kontrol escalation factor disimpan dalam satuan anggaran agar penilaian tidak bergantung pada kurs. Untuk tampilan, satu satuan dianggap setara USD 25.000, mencakup pengadaan, pemasangan, dan rekayasa. Untuk kontrol escalation factor berupa inspeksi, pengujian, dan perawatan, satu satuan mewakili biaya pelaksanaan selama satu siklus 5 tahun. Mata uang tampilan (Rupiah atau USD) dan kurs Rupiah per USD (bawaan Rp 16.000) dapat diubah di Configuration. Nilai ini bersifat indikatif untuk pelatihan dan bukan acuan pengadaan.
 
-### Inspeksi, pengujian, dan keandalan barier
+### Escalation factor dan keandalan barier
 
-Setiap perangkat memiliki PFD desain indikatif mengikuti rentang tipikal CCPS (2001). Barier tanpa program pengujian dianggap menyimpan kegagalan tersembunyi sehingga PFD-nya dinaikkan 10 kali. Hal ini mencerminkan kriteria IPL pada LOPA, yaitu barier harus dapat diaudit melalui pengujian. Panel Keandalan Sistem Proteksi menampilkan keandalan rata-rata yang dapat dikreditkan. Bobot nilai Tahap 3 terdiri dari ketepatan barier 55 %, pengujian barier 25 %, dan inspeksi peralatan kritis 20 %. Bobot nilai Tahap 4 terdiri dari ketepatan barier 65 % dan pengujian barier 35 %. Setiap pemasangan keliru atau tidak perlu dikurangi 8 poin.
+Istilah escalation factor mengikuti CCPS dan Energy Institute (2018), Bow Ties in Risk Management: kondisi yang melemahkan atau menggagalkan barier, misalnya transmitter yang menyimpang, katup pengaman yang lengket, sensor detektor yang teracuni, atau tanggul yang retak. Kontrolnya berupa inspeksi, pengujian, dan perawatan preventif yang menemukan kegagalan tersembunyi sebelum barier dibutuhkan.
+
+Katalog berisi 43 escalation factor beserta kontrolnya: 15 untuk perangkat pencegahan, 10 untuk integritas peralatan proses, dan 18 untuk perangkat mitigasi. Sebelumnya hanya tersedia 15 program inspeksi dan pengujian yang disaring menurut skenario. Setiap perangkat memiliki satu escalation factor utama. Semua escalation factor pada tahap yang sama tampil di setiap skenario, termasuk yang berasal dari jenis fasilitas lain, sehingga pemain harus mencocokkan sendiri teknologi perangkat dengan cara kegagalannya. Pilihan yang keliru tetap dapat diterapkan dan memakai anggaran. Kecocokan hanya ditandai pada Mode Mudah.
+
+Setiap perangkat memiliki PFD desain indikatif mengikuti rentang tipikal CCPS (2001). Barier yang escalation factor-nya tidak dikendalikan dianggap menyimpan kegagalan tersembunyi sehingga PFD-nya dinaikkan 10 kali. Sebelum evaluasi, panel Keandalan Sistem Proteksi menampilkan keandalan yang diklaim, yaitu dengan anggapan setiap kontrol yang dipasang sudah tepat. Saat evaluasi klaim tersebut diverifikasi, dan kontrol yang tidak sesuai dengan escalation factor perangkat tidak dikreditkan, sejalan dengan kriteria IPL pada LOPA yang mensyaratkan barier dapat diaudit. Modal evaluasi menampilkan keandalan yang diklaim dan yang terverifikasi berdampingan.
+
+Pada peralatan proses, semua peralatan di dalam batas unit dapat diberi kontrol escalation factor. Hanya peralatan kritis yang ditetapkan skenario yang dinilai; kontrol yang sesuai jenisnya pada peralatan lain dicatat sebagai tambahan tanpa nilai, sedangkan kontrol yang tidak sesuai jenis peralatan dihitung keliru.
+
+Bobot nilai Tahap 3 terdiri dari ketepatan barier 55 %, escalation factor barier terkendali 25 %, dan escalation factor peralatan kritis 20 %. Bobot nilai Tahap 4 terdiri dari ketepatan barier 65 % dan escalation factor barier terkendali 35 %. Setiap pemasangan barier yang keliru atau tidak perlu dikurangi 8 poin, dan setiap kontrol escalation factor yang keliru dikurangi 4 poin.
+
+### Jeda iklan sebelum misi berikutnya
+
+Setelah satu misi selesai, misi berikutnya didahului jeda singkat berisi pesan Nusa Safety, baik saat pemain menekan Ulangi Skenario maupun saat memilih skenario lain. Kartu jeda memuat label Jeda sebelum misi berikutnya, logo Nusa Safety, judul ajakan, isi pesan, kontak (admin@nusasafety.co.id, www.nusasafety.co.id, dan Instagram @nusasafety), serta tiga tombol: Lanjut yang aktif setelah hitung mundur 5 detik, Profil Nusa Safety yang membuka situs resmi di tab baru, dan Pilih misi untuk kembali ke daftar skenario. Ringkasan misi sebelumnya beserta skornya tampil di bagian bawah kartu.
+
+Pesan dirotasi setiap kali jeda tampil, yaitu pengembangan simulator, modul pelatihan interaktif, dan video pelatihan yang disesuaikan dengan fasilitas; pelatihan bersertifikat BNSP sesuai SKKNI; kajian rekayasa, inspeksi peralatan, dan audit keselamatan; serta pendampingan SMK3 dan ISO. Isi pesan tersimpan pada objek `PROMO` dan kontak pada `COMPANY` di `js/data.js`. Jeda tampil satu kali untuk setiap misi yang selesai, dicatat di `localStorage` dengan kunci `psm_sim_promo_v1`, dan tidak tampil saat melanjutkan permainan yang belum selesai.
 
 ## Tampilan
 
-Palet mengikuti logo: silver, hitam, dan biru muda. Warna kuning dan merah hanya dipakai untuk kondisi abnormal, sejalan dengan filosofi HMI berperforma tinggi (ANSI/ISA-101). Peralatan digambar sebagai baja silver bergradien dengan bayangan, dan isi cairan di bejana serta tangki berubah sesuai simulasi. Efek kilatan dan guncangan saat ledakan dapat dimatikan di Configuration, dan otomatis dinonaktifkan bila sistem operasi meminta pengurangan gerak. Latar layar menu, pilihan skenario, konfigurasi, Credit, dan hasil memakai foto kilang yang diolah menjadi monokrom silver dan ditampilkan redup.
+Bilah atas permainan memakai logo PSM Simulator by Nusa Safety berlatar transparan yang ditempel langsung di atas bilah gelap, tanpa pelat putih dan tanpa teks tambahan. Nama skenario tampil di kepala panel samping. Palet mengikuti logo: silver, hitam, dan biru muda. Warna kuning dan merah hanya dipakai untuk kondisi abnormal, sejalan dengan filosofi HMI berperforma tinggi (ANSI/ISA-101). Peralatan digambar sebagai baja silver bergradien dengan bayangan, dan isi cairan di bejana serta tangki berubah sesuai simulasi. Efek kilatan dan guncangan saat ledakan dapat dimatikan di Configuration, dan otomatis dinonaktifkan bila sistem operasi meminta pengurangan gerak. Latar layar menu, pilihan skenario, konfigurasi, Credit, dan hasil memakai foto kilang yang diolah menjadi monokrom silver dan ditampilkan redup.
 
 Ikon tombol menu digambar sebagai SVG bervolume dengan gradien, bevel, dan kilap, sehingga tetap tajam di layar beresolusi tinggi. Halaman menu memiliki animasi ringan berupa partikel cahaya, sinar latar yang berputar pelan, kilau yang melintas di logo, dan tombol yang muncul berurutan. Semua animasi ini ikut mati bila efek animasi dinonaktifkan atau sistem operasi meminta pengurangan gerak.
 
@@ -77,7 +113,7 @@ Grafik tren memakai latar abu-abu terang dengan teks hitam dan biru tua, sesuai 
 
 Kuis pemahaman berisi lima soal per skenario. Urutan pilihan diacak setiap kali soal tampil, dan pengecoh disusun dari miskonsepsi yang lazim ditemui di lapangan dengan panjang kalimat yang seimbang, sehingga jawaban tidak dapat ditebak dari posisi atau panjangnya.
 
-Informasi peralatan dan perangkat tampil sebagai pop-up di dekat titik yang diklik pada P&ID. Pop-up memuat deskripsi, nilai proses terkini yang diperbarui langsung, serta status PFD dan program uji pada tahap barier. Pop-up ditutup dengan tombol silang di kanan atas, tombol Escape, klik area kosong, atau otomatis berganti saat peralatan lain diklik.
+Informasi peralatan dan perangkat tampil sebagai pop-up di dekat titik yang diklik pada P&ID. Pop-up memuat deskripsi, nilai proses terkini yang diperbarui langsung, serta status PFD dan escalation factor pada tahap barier. Pop-up ditutup dengan tombol silang di kanan atas, tombol Escape, klik area kosong, atau otomatis berganti saat peralatan lain diklik.
 
 ## Ponsel dan tablet
 
@@ -94,7 +130,7 @@ P&ID dapat diperbesar sampai 4 kali dengan cubit dua jari atau tombol + di pojok
 
 Pada tata letak bertumpuk, Tahap 2 menampilkan bilah aksi yang melayang di bagian bawah layar. Isinya status proses, jam operasi, lampu alarm, tombol Jalankan atau Laporkan, dan tombol komik obrolan, sehingga pemain dapat melapor tanpa menggulir halaman. Spanduk peringatan lapangan juga menempel di bagian atas layar.
 
-Di layar sentuh, petunjuk memakai kata ketuk, bukan klik. Pemilih perangkat memakai dua ketukan: ketukan pertama menampilkan fungsi perangkat, ketukan kedua memasangnya. Target sentuh dibuat sekitar 44 px, dan isian formulir memakai huruf 16 px agar Safari iOS tidak memperbesar halaman saat mengisi. Efek hover hanya berlaku pada perangkat yang memiliki kursor, sehingga tidak tertinggal setelah diketuk.
+Di layar sentuh, petunjuk memakai kata ketuk, bukan klik. Pemilih perangkat dan daftar escalation factor memakai dua ketukan: ketukan pertama menampilkan keterangan, ketukan kedua memasang atau menerapkannya. Target sentuh dibuat sekitar 44 px, dan isian formulir memakai huruf 16 px agar Safari iOS tidak memperbesar halaman saat mengisi. Efek hover hanya berlaku pada perangkat yang memiliki kursor, sehingga tidak tertinggal setelah diketuk.
 
 Permainan dapat dipasang ke layar utama melalui Tambahkan ke Layar Utama di Safari atau Instal aplikasi di Chrome. Dengan cara ini permainan berjalan layar penuh tanpa bilah alamat peramban.
 
@@ -108,11 +144,11 @@ Audio dibuka pada interaksi pertama yang diakui peramban, yaitu ketukan atau kli
 
 ## Credit dan profil perusahaan
 
-Layar Credit hanya menampilkan identitas perusahaan, yaitu PT. Nusa Rendra Jayatama dengan merek Nusa Safety, tanpa nama perorangan. Isinya meliputi profil dan layanan yang dihimpun dari situs resmi nusasafety.co.id, kerangka konsep permainan, dan daftar referensi. Data profil tersimpan pada objek `COMPANY` dan daftar referensi pada `CREDITS.referensi` di `js/data.js` sehingga mudah diperbarui.
+Layar Credit hanya menampilkan identitas perusahaan, yaitu PT. Nusa Rendra Jayatama dengan merek Nusa Safety, tanpa nama perorangan. Isinya meliputi profil dan layanan yang dihimpun dari situs resmi nusasafety.co.id, kontak email dan Instagram, kerangka konsep permainan, dan daftar referensi. Data profil tersimpan pada objek `COMPANY` dan daftar referensi pada `CREDITS.referensi` di `js/data.js` sehingga mudah diperbarui.
 
 ## Sektor dan skenario
 
-Layar New Game mengelompokkan skenario per sektor dan menyediakan filter sektor. Setiap skenario memiliki lima kejadian, yaitu empat kegagalan teknis dan satu kasus faktor manusia, lima soal kuis, titik pemasangan barier pencegahan dan mitigasi, serta peralatan kritis untuk program inspeksi.
+Layar New Game mengelompokkan skenario per sektor dan menyediakan filter sektor. Setiap skenario memiliki kumpulan delapan kejadian, yaitu lima kegagalan teknis dan tiga kasus faktor manusia, yang disusun menjadi lima variasi abnormalitas, lima soal kuis, titik pemasangan barier pencegahan dan mitigasi, serta peralatan kritis yang escalation factor-nya harus dikendalikan.
 
 | Sektor | Skenario | Tingkat | Ancaman utama yang dilatihkan |
 |---|---|---|---|
@@ -141,18 +177,20 @@ Pada skenario fasilitas non-produksi, label tombol menyesuaikan jenis operasinya
 index.html                  halaman utama
 manifest.webmanifest        data aplikasi web untuk pemasangan ke layar utama
 css/style.css               gaya tampilan (tombol 3D, kartu, P&ID, efek insiden, modal)
-js/data.js                  katalog perangkat dan kit, program ITPM, model biaya, sektor, peringatan lapangan, tim, tokoh, jenis kesalahan manusia, credit
+js/data.js                  katalog perangkat dan kit, escalation factor dan kontrolnya, guideword CCPS, model biaya, sektor, peringatan lapangan, tim, tokoh, jenis kesalahan manusia, pesan jeda iklan, credit
 js/scenarios/*.js           satu berkas per skenario, dinamai <sektor>-<unit>.js (12 berkas)
-js/pid.js                   penggambar P&ID SVG (37 jenis simbol), isi cairan, efek insiden, lencana program uji, perbesar dan geser
+js/pid.js                   penggambar P&ID SVG (37 jenis simbol), isi cairan, efek insiden, lencana escalation factor, perbesar dan geser
 js/sim.js                   mesin simulasi proses, fluktuasi proses, jam operasi, produksi, grafik tren eskalasi
-js/game.js                  alur permainan, pop-up, penilaian, obrolan tim dan komik, avatar tokoh, simpan/lanjutkan, bow-tie
+js/game.js                  alur permainan, variasi kejadian, pop-up, penilaian, obrolan tim, penempatan balon dan komik, avatar tokoh, jeda iklan, simpan/lanjutkan, bow-tie
 js/audio.js                 efek suara WebAudio dan pemutar musik latar
 tools/check-scenarios.js    validasi data skenario dengan Node.js tanpa peramban
-assets/psm-logo.png         logo PSM Simulator by Nusa Safety
-assets/psm-emblem.png       emblem untuk bilah atas
+tools/sim-events.js         uji waktu alarm DCS dan peringatan setiap kejadian dengan mesin simulasi
+assets/psm-logo.png         logo PSM Simulator by Nusa Safety untuk menu dan Credit
+assets/psm-logo-dark.png    logo berlatar transparan untuk bilah atas permainan
+assets/psm-emblem.png       emblem sumber ikon layar utama
 assets/favicon.png          ikon tab peramban
 assets/icon-180.png, icon-192.png, icon-512.png  ikon layar utama
-assets/nusa-safety-logo.png logo Nusa Safety untuk layar Credit
+assets/nusa-safety-logo.png logo Nusa Safety untuk layar Credit dan jeda iklan
 assets/menu-bg.jpg          foto latar menu (monokrom silver)
 assets/audio/measured-flow.mp3  musik latar
 ```
@@ -161,13 +199,14 @@ assets/audio/measured-flow.mp3  musik latar
 
 1. Buat berkas baru di `js/scenarios/`, misalnya `manufaktur-boiler-pabrik.js`, berisi satu objek skenario yang diakhiri `SCENARIOS.push(...)`. Berkas yang sudah ada dapat dijadikan contoh.
 2. Daftarkan berkas tersebut di `index.html` sesudah `js/data.js` dan sebelum `js/audio.js`. Urutan baris menentukan urutan tampil di layar New Game.
-3. Isi struktur yang sama dengan skenario lain: `sector` (kunci dari `SECTORS`), `area`, `kits`, opsional `op` untuk label tombol Jalankan, `equipment` (opsional `level` untuk isi cairan, `levelFill: 'bulk'` untuk material curah, `flameVar` agar nyala padam mengikuti variabel), `pipes`, `zones` (opsional `style: 'building'` dengan `floors` untuk potongan gedung), opsional `ground` untuk garis permukaan tanah, `vars`, `controls`, `production`, `quiz` (jawaban benar pada indeks yang ditunjuk `ans`, urutan tampil diacak otomatis), `events` (dengan `warnings` bertahap yang diakhiri satu peringatan `final`, serta opsional `hintVar`), `hotspots`, `inspect`, `budget`, dan `bowtie`. Koordinat memakai viewBox 1000 x 560.
-4. Untuk kasus faktor manusia, tambahkan satu kejadian dengan `start` (detik saat deviasi mulai), `hf`, dan `chat`. Objek `hf` berisi `type` (kunci dari `HF_TYPES`), `team` (kunci dari `TEAMS`), `threat` (indeks ancaman bow-tie yang dipicu), `title`, `factor` (teks singkat untuk label bow-tie), `lesson`, `controls`, serta opsional `roles` untuk mengganti jabatan tokoh. Setiap pesan `chat` berisi `t` (detik sejak operasi dijalankan), `who` (kunci dari `CAST`), opsional `at` (peralatan tempat balon muncul) dan `mood` (`normal`, `santai`, `ragu`, `panik`, atau `marah`), serta `text` maksimal 150 karakter.
+3. Isi struktur yang sama dengan skenario lain: `sector` (kunci dari `SECTORS`), `area`, `kits`, opsional `op` untuk label tombol Jalankan, `equipment` (opsional `level` untuk isi cairan, `levelFill: 'bulk'` untuk material curah, `flameVar` agar nyala padam mengikuti variabel), `pipes`, `zones` (opsional `style: 'building'` dengan `floors` untuk potongan gedung), opsional `ground` untuk garis permukaan tanah, `vars`, `controls`, `production`, `quiz` (jawaban benar pada indeks yang ditunjuk `ans`, urutan tampil diacak otomatis), `events` (lima kegagalan teknis, masing-masing dengan `threat` berupa indeks ancaman bow-tie, `warnings` bertahap yang diakhiri satu peringatan `final`, serta opsional `hintVar`), `variants` (lima larik berisi lima id kejadian, kasus faktor manusia pada urutan ke-3 dan ke-5), `hotspots`, `inspect`, `budget`, dan `bowtie`. Koordinat memakai viewBox 1000 x 560. Jawaban guideword memakai kunci `none`, `high`, `low`, `aswell`, `partof`, `reverse`, dan `other` sesuai makna CCPS.
+4. Untuk kasus faktor manusia, tambahkan tiga kejadian dengan `start` (detik saat deviasi mulai), `hf`, dan `chat`; ketiganya memakai jenis kesalahan dan ancaman bow-tie yang berbeda. Objek `hf` berisi `type` (kunci dari `HF_TYPES`), `team` (kunci dari `TEAMS`), `threat` (indeks ancaman bow-tie yang dipicu), `title`, `factor` (teks singkat untuk label bow-tie), `lesson`, `controls`, serta opsional `roles` untuk mengganti jabatan tokoh. Setiap pesan `chat` berisi `t` (detik sejak operasi dijalankan), `who` (kunci dari `CAST`), opsional `at` (peralatan tempat balon muncul) dan `mood` (`normal`, `santai`, `ragu`, `panik`, atau `marah`), serta `text` maksimal 150 karakter. Jarak antarpesan minimal 3 detik dan pesan terakhir muncul sebelum insiden.
 5. Jalankan validasi berikut sebelum commit. Alat ini memeriksa rujukan variabel dan peralatan, kesesuaian perangkat dengan tahap dan kit, urutan peringatan, jarak antartitik pemasangan, kecukupan anggaran terhadap biaya ideal, keseimbangan panjang jawaban kuis, kelengkapan kasus faktor manusia beserta urutan dan panjang pesan obrolan, serta larangan dash panjang dan tanda bintang ganda pada teks.
 
 ```bash
 node tools/check-scenarios.js        # ringkasan per skenario
 node tools/check-scenarios.js -v     # ditambah jadwal peringatan tiap kejadian
+node tools/sim-events.js separator   # waktu alarm DCS dan margin deteksi dini tiap kejadian
 ```
 
 Anggaran normal sebaiknya sekitar 3 satuan di atas biaya ideal, sehingga Mode Sulit (anggaran dikurangi 2) tetap dapat diselesaikan atau sedikit memaksa kompromi.
@@ -176,7 +215,8 @@ Anggaran normal sebaiknya sekitar 3 satuan di atas biaya ideal, sehingga Mode Su
 
 Daftar referensi lengkap tercantum pada layar Credit. Referensi lokal didahulukan, kemudian standar internasional untuk hal yang belum diatur secara rinci di dalam negeri.
 
-- Umum dan migas: PP No. 50 Tahun 2012, Permenaker No. 37 Tahun 2016, Kepmenaker No. 187/MEN/1999, Permen ESDM No. 18 Tahun 2018, OSHA 29 CFR 1910.119, CCPS (2001, 2007), CCPS/EI Bow Ties in Risk Management, IEC 61511, IEC 61882, ANSI/ISA-18.2, ANSI/ISA-101, API 510, API 653, API RP 576, API Std 2510, NFPA 25, dan NFPA 58.
+- Umum dan migas: PP No. 50 Tahun 2012, Permenaker No. 37 Tahun 2016, Kepmenaker No. 187/MEN/1999, Permen ESDM No. 18 Tahun 2018, OSHA 29 CFR 1910.119, CCPS (2001, 2007), CCPS (2008) Guidelines for Hazard Evaluation Procedures untuk guideword HAZOP, CCPS/EI (2018) Bow Ties in Risk Management untuk escalation factor, IEC 61511, IEC 61882, ANSI/ISA-18.2, ANSI/ISA-101, API 510, API 570, API 653, API RP 576, API Std 2510, NFPA 25, dan NFPA 58.
+- Kecepatan baca untuk durasi balon obrolan: Tarigan (1985) dan Brysbaert (2019).
 - Ketenagalistrikan dan EBT: Permen ESDM No. 10 Tahun 2021, Permenaker No. 12 Tahun 2015, Undang-Undang Uap dan Peraturan Uap Tahun 1930, IEC 60076-7, IEEE C57.104, NFPA 85, NFPA 850, NFPA 855, serta laporan DNV GL (2020) tentang insiden BESS McMicken.
 - Manufaktur: Permenaker No. 5 Tahun 2018 (NAB amonia 25 ppm), NFPA 652, NFPA 61, NFPA 68, NFPA 69, IIAR 2, ASHRAE 15, serta laporan CSB tentang Imperial Sugar (2009) dan Millard Refrigerated Services (2015).
 - Faktor manusia: Permenaker No. 4 Tahun 2025 tentang Operator Pesawat Uap, UU No. 30 Tahun 2009 tentang Ketenagalistrikan (Pasal 44 ayat 6 tentang sertifikat kompetensi tenaga teknik), PP No. 50 Tahun 2012 Lampiran II tentang sistem izin kerja, Reason (1990), HSE UK HSG48 (1999), Vaughan (1996) tentang normalisasi penyimpangan, CCPS (2008) tentang Management of Change, dan NFPA 51B.
