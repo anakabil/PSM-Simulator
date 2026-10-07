@@ -30,6 +30,10 @@ Menu awal: New Game, Continue, Configuration, Credit.
 
 Setiap skenario menyimpan kumpulan kejadian berisi lima kegagalan teknis dan tiga kasus faktor manusia, lalu menyusunnya menjadi lima variasi. Setiap variasi berisi lima kejadian dengan kasus faktor manusia selalu berada pada urutan ke-3 dan ke-5, sedangkan urutan ke-1, ke-2, dan ke-4 diisi kegagalan teknis. Kedua kasus faktor manusia dalam satu variasi memicu ancaman bow-tie yang berbeda dan memakai jenis kesalahan yang berbeda. Permainan baru memakai variasi berikutnya secara bergiliran, dimulai dari variasi acak, sehingga mencoba ulang skenario yang sama memberi jenis dan urutan abnormalitas yang berbeda. Nomor variasi tampil di kartu Kejadian pada Tahap 2, dan variasi terakhir per skenario disimpan di `localStorage` dengan kunci `psm_sim_var_v1`.
 
+Kegagalan teknis kelima pada setiap skenario dipilih agar penyebabnya berbeda dari empat kegagalan lainnya dan banyak memakai guideword kualitatif CCPS, misalnya air yang ikut masuk ke minyak trafo atau ke rak baterai (As well as), pembersihan H2S yang hanya berjalan sebagian atau satu fasa listrik yang hilang (Part of), aliran balik minyak dari jalur ekspor atau debu yang keluar dari peralatan saat kipas aspirasi trip (Reverse), dan air umpan yang terbuang melalui tube economizer yang bocor (Other than). Kasus faktor manusia sering menghasilkan deviasi yang sama dengan salah satu kegagalan teknis tetapi dengan penyebab yang berbeda. Satu variasi memuat paling banyak satu pasangan seperti itu sebagai pembanding, sehingga pemain belajar bahwa tren yang sama dapat berasal dari kegagalan peralatan maupun tindakan manusia dan penyebabnya harus dibaca dari bukti lain, misalnya obrolan tim atau peringatan lapangan.
+
+Setiap kejadian dirancang agar alarm DCS muncul lebih dulu daripada peringatan lapangan pertama, dengan selang minimal 4 detik sebelum peringatan kritis, sehingga pemain yang memantau tren selalu memiliki kesempatan mendeteksi lebih awal. Isi obrolan tim juga diselaraskan dengan nilai tren pada saat pesan tampil.
+
 ### Guideword HAZOP menurut CCPS
 
 Pilihan guideword pada formulir laporan mengikuti tujuh guideword asli HAZOP beserta maknanya pada CCPS (2008), Guidelines for Hazard Evaluation Procedures edisi ketiga, yang sejalan dengan IEC 61882.
@@ -65,17 +69,41 @@ Tokoh yang tampil adalah Raka (operator panel), Dimas (operator lapangan), Tono 
 | Skenario | Pelapor utama | Jenis | Kasus |
 |---|---|---|---|
 | Separator Produksi Migas | Tim Operasi | Violation | Bypass LCV-102 dibuka tanpa koordinasi lalu ditinggalkan |
+|  | Tim Maintenance | Lapse | Katup blok hilir PCV-101 tidak dibuka kembali setelah perbaikan |
+|  | Tim Operasi | Slip | Katup hisap P-101 tertutup karena tertukar dengan katup drain |
 | Penyimpanan dan Pengisian LPG | Pihak Luar | Violation | Sopir mengisi sendiri dan melepas sensor overfill |
+|  | Tim Operasi | Lapse | Truk diberi tanda jalan sebelum loading arm dilepas |
+|  | Tim Operasi | Mistake | Target penerimaan dinaikkan ke 95 persen karena salah memahami batas isi |
 | Reaktor Batch Eksotermik | Pengawas | Violation | Resep dan set trip diubah tanpa MOC |
+|  | Tim Operasi | Slip | Output TCV-201 diturunkan karena faceplate tertukar dengan FIC-201 |
+|  | Tim Maintenance | Lapse | Spade blind di jalur vent tidak dilepas setelah pembersihan kondensor |
 | Kolom Distilasi Aromatik | Tim Maintenance | Slip | Katup isolasi air pendingin tertukar karena label pudar |
+|  | Tim Maintenance | Lapse | LIC-402 ditinggal dalam mode manual setelah stroke test |
+|  | Tim Operasi | Mistake | Set point suhu dasar dinaikkan karena salah memahami batas operasi |
 | Boiler PLTU Batu Bara | Tim Operasi | Mistake | Pesawat uap dijaga helper tanpa lisensi yang mematikan pompa air umpan |
+|  | Tim Maintenance | Lapse | Damper udara sekunder burner tidak dibuka kembali setelah pembersihan nozzle |
+|  | Tim Operasi | Violation | Suhu keluar mill dinaikkan melampaui batas SOP demi mengejar beban |
 | Trafo Daya Gardu Induk | Tim Maintenance | Lapse | Fuse kipas pendingin dicabut dan lupa dipasang kembali |
+|  | Tim Maintenance | Mistake | Setting relai penyulang memakai data CT lama karena gambar belum direvisi |
+|  | Tim Maintenance | Slip | Sakelar arah mesin pompa minyak di posisi KURAS saat hendak mengisi konservator |
 | PLT Biogas POME | Tim Operasi | Mistake | Injeksi udara scrubber dibuka melampaui batas |
+|  | Tim Operasi | Lapse | Pembuangan kondensat manual KO-701 terlupa karena operator dialihkan ke tugas lain |
+|  | Pengawas | Violation | Biogas sengaja ditahan di bawah cover tanpa flare karena keluhan warga |
 | PLTS dan BESS | Tim Maintenance | Violation | Proteksi tegangan sel BMS dimatikan dengan password vendor |
+|  | Kontraktor | Mistake | Konektor PV beda merek dipasangkan karena dikira kompatibel |
+|  | Tim Maintenance | Lapse | Baut busbar modul pengganti belum dikencangkan dengan kunci torsi |
 | Lini Produksi Pakan Ternak | Pengawas | Violation | Sensor kecepatan sabuk elevator dijumper demi target produksi |
+|  | Tim Operasi | Slip | Set point laju umpan terketik 42 t/j, bukan 24 t/j |
+|  | Pengawas | Mistake | Jagung basah diterima ke silo karena dikira dapat dikeringkan kipas aerasi |
 | Refrigerasi Amonia Cold Storage | Tim Maintenance | Mistake | Teknisi baru membuka katup gas panas secara manual saat defrost |
+|  | Tim Operasi | Slip | Breaker pompa air kondensor yang sedang beroperasi dimatikan alih-alih pompa cadangan |
+|  | Pengawas | Violation | Setting trip suhu discharge kompresor dinaikkan tanpa MOC demi beban pendinginan |
 | Proteksi Kebakaran Gedung Komersial | Kontraktor | Violation | Pengelasan tenant tanpa izin kerja panas dan zona detektor dimatikan |
+|  | Pihak Luar | Mistake | Selang air dipakai sebagai pengganti selang LPG karena dikira sama saja |
+|  | Tim Maintenance | Lapse | Pompa transfer solar yang dijalankan manual lupa dimatikan karena teknisi dialihkan ke lift macet |
 | Asphalt Mixing Plant | Tim Operasi | Violation | Kunci override BMS dipakai helper untuk melewati purge |
+|  | Tim Operasi | Mistake | Konveyor umpan dihentikan karena dikira burner otomatis turun mengikuti umpan |
+|  | Tim Operasi | Lapse | Pompa oli termal lupa dinyalakan kembali setelah listrik padam sesaat |
 
 ### Pemasangan barier lewat pop-up
 
@@ -152,18 +180,18 @@ Layar New Game mengelompokkan skenario per sektor dan menyediakan filter sektor.
 
 | Sektor | Skenario | Tingkat | Ancaman utama yang dilatihkan |
 |---|---|---|---|
-| Minyak dan gas bumi | Unit Separator Produksi Migas | Pemula | Outlet gas terblokir, carry-over ke kompresor, gas blow-by ke sistem air, luapan tangki minyak |
-| Minyak dan gas bumi | Penyimpanan dan Pengisian LPG | Lanjutan | Overfill truk tangki dan tangki bullet, paparan panas eksternal (BLEVE), putusnya loading arm |
-| Petrokimia | Reaktor Batch Eksotermik | Menengah | Kehilangan air pendingin, umpan berlebih, vent terblokir, overfill reaktor (reaksi runaway) |
-| Petrokimia | Kolom Distilasi Aromatik | Menengah | Kehilangan pendingin kondensor, uap reboiler berlebih, luapan drum refluks, kavitasi pompa dasar kolom |
-| Ketenagalistrikan | Boiler PLTU Batu Bara | Lanjutan | Air umpan hilang, nyala padam dengan bahan bakar tetap masuk, coal mill kepanasan, turbin trip |
-| Ketenagalistrikan | Trafo Daya Gardu Induk 150/20 kV | Menengah | Kipas pendingin gagal, gangguan isolasi internal, hubung singkat penyulang, kebocoran minyak trafo |
-| Energi baru terbarukan | PLT Biogas Limbah Cair Sawit (POME) | Menengah | Blower trip, udara masuk ke biogas, flare padam, kondensat terbawa ke blower (metana dan H2S) |
-| Energi baru terbarukan | PLTS dengan Penyimpanan Baterai (BESS) | Lanjutan | HVAC gagal, overcharge, gangguan isolasi kabel DC, hubung singkat internal sel (thermal runaway) |
-| Manufaktur | Lini Produksi Pakan Ternak | Menengah | Sabuk elevator selip, logam asing di hammer mill, pemanasan spontan silo, mill tercekik (ledakan debu) |
-| Manufaktur | Refrigerasi Amonia Cold Storage | Lanjutan | Kondensor gagal, cairan terhisap kompresor, hentakan hidraulik saat defrost, pendinginan oli gagal |
-| Properti dan konstruksi EPC | Proteksi Kebakaran Gedung Komersial | Pemula | Kebocoran LPG dapur, luapan solar tangki harian genset, sambungan busbar LVMDP kendur, kebakaran ducting dapur |
-| Properti dan konstruksi EPC | Asphalt Mixing Plant Proyek Jalan | Menengah | Burner padam lalu dinyalakan ulang tanpa purging, ID fan mati, kebakaran baghouse, pompa oli termal trip |
+| Minyak dan gas bumi | Unit Separator Produksi Migas | Pemula | Outlet gas terblokir, carry-over ke kompresor, gas blow-by ke sistem air, luapan tangki minyak termasuk aliran balik dari jalur ekspor |
+| Minyak dan gas bumi | Penyimpanan dan Pengisian LPG | Lanjutan | Overfill truk tangki dan tangki bullet, paparan panas eksternal (BLEVE), kebakaran seal pompa akibat kavitasi, putusnya loading arm |
+| Petrokimia | Reaktor Batch Eksotermik | Menengah | Kehilangan air pendingin, umpan berlebih atau akumulasi monomer saat agitator gagal, vent terblokir, overfill reaktor (reaksi runaway) |
+| Petrokimia | Kolom Distilasi Aromatik | Menengah | Kehilangan pendingin kondensor, uap reboiler berlebih atau tube reboiler bocor, luapan drum refluks, kavitasi pompa dasar kolom |
+| Ketenagalistrikan | Boiler PLTU Batu Bara | Lanjutan | Air umpan hilang termasuk kebocoran tube economizer, nyala padam dengan bahan bakar tetap masuk, coal mill kepanasan, turbin trip |
+| Ketenagalistrikan | Trafo Daya Gardu Induk 150/20 kV | Menengah | Kipas pendingin gagal, gangguan isolasi internal termasuk air yang masuk ke minyak, hubung singkat penyulang, kehilangan minyak trafo |
+| Energi baru terbarukan | PLT Biogas Limbah Cair Sawit (POME) | Menengah | Blower trip, udara masuk ke biogas, flare padam atau H2S lolos dari bio-scrubber, kondensat terbawa ke blower (metana dan H2S) |
+| Energi baru terbarukan | PLTS dengan Penyimpanan Baterai (BESS) | Lanjutan | HVAC gagal atau air kondensat menetes ke rak, overcharge, gangguan isolasi kabel DC, hubung singkat sel atau sambungan rak panas (thermal runaway) |
+| Manufaktur | Lini Produksi Pakan Ternak | Menengah | Sabuk elevator selip, logam asing di hammer mill, pemanasan spontan silo, mill tercekik atau kipas aspirasi trip (ledakan debu) |
+| Manufaktur | Refrigerasi Amonia Cold Storage | Lanjutan | Kondensor gagal atau udara terperangkap di kondensor, cairan terhisap kompresor, hentakan hidraulik saat defrost, pendinginan oli gagal |
+| Properti dan konstruksi EPC | Proteksi Kebakaran Gedung Komersial | Pemula | Kebocoran LPG dapur, luapan solar tangki harian genset, busbar LVMDP kepanasan karena sambungan kendur atau satu fasa hilang, kebakaran ducting dapur |
+| Properti dan konstruksi EPC | Asphalt Mixing Plant Proyek Jalan | Menengah | Burner padam lalu dinyalakan ulang tanpa purging, draft drum hilang karena ID fan mati atau baghouse tersumbat, kebakaran baghouse, pompa oli termal trip |
 
 ### Kit perangkat per skenario
 
@@ -201,7 +229,7 @@ assets/audio/measured-flow.mp3  musik latar
 2. Daftarkan berkas tersebut di `index.html` sesudah `js/data.js` dan sebelum `js/audio.js`. Urutan baris menentukan urutan tampil di layar New Game.
 3. Isi struktur yang sama dengan skenario lain: `sector` (kunci dari `SECTORS`), `area`, `kits`, opsional `op` untuk label tombol Jalankan, `equipment` (opsional `level` untuk isi cairan, `levelFill: 'bulk'` untuk material curah, `flameVar` agar nyala padam mengikuti variabel), `pipes`, `zones` (opsional `style: 'building'` dengan `floors` untuk potongan gedung), opsional `ground` untuk garis permukaan tanah, `vars`, `controls`, `production`, `quiz` (jawaban benar pada indeks yang ditunjuk `ans`, urutan tampil diacak otomatis), `events` (lima kegagalan teknis, masing-masing dengan `threat` berupa indeks ancaman bow-tie, `warnings` bertahap yang diakhiri satu peringatan `final`, serta opsional `hintVar`), `variants` (lima larik berisi lima id kejadian, kasus faktor manusia pada urutan ke-3 dan ke-5), `hotspots`, `inspect`, `budget`, dan `bowtie`. Koordinat memakai viewBox 1000 x 560. Jawaban guideword memakai kunci `none`, `high`, `low`, `aswell`, `partof`, `reverse`, dan `other` sesuai makna CCPS.
 4. Untuk kasus faktor manusia, tambahkan tiga kejadian dengan `start` (detik saat deviasi mulai), `hf`, dan `chat`; ketiganya memakai jenis kesalahan dan ancaman bow-tie yang berbeda. Objek `hf` berisi `type` (kunci dari `HF_TYPES`), `team` (kunci dari `TEAMS`), `threat` (indeks ancaman bow-tie yang dipicu), `title`, `factor` (teks singkat untuk label bow-tie), `lesson`, `controls`, serta opsional `roles` untuk mengganti jabatan tokoh. Setiap pesan `chat` berisi `t` (detik sejak operasi dijalankan), `who` (kunci dari `CAST`), opsional `at` (peralatan tempat balon muncul) dan `mood` (`normal`, `santai`, `ragu`, `panik`, atau `marah`), serta `text` maksimal 150 karakter. Jarak antarpesan minimal 3 detik dan pesan terakhir muncul sebelum insiden.
-5. Jalankan validasi berikut sebelum commit. Alat ini memeriksa rujukan variabel dan peralatan, kesesuaian perangkat dengan tahap dan kit, urutan peringatan, jarak antartitik pemasangan, kecukupan anggaran terhadap biaya ideal, keseimbangan panjang jawaban kuis, kelengkapan kasus faktor manusia beserta urutan dan panjang pesan obrolan, serta larangan dash panjang dan tanda bintang ganda pada teks.
+5. Jalankan validasi berikut sebelum commit. `tools/sim-events.js` memastikan alarm DCS setiap kejadian muncul sebelum peringatan lapangan pertama dengan margin deteksi dini minimal 4 detik. Alat ini memeriksa rujukan variabel dan peralatan, kesesuaian perangkat dengan tahap dan kit, urutan peringatan, jarak antartitik pemasangan, kecukupan anggaran terhadap biaya ideal, keseimbangan panjang jawaban kuis, kelengkapan kasus faktor manusia beserta urutan dan panjang pesan obrolan, serta larangan dash panjang dan tanda bintang ganda pada teks.
 
 ```bash
 node tools/check-scenarios.js        # ringkasan per skenario
@@ -217,8 +245,8 @@ Daftar referensi lengkap tercantum pada layar Credit. Referensi lokal didahuluka
 
 - Umum dan migas: PP No. 50 Tahun 2012, Permenaker No. 37 Tahun 2016, Kepmenaker No. 187/MEN/1999, Permen ESDM No. 18 Tahun 2018, OSHA 29 CFR 1910.119, CCPS (2001, 2007), CCPS (2008) Guidelines for Hazard Evaluation Procedures untuk guideword HAZOP, CCPS/EI (2018) Bow Ties in Risk Management untuk escalation factor, IEC 61511, IEC 61882, ANSI/ISA-18.2, ANSI/ISA-101, API 510, API 570, API 653, API RP 576, API Std 2510, NFPA 25, dan NFPA 58.
 - Kecepatan baca untuk durasi balon obrolan: Tarigan (1985) dan Brysbaert (2019).
-- Ketenagalistrikan dan EBT: Permen ESDM No. 10 Tahun 2021, Permenaker No. 12 Tahun 2015, Undang-Undang Uap dan Peraturan Uap Tahun 1930, IEC 60076-7, IEEE C57.104, NFPA 85, NFPA 850, NFPA 855, serta laporan DNV GL (2020) tentang insiden BESS McMicken.
-- Manufaktur: Permenaker No. 5 Tahun 2018 (NAB amonia 25 ppm), NFPA 652, NFPA 61, NFPA 68, NFPA 69, IIAR 2, ASHRAE 15, serta laporan CSB tentang Imperial Sugar (2009) dan Millard Refrigerated Services (2015).
+- Ketenagalistrikan dan EBT: Permen ESDM No. 10 Tahun 2021, Permenaker No. 12 Tahun 2015, Undang-Undang Uap dan Peraturan Uap Tahun 1930, IEC 60076-7, IEEE C57.104, NFPA 85, NFPA 850, NFPA 855, IEC 62852 untuk konektor DC PLTS, laporan DNV GL (2020) tentang insiden BESS McMicken, serta hasil investigasi kebakaran ESS oleh Kementerian Perdagangan, Industri, dan Energi Republik Korea (2019).
+- Manufaktur: Permenaker No. 5 Tahun 2018 (NAB amonia 25 ppm), NFPA 652, NFPA 654, NFPA 61, NFPA 68, NFPA 69, IIAR 2, ASHRAE 15, serta laporan CSB tentang Imperial Sugar (2009) dan Millard Refrigerated Services (2015).
 - Faktor manusia: Permenaker No. 4 Tahun 2025 tentang Operator Pesawat Uap, UU No. 30 Tahun 2009 tentang Ketenagalistrikan (Pasal 44 ayat 6 tentang sertifikat kompetensi tenaga teknik), PP No. 50 Tahun 2012 Lampiran II tentang sistem izin kerja, Reason (1990), HSE UK HSG48 (1999), Vaughan (1996) tentang normalisasi penyimpangan, CCPS (2008) tentang Management of Change, dan NFPA 51B.
 - Properti dan konstruksi: Permen PU No. 26/PRT/M/2008, SNI 03-1745-2000, SNI 03-3985-2000, SNI 03-3989-2000, Permenakertrans No. Per.04/MEN/1980, Permenaker No. Per.02/MEN/1983, Kepmenaker No. Kep.186/MEN/1999, Permen PUPR No. 10 Tahun 2021, NFPA 13, NFPA 96, NFPA 17A, NFPA 2001, dan NFPA 86.
 

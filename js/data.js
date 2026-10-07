@@ -76,11 +76,14 @@ const CREDITS = {
     'NFPA 652, Standard on the Fundamentals of Combustible Dust; NFPA 61, Standard for the Prevention of Fires and Dust Explosions in Agricultural and Food Processing Facilities; NFPA 68, Standard on Explosion Protection by Deflagration Venting; NFPA 69, Standard on Explosion Prevention Systems.',
     'NFPA 13, Standard for the Installation of Sprinkler Systems; NFPA 15, Standard for Water Spray Fixed Systems for Fire Protection; NFPA 2001, Standard on Clean Agent Fire Extinguishing Systems; NFPA 96, Standard for Ventilation Control and Fire Protection of Commercial Cooking Operations; NFPA 17A, Standard for Wet Chemical Extinguishing Systems.',
     'NFPA 51B, Standard for Fire Prevention During Welding, Cutting, and Other Hot Work.',
+    'NFPA 654, Standard for the Prevention of Fire and Dust Explosions from the Manufacturing, Processing, and Handling of Combustible Particulate Solids.',
+    'IEC 62852 (2014). Connectors for DC-application in photovoltaic systems: Safety requirements and tests.',
     'IIAR 2, Standard for Safe Design of Closed-Circuit Ammonia Refrigeration Systems; ASHRAE 15, Safety Standard for Refrigeration Systems.',
     'NIOSH. Pocket Guide to Chemical Hazards: Ammonia (nilai IDLH 300 ppm).',
     'U.S. Chemical Safety Board (2009). Investigation Report: Sugar Dust Explosion and Fire, Imperial Sugar Company, Port Wentworth, Georgia.',
     'U.S. Chemical Safety Board (2015). Key Lessons for Preventing Hydraulic Shock in Industrial Refrigeration Systems: Anhydrous Ammonia Release at Millard Refrigerated Services, Theodore, Alabama.',
     'DNV GL (2020). McMicken Battery Energy Storage System Event Technical Analysis and Recommendations. Arizona Public Service.',
+    'Kementerian Perdagangan, Industri, dan Energi Republik Korea (2019). Hasil investigasi penyebab kebakaran sistem penyimpanan energi baterai (ESS), diumumkan Juni 2019.',
   ],
 };
 
