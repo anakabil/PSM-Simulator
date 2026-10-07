@@ -8,6 +8,7 @@ const Game = (() => {
   const CFG_KEY = 'psm_sim_cfg_v1';
   const HIST_KEY = 'psm_sim_hist_v1';
   const HINT_COST = 5;
+  const ZOOM_HINT_KEY = 'psm_sim_zoomhint_v1';
   const DEFAULT_CFG = { sound: true, music: true, musicVol: 45, speed: 1, difficulty: 'normal', hints: true, anim: true, fx: true, name: '', currency: 'IDR', rate: COST_MODEL.idrPerUsd };
 
   const app = document.getElementById('app');
@@ -54,6 +55,17 @@ const Game = (() => {
   function opName() { return (scn && scn.op) || 'Proses Produksi'; }
   /* huruf pertama kecil saja agar singkatan seperti AMP tetap kapital */
   function opLower() { const o = opName(); return o.charAt(0).toLowerCase() + o.slice(1); }
+  /* Mode tampilan. Harus sejalan dengan media query di style.css: bertumpuk untuk ponsel, tablet
+     tegak, dan layar pendek; ringkas untuk ponsel tegak dan ponsel mendatar. */
+  const MQ_STACK = '(max-width: 999px), (max-height: 599px), (orientation: portrait) and (max-width: 1199px)';
+  const MQ_COMPACT = '(max-width: 599px), (max-height: 500px)';
+  const mq = q => !!(window.matchMedia && window.matchMedia(q).matches);
+  const isStacked = () => mq(MQ_STACK);
+  const isCompact = () => mq(MQ_COMPACT);
+  const isTouch = () => mq('(hover: none) and (pointer: coarse)');
+  /* di layar sentuh, kata kerja "klik" diganti "ketuk" */
+  function tt(s) { return isTouch() ? String(s).replace(/\bKlik\b/g, 'Ketuk').replace(/\bklik\b/g, 'ketuk') : s; }
+  function panelName() { return isStacked() ? 'panel di bawah P&ID' : 'panel kanan'; }
   const SECTOR_ICON = { migas: 'drop', petrokimia: 'flask', listrik: 'bolt', ebt: 'leaf', manufaktur: 'factory', properti: 'building' };
   const LEVELS = ['Pemula', 'Menengah', 'Lanjutan'];
   let scnFilter = 'all';
@@ -227,23 +239,47 @@ const Game = (() => {
     if (pop.eqId && pid) pid.highlight(pop.eqId, false);
     pop = null;
   }
+  /* Di ponsel pop-up tampil sebagai lembar bawah yang selalu terlihat walaupun P&ID sudah tergulir.
+     Di layar lebih besar pop-up menempel pada peralatan dan halaman digulir bila perlu. */
   function openPopover(anchor, html, meta, opts) {
     closePopover();
     const o = opts || {};
     const area = $('#pid-area');
     if (!area || !anchor) return null;
+    const sheet = isCompact();
+    if (pid && pid.focusNode) pid.focusNode(anchor);
     const el = document.createElement('div');
-    el.className = 'pop' + (o.cls ? ' ' + o.cls : '');
+    el.className = 'pop' + (o.cls ? ' ' + o.cls : '') + (sheet ? ' sheet' : '');
     el.setAttribute('role', 'dialog');
     el.innerHTML = `<button class="pop-x" aria-label="Tutup">${ICON.x}</button><div class="pop-body">${html}</div>${o.foot || ''}<span class="pop-arrow" aria-hidden="true"></span>`;
     el.style.setProperty('--pop-max', Math.max(200, area.clientHeight - 16) + 'px');
     area.appendChild(el);
-    placePopover(el, anchor, area);
+    if (!sheet) placePopover(el, anchor, area);
     el.addEventListener('click', ev => ev.stopPropagation());
     el.querySelector('.pop-x').addEventListener('click', () => { Sfx.click(); closePopover(); });
-    pop = Object.assign({ el }, meta || {});
-    requestAnimationFrame(() => el.classList.add('show'));
+    pop = Object.assign({ el, anchor, sheet }, meta || {});
+    requestAnimationFrame(() => {
+      el.classList.add('show');
+      if (!sheet && isStacked()) {
+        const r = el.getBoundingClientRect();
+        if (r.top < 8 || r.bottom > innerHeight - 8) el.scrollIntoView({ block: r.height > innerHeight - 16 ? 'start' : 'nearest', behavior: 'smooth' });
+      }
+    });
     return el;
+  }
+  /* dipanggil saat P&ID diperbesar atau digeser */
+  function onPidView(z) {
+    if (pop && !pop.sheet && pop.anchor && pop.el.isConnected) { const area = $('#pid-area'); if (area) placePopover(pop.el, pop.anchor, area); }
+    repositionBubbles();
+    if (z > 1.2 && !zoomHintSeen) { zoomHintSeen = true; saveJSON(ZOOM_HINT_KEY, 1); const w = $('#pid'); if (w) w.classList.remove('show-hint'); }
+  }
+  /* petunjuk cubit hanya untuk layar sentuh yang menampilkan P&ID dalam skala kecil */
+  let zoomHintSeen = !!loadJSON(ZOOM_HINT_KEY);
+  function updateZoomHint() {
+    const w = $('#pid'); if (!w || !pid) return;
+    const m = pid.svg.getScreenCTM();
+    const fit = m ? m.a / (pid.zoom ? pid.zoom() : 1) : 1;
+    w.classList.toggle('show-hint', isTouch() && fit < 0.7 && !zoomHintSeen);
   }
   function placePopover(el, anchor, area) {
     const a = anchor.getBoundingClientRect(), r = area.getBoundingClientRect();
@@ -400,6 +436,8 @@ const Game = (() => {
       $$('.chip-tab').forEach(t => { const act = t.dataset.sec === scnFilter; t.classList.toggle('active', act); t.setAttribute('aria-selected', act ? 'true' : 'false'); });
       const secs = scnFilter === 'all' ? sectors : sectors.filter(x => x.key === scnFilter);
       const box = $('#scn-list');
+      const act = $('.chip-tab.active');
+      if (act && act.parentNode.scrollWidth > act.parentNode.clientWidth) act.parentNode.scrollTo({ left: Math.max(0, act.offsetLeft - 14), behavior: 'smooth' });
       box.innerHTML = secs.map(x => `<section class="scn-sector"><h3 class="sector-h"><span class="sector-ico">${ICON[SECTOR_ICON[x.key]] || ''}</span>${esc(x.name)}</h3><div class="scn-grid">${listOf(x.key).map(card).join('')}</div></section>`).join('');
       on(box, '.scn-card button', 'click', pick);
     };
@@ -543,6 +581,7 @@ const Game = (() => {
     clearTimers();
     ev2 = null;
     closeComic();
+    removeActionBar();
     if (sim) { sim.stop(); sim = null; }
     if (chartRaf) { cancelAnimationFrame(chartRaf); chartRaf = 0; }
     closePopover();
@@ -561,7 +600,7 @@ const Game = (() => {
       <header class="topbar">
         <div class="brand"><span class="emblem-plate"><img src="${BRAND.emblem}" alt=""></span><div><b>PSM Simulator</b><small>${esc(scn.title)}</small></div></div>
         <ol class="stepper">${STAGES.map(st => `<li class="step" data-stage="${st.n}"><span class="ico">${ICON[st.icon]}</span><span class="lbl">${st.n}. ${esc(st.short)}</span><span class="sc"></span></li>`).join('')}</ol>
-        <div class="top-actions"><button class="btn3d silver small icon-only" data-music aria-label="Musik latar">${musicIcon()}</button><button class="btn3d silver small" data-act="menu">${ICON.home}<span>Menu</span></button></div>
+        <div class="top-actions"><button class="btn3d silver small icon-only" data-music aria-label="Musik latar">${musicIcon()}</button><button class="btn3d silver small" data-act="menu" aria-label="Kembali ke menu">${ICON.home}<span>Menu</span></button></div>
       </header>
       <main class="play-main">
         <section class="pid-area" id="pid-area">
@@ -584,6 +623,8 @@ const Game = (() => {
       onDevice: (h, devId) => onDeviceClick(h, devId),
       onBackground: () => closePopover(),
     });
+    if (pid.onView) pid.onView(onPidView);
+    requestAnimationFrame(updateZoomHint);
     sim = new Simulator(scn, { speed: cfg.speed });
     sim.onTick(onSimTick);
     chart = new TrendChart($('#trend'), sim, scn.trendVars);
@@ -657,12 +698,12 @@ const Game = (() => {
   }
   function stageTips(n) {
     const tips = {
-      1: ['Klik setiap peralatan pada P&ID atau daftar di panel kanan untuk membaca fungsinya.', `Tekan Jalankan ${opName()} dan ubah set point untuk melihat respons proses serta isi cairan di bejana.`, 'Setelah semua peralatan dipelajari, kerjakan kuis pemahaman proses. Urutan pilihan jawaban diacak dan pengecohnya terdengar masuk akal, jadi baca setiap pilihan dengan cermat.'],
+      1: [`Klik setiap peralatan pada P&ID atau daftar di ${panelName()} untuk membaca fungsinya.`, `Tekan Jalankan ${opName()} dan ubah set point untuk melihat respons proses serta isi cairan di bejana.`, 'Setelah semua peralatan dipelajari, kerjakan kuis pemahaman proses. Urutan pilihan jawaban diacak dan pengecohnya terdengar masuk akal, jadi baca setiap pilihan dengan cermat.'],
       2: [`Tekan Jalankan ${opName()}, lalu amati tren, pembacaan, dan isi bejana di P&ID.`, 'Saat terjadi kegagalan, peringatan lapangan muncul bertahap: getaran, kebocoran gas, gas beracun, panas berlebih, hingga ledakan.', 'Laporkan sedini mungkin. Laporan sebelum peringatan kritis mendapat bonus, sedangkan laporan setelah insiden terjadi mendapat penalti.', 'Satu kejadian berawal dari obrolan tim operasi, maintenance, atau pihak lain. Baca balon obrolan di P&ID atau buka Lihat Komik untuk menemukan tindakan manusia yang memicu abnormalitas, lalu tentukan jenis kesalahannya di laporan.'],
       3: ['Klik titik pemasangan (+) pada P&ID untuk memilih perangkat barier langsung dari pop-up. Cara lain, pilih perangkat di Kotak Alat lalu klik titiknya.', 'Setelah perangkat terpasang, pop-up perangkat menampilkan program inspeksi dan pengujian yang dapat langsung diterapkan. Klik bejana, tangki, atau mesin berputar untuk menerapkan program inspeksi peralatan.', 'Barier tanpa pengujian berkala tidak dapat diandalkan. Pantau indikator keandalan dan sisa anggaran, yang ditampilkan dalam mata uang pilihan Anda di Configuration.', 'Klik perangkat atau peralatan untuk melihat detail, mengganti, atau melepasnya.'],
       4: ['Pikirkan apa yang terjadi bila pencegahan gagal: deteksi, isolasi, proteksi kebakaran, dan tanggap darurat.', 'Perhatikan sifat bahan, karena tidak semua media pemadam cocok untuk semua bahan.', 'Klik titik (+) untuk memilih perangkat mitigasi, lalu lengkapi dengan program uji yang sesuai, misalnya bump test detektor, uji sistem pemadam, uji fungsi ESD, dan latihan tanggap darurat.'],
     };
-    return `<ul class="tips">${tips[n].map(t => `<li>${esc(t)}</li>`).join('')}</ul>`;
+    return `<ul class="tips">${tips[n].map(t => `<li>${esc(tt(t))}</li>`).join('')}</ul>`;
   }
 
   function resetPlant() {
@@ -681,11 +722,13 @@ const Game = (() => {
   }
 
   function renderStage() {
+    removeActionBar();
     resetPlant();
     tool = null; ev2 = null; toolTab = 'dev';
     scn.equipment.forEach(x => pid.highlight(x.id, false));
     updateStepper();
     $('#trend-wrap').style.display = S.stage <= 2 ? '' : 'none';
+    $('#pid-area').classList.toggle('no-trend', S.stage > 2);
     pid.showReadouts(S.stage <= 2);
     pid.setTargets(null);
     pid.setEqBadges(S.stage === 3 ? S.eqItpm[3] : {}, S.stage);
@@ -701,7 +744,7 @@ const Game = (() => {
   function renderStage1() {
     const req = requiredEq();
     const side = $('#side');
-    side.innerHTML = `<div class="side-head"><h2>${ICON.book}<span>Tahap 1: Kondisi Normal</span></h2></div>
+    side.innerHTML = tt(`<div class="side-head"><h2>${ICON.book}<span>Tahap 1: Kondisi Normal</span></h2></div>
       <div class="card"><h4>Gambaran Proses</h4>${scn.overview.map(p => `<p>${esc(p)}</p>`).join('')}</div>
       <div class="card"><h4>Proses Produksi</h4>
         <button class="btn3d primary wide" id="btn-run">${ICON.play}<span>Jalankan ${esc(opName())}</span></button>
@@ -714,7 +757,7 @@ const Game = (() => {
         <ul class="eq-list">${req.map(e => `<li data-id="${e.id}"><span class="dot"></span><b>${esc(e.id)}</b><span>${esc(e.name)}</span></li>`).join('')}</ul>
       </div>
       <div class="card"><h4>Legenda Jalur</h4><ul class="legend">${PID.fluidsIn(scn).map(f => `<li><span class="sw" style="--c:${f.c}"></span>${esc(f.name)}</li>`).join('')}<li><span class="sw ro"></span>Pembacaan DCS (kuning/merah saat alarm)</li></ul></div>
-      <div class="card action"><button class="btn3d dark wide" id="btn-quiz" disabled>${ICON.check}<span>Mulai Kuis Pemahaman</span></button><p class="muted small" id="quiz-hint">Pelajari semua peralatan terlebih dahulu.</p></div>`;
+      <div class="card action"><button class="btn3d dark wide" id="btn-quiz" disabled>${ICON.check}<span>Mulai Kuis Pemahaman</span></button><p class="muted small" id="quiz-hint">Pelajari semua peralatan terlebih dahulu.</p></div>`);
     S.read.forEach(id => markRead(id, true));
     on(side, '.eq-list li', 'click', ev => { const e = scn.equipment.find(x => x.id === ev.currentTarget.dataset.id); onEquipmentClick(e); });
     $('#btn-run').addEventListener('click', () => {
@@ -784,7 +827,7 @@ const Game = (() => {
   function renderStage2() {
     const side = $('#side');
     const n = scn.events.length;
-    side.innerHTML = `<div class="side-head"><h2>${ICON.alert}<span>Tahap 2: Abnormalitas</span></h2></div>
+    side.innerHTML = tt(`<div class="side-head"><h2>${ICON.alert}<span>Tahap 2: Abnormalitas</span></h2></div>
       <div class="card"><h4>Kejadian <span class="pill" id="ev-count">${S.eventIdx}/${n}</span></h4>
         <p class="muted small">Setiap kali ${esc(opLower())} dijalankan, satu kegagalan akan muncul pada waktu yang tidak diketahui. Amati tren, pembacaan, dan peringatan lapangan, lalu laporkan secepatnya.</p>
         <div class="ev-track">${scn.events.map((e, i) => `<span class="ev-dot${e.chat ? ' hf' : ''}" data-i="${i}" title="${e.chat ? 'Kasus dari laporan tim' : 'Kejadian ' + (i + 1)}">${e.chat ? ICON.chat : i + 1}</span>`).join('')}</div>
@@ -803,11 +846,61 @@ const Game = (() => {
         <ul class="warn-log" id="warn-log"><li class="empty">Belum ada peringatan. Proses berjalan normal.</li></ul>
       </div>
       <p class="side-tip">${ICON.bulb}<span>Klik peralatan di P&amp;ID untuk membuka pop-up informasi dan nilai proses terkini.</span></p>
-      <div class="card"><h4>Tabel HAZOP Anda</h4><table class="hazop" id="hazop"><thead><tr><th>#</th><th>Node</th><th>Parameter</th><th>Guideword</th><th>Skor</th></tr></thead><tbody>${S.eventResults.map((r, i) => hazopRow(r, i)).join('')}</tbody></table></div>`;
+      <div class="card"><h4>Tabel HAZOP Anda</h4><table class="hazop" id="hazop"><thead><tr><th>#</th><th>Node</th><th>Parameter</th><th>Guideword</th><th>Skor</th></tr></thead><tbody>${S.eventResults.map((r, i) => hazopRow(r, i)).join('')}</tbody></table></div>`);
     updateEvTrack();
     $('#btn-run-prod').addEventListener('click', () => { Sfx.start(); beginEvent(); });
     $('#btn-report').addEventListener('click', () => { Sfx.click(); openReport(false); });
     $('#btn-comic').addEventListener('click', () => { Sfx.click(); openComic(); });
+    mountActionBar(side);
+  }
+  /* Bilah aksi melayang untuk tata letak bertumpuk (ponsel dan tablet tegak). Isinya mencerminkan
+     tombol dan status di panel samping, sehingga pemain dapat melapor tanpa menggulir halaman.
+     Tampil atau tidaknya diatur CSS menurut mode tata letak. */
+  let barObs = null;
+  function removeActionBar() {
+    if (barObs) { barObs.disconnect(); barObs = null; }
+    $$('.m-bar').forEach(n => n.remove());
+    const sc = $('.screen.play'); if (sc) sc.classList.remove('has-bar');
+    document.body.classList.remove('has-bar');
+  }
+  function mountActionBar(side) {
+    removeActionBar();
+    const screen = $('.screen.play'); if (!screen) return;
+    const bar = document.createElement('div');
+    bar.className = 'm-bar';
+    bar.setAttribute('role', 'region');
+    bar.setAttribute('aria-label', 'Kendali cepat Tahap 2');
+    bar.innerHTML = `<div class="mb-stat"><span class="lamp"></span><div><b id="mb-status">Siap</b><small id="mb-sub">08:00</small></div></div>
+      <button class="btn3d silver small icon-only" id="mb-comic" type="button" aria-label="Lihat komik obrolan tim" hidden>${ICON.comic}</button>
+      <button class="btn3d primary small" id="mb-run" type="button">${ICON.factory}<span>Jalankan</span></button>
+      <button class="btn3d red small" id="mb-report" type="button" disabled>${ICON.alert}<span>Laporkan</span></button>`;
+    screen.appendChild(bar);
+    screen.classList.add('has-bar');
+    document.body.classList.add('has-bar');
+    bar.querySelector('#mb-run').addEventListener('click', () => { const b = $('#btn-run-prod'); if (b && !b.disabled) b.click(); });
+    bar.querySelector('#mb-report').addEventListener('click', () => { const b = $('#btn-report'); if (b && !b.disabled) b.click(); });
+    bar.querySelector('#mb-comic').addEventListener('click', () => { const b = $('#btn-comic'); if (b) b.click(); });
+    const sync = () => {
+      const run = $('#btn-run-prod'), rep = $('#btn-report'), st = $('#ps-status'), tm = $('#ps-time'), ab = $('#alarm-box'), at = $('#alarm-text'), cc = $('#chat-card'), cn = $('#chat-count');
+      if (!run || !bar.isConnected) return;
+      const mr = bar.querySelector('#mb-run'), mp = bar.querySelector('#mb-report'), mc = bar.querySelector('#mb-comic');
+      /* hanya satu tombol utama: Jalankan sebelum proses berjalan, Laporkan selama proses berjalan */
+      mr.hidden = run.disabled;
+      mp.hidden = !run.disabled;
+      mp.disabled = rep.disabled;
+      const sb = bar.querySelector('#mb-status');
+      sb.textContent = st ? st.textContent : '';
+      sb.className = st ? st.className : '';
+      bar.querySelector('#mb-sub').textContent = `${tm ? tm.textContent : ''} · ${at ? at.textContent : ''}`;
+      bar.classList.toggle('alarm', !!(ab && ab.classList.contains('on')));
+      const hasChat = cc && !cc.hidden;
+      mc.hidden = !hasChat;
+      if (hasChat && cn) mc.setAttribute('aria-label', `Lihat komik obrolan tim (${cn.textContent} pesan)`);
+    };
+    let queued = false;
+    barObs = new MutationObserver(() => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; sync(); }); });
+    barObs.observe(side, { subtree: true, childList: true, attributes: true, characterData: true });
+    sync();
   }
   function hazopRow(r, i) {
     return `<tr><td>${i + 1}</td><td>${esc(r.node)}</td><td>${esc(PARAMS[r.param] || '-')}</td><td>${esc((GUIDEWORDS[r.guide] || '-').split(' (')[0])}</td><td class="${r.score >= 60 ? 'ok' : 'bad'}">${r.score}</td></tr>`;
@@ -828,7 +921,7 @@ const Game = (() => {
       cc.hidden = !evt.chat;
       $('#chat-log').innerHTML = '<li class="empty">Belum ada pesan dari tim.</li>';
       $('#chat-count').textContent = '0';
-      if (evt.chat) showToast('Kasus dari tim: perhatikan obrolan antartim di P&ID dan panel kanan.');
+      if (evt.chat) showToast(`Kasus dari tim: perhatikan obrolan antartim di P&ID dan ${panelName()}.`);
     }
     runSim(true);
     const b = $('#btn-run-prod'); b.disabled = true; b.innerHTML = `${ICON.factory}<span>${esc(opName())} berjalan...</span>`;
@@ -1087,30 +1180,41 @@ const Game = (() => {
   }
   /* Balon komik di P&ID, diletakkan di atas peralatan tempat tokoh berada. */
   function floatBubble(evt, m) {
-    const area = $('#pid-area'), wrap = $('#chat-float'), pidEl = $('#pid');
-    if (!area || !wrap || !pidEl) return;
-    const ar = area.getBoundingClientRect(), pr = pidEl.getBoundingClientRect();
-    const node = m.at && pid.eqNode(m.at);
-    const nr = node ? node.getBoundingClientRect() : null;
+    const wrap = $('#chat-float');
+    if (!wrap || !$('#pid')) return;
     const c = castOf(evt, m.who);
     const b = document.createElement('div');
     b.className = 'cf-bub';
+    b.dataset.at = m.at || '';
     b.style.setProperty('--team', (TEAMS[c.team] || TEAMS.ops).color);
     b.innerHTML = `<span class="av">${avatarSVG(m.who, m.mood)}</span><div><b>${esc(c.name)}</b><p>${esc(m.text)}</p></div>`;
     wrap.appendChild(b);
+    placeBubble(b);
+    requestAnimationFrame(() => b.classList.add('show'));
+    /* di ponsel P&ID kecil, jadi cukup satu balon pada satu waktu */
+    while (wrap.children.length > (isCompact() ? 1 : 2)) wrap.firstChild.remove();
+    later(() => { b.classList.remove('show'); later(() => b.remove(), 350); }, 7500);
+  }
+  function placeBubble(b) {
+    const area = $('#pid-area'), pidEl = $('#pid');
+    if (!area || !pidEl || !pid) return;
+    const ar = area.getBoundingClientRect(), pr = pidEl.getBoundingClientRect();
+    const node = b.dataset.at && pid.eqNode(b.dataset.at);
+    let nr = node ? node.getBoundingClientRect() : null;
+    /* peralatan di luar bagian P&ID yang sedang terlihat: balon diletakkan di tengah atas */
+    if (nr && (nr.right < pr.left || nr.left > pr.right || nr.bottom < pr.top || nr.top > pr.bottom)) nr = null;
+    b.classList.remove('below');
     const bw = b.offsetWidth, bh = b.offsetHeight;
     let x = nr ? nr.left + nr.width / 2 - ar.left : pr.left + pr.width / 2 - ar.left;
-    let y = nr ? nr.top - ar.top - 8 : pr.top - ar.top + 70;
+    let y = nr ? nr.top - ar.top - 8 : pr.top - ar.top + bh + 14;
     const minX = pr.left - ar.left + bw / 2 + 6, maxX = pr.right - ar.left - bw / 2 - 6;
     const ax = x;
     x = Math.max(minX, Math.min(maxX, x));
     if (y - bh < pr.top - ar.top + 6) { b.classList.add('below'); y = (nr ? nr.bottom - ar.top : y) + 10; }
     b.style.left = x + 'px'; b.style.top = y + 'px';
     b.style.setProperty('--tail', Math.max(18, Math.min(bw - 18, bw / 2 + (ax - x))) + 'px');
-    requestAnimationFrame(() => b.classList.add('show'));
-    while (wrap.children.length > 2) wrap.firstChild.remove();
-    later(() => { b.classList.remove('show'); later(() => b.remove(), 350); }, 7500);
   }
+  function repositionBubbles() { $$('#chat-float .cf-bub').forEach(placeBubble); }
   let comicResume = false;
   function closeComic() {
     const w = $('.comic-wrap'); if (!w) return;
@@ -1175,7 +1279,7 @@ const Game = (() => {
     const insp = eqInspectable(stage);
     const done = S.evalDone[stage];
     const side = $('#side');
-    side.innerHTML = `<div class="side-head"><h2>${ICON[stage === 3 ? 'shield' : 'fire']}<span>Tahap ${stage}: Barier ${stage === 3 ? 'Pencegahan' : 'Mitigasi'}</span></h2></div>
+    side.innerHTML = tt(`<div class="side-head"><h2>${ICON[stage === 3 ? 'shield' : 'fire']}<span>Tahap ${stage}: Barier ${stage === 3 ? 'Pencegahan' : 'Mitigasi'}</span></h2></div>
       <div class="card budget"><div class="budget-row"><span>${ICON.coin} Anggaran</span><b id="budget-val"></b></div><div class="budget-bar"><div id="budget-fill"></div></div><p class="muted small budget-note" id="budget-note"></p><p class="muted small">${stage === 3 ? 'Pasang instrumen deteksi dan proteksi yang memutus rantai kejadian sebelum kehilangan kontainmen, lalu jaga keandalannya.' : 'Pasang perangkat yang membatasi dampak bila kehilangan kontainmen tetap terjadi, lalu jaga keandalannya.'}</p></div>
       <div class="card rel"><h4>${ICON.gauge}<span>Keandalan Sistem Proteksi</span></h4>
         <div class="rel-row"><b id="rel-val">0%</b><span id="rel-sub">Belum ada barier terpasang</span></div>
@@ -1192,7 +1296,7 @@ const Game = (() => {
         <ul class="hs-list" id="hs-list">${hs.map(h => `<li data-hs="${h.id}"><span class="dot"></span><div><b>${cfg.hints || cfg.difficulty === 'mudah' ? esc(h.label) : 'Titik ' + esc(h.id.toUpperCase())}</b><small class="placed"></small></div></li>`).join('')}</ul>
       </div>
       ${insp.length ? `<div class="card"><h4>Inspeksi Peralatan <span class="pill" id="eq-count"></span></h4><p class="muted small">Pilih program pada tab Inspeksi &amp; Pengujian, lalu klik peralatan di P&amp;ID.</p><ul class="eq-insp" id="eq-insp">${insp.map(e => `<li data-eq="${e.id}"><span class="dot"></span><div><b>${esc(e.id)}</b> <span>${esc(e.name)}</span><small class="placed"></small></div></li>`).join('')}</ul></div>` : ''}
-      <div class="card action"><button class="btn3d ${done ? 'primary' : 'dark'} wide" id="btn-eval">${ICON.check}<span>${done ? 'Lanjut' : 'Evaluasi Pemasangan'}</span></button></div>`;
+      <div class="card action"><button class="btn3d ${done ? 'primary' : 'dark'} wide" id="btn-eval">${ICON.check}<span>${done ? 'Lanjut' : 'Evaluasi Pemasangan'}</span></button></div>`);
     on(side, '.tab', 'click', ev => { Sfx.click(); setTab(ev.currentTarget.dataset.tab); });
     on(side, '.tool', 'click', ev => { Sfx.click(); selectTool(ev.currentTarget.dataset.kind, ev.currentTarget.dataset.id); });
     on(side, '.hs-list li', 'click', ev => {
@@ -1219,7 +1323,7 @@ const Game = (() => {
     $$('.tool').forEach(b => b.classList.toggle('sel', !!tool && b.dataset.kind === tool.kind && b.dataset.id === tool.id));
     $('#pid').classList.toggle('placing', !!tool);
     const desc = $('#tool-desc');
-    if (!tool) { desc.innerHTML = 'Pilih alat untuk membaca fungsinya, atau klik titik (+) pada P&amp;ID untuk memilih perangkat lewat pop-up.'; pid.setTargets(null); return; }
+    if (!tool) { desc.innerHTML = tt('Pilih alat untuk membaca fungsinya, atau klik titik (+) pada P&amp;ID untuk memilih perangkat lewat pop-up.'); pid.setTargets(null); return; }
     if (tool.kind === 'dev') {
       const d = DEVICES[tool.id];
       desc.innerHTML = `<b>${esc(d.name)}</b><br>${esc(d.desc)}<div class="meta"><span>Biaya ${money(d.cost)}</span><span>PFD desain ${String(d.pfd).replace('.', ',')}</span><span>Program uji: ${esc(ITPM[d.itpm].name)}</span></div>`;
@@ -1227,7 +1331,7 @@ const Game = (() => {
     } else {
       const t = ITPM[tool.id];
       const fitTxt = t.target === 'device' ? t.fits.filter(k => kitOk(DEVICES[k])).map(k => DEVICES[k].code).join(', ') : t.fitsEq.filter(x => scn.equipment.some(e => e.type === x)).map(x => EQ_TYPE_NAMES[x] || x).join(', ');
-      desc.innerHTML = `<b>${esc(t.name)}</b><br>${esc(t.desc)}<div class="meta"><span>Biaya ${money(t.cost)}</span><span>Berlaku untuk: ${esc(fitTxt)}</span></div><p class="muted small">${t.target === 'device' ? 'Klik perangkat terpasang yang berbingkai biru di P&amp;ID.' : 'Klik peralatan yang berbingkai biru di P&amp;ID.'}</p>`;
+      desc.innerHTML = `<b>${esc(t.name)}</b><br>${esc(t.desc)}<div class="meta"><span>Biaya ${money(t.cost)}</span><span>Berlaku untuk: ${esc(fitTxt)}</span></div><p class="muted small">${tt(t.target === 'device' ? 'Klik perangkat terpasang yang berbingkai biru di P&amp;ID.' : 'Klik peralatan yang berbingkai biru di P&amp;ID.')}</p>`;
       updateTargets();
     }
   }
@@ -1363,16 +1467,25 @@ const Game = (() => {
         const d = DEVICES[k];
         return `<button class="pick${k === cur ? ' current' : ''}${d.cost > left ? ' poor' : ''}" data-dev="${k}" style="--c:${d.color}"><span class="tcode">${esc(d.code)}</span><span class="tname">${esc(d.name)}</span><span class="tcost">${money(d.cost)}</span></button>`;
       }).join('')}</div></div>`).join('')}`;
-    const el = openPopover(anchor, html, { pickHs: h.id }, { cls: 'picker', foot: '<div class="pick-desc">Arahkan kursor ke perangkat untuk membaca fungsinya, lalu klik untuk memasang.</div>' });
+    const footTxt = isTouch() ? 'Ketuk perangkat untuk membaca fungsinya, lalu ketuk sekali lagi untuk memasang.' : 'Arahkan kursor ke perangkat untuk membaca fungsinya, lalu klik untuk memasang.';
+    const el = openPopover(anchor, html, { pickHs: h.id }, { cls: 'picker', foot: `<div class="pick-desc">${footTxt}</div>` });
     if (!el) return;
     const desc = el.querySelector('.pick-desc');
+    let armed = null, lastPtr = 'mouse';
     $$('.pick', el).forEach(b => {
       const k = b.dataset.dev, d = DEVICES[k];
       const show = () => { desc.innerHTML = `<b>${esc(d.name)}</b>. ${esc(d.desc)}`; };
       b.addEventListener('mouseenter', show);
       b.addEventListener('focus', show);
+      b.addEventListener('pointerdown', ev => { lastPtr = ev.pointerType || 'mouse'; });
       b.addEventListener('click', () => {
         if (k === cur) { showToast(`${d.name} sudah terpasang di titik ini.`); return; }
+        if (lastPtr !== 'mouse' && armed !== k) {
+          armed = k; Sfx.click(); show();
+          desc.insertAdjacentHTML('beforeend', '<span class="pick-go">Ketuk sekali lagi untuk memasang.</span>');
+          $$('.pick', el).forEach(x => x.classList.toggle('armed', x === b));
+          return;
+        }
         if (placeDevice(stage, h, k)) openDevicePop(stage, h);
       });
     });
@@ -1563,6 +1676,8 @@ const Game = (() => {
           <button class="btn3d dark" data-act="new">${ICON.bolt}<span>Skenario Lain</span></button>
         </div>
       </div></div>`;
+    const bw = $('.bowtie-wrap');
+    if (bw && bw.scrollWidth > bw.clientWidth + 4) bw.insertAdjacentHTML('beforebegin', `<p class="bt-hint">${ICON.bulb}<span>Geser diagram ke samping untuk melihat seluruh bow-tie.</span></p>`);
     on(app, '[data-act=menu]', 'click', () => { Sfx.click(); showMenu(); });
     on(app, '[data-act=again]', 'click', () => { Sfx.start(); startScenario(scn); });
     on(app, '[data-act=new]', 'click', () => { Sfx.click(); showNewGame(); });
@@ -1608,11 +1723,26 @@ const Game = (() => {
   function init() {
     applyCfg();
     showMenu();
-    const unlock = () => { Music.unlock(); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); };
-    window.addEventListener('pointerdown', unlock, true);
-    window.addEventListener('keydown', unlock, true);
+    /* Audio baru boleh berbunyi setelah interaksi pengguna. Di layar sentuh, pointerdown belum dihitung
+       sebagai interaksi oleh peramban, sehingga pembuka kunci juga mendengarkan pointerup, touchend,
+       dan click, dan baru dilepas setelah efek suara dan musik benar-benar siap. */
+    const UNLOCK = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'];
+    const unlock = () => {
+      Promise.all([Sfx.unlock(), Music.unlock()]).then(r => { if (r[0] && r[1]) UNLOCK.forEach(t => window.removeEventListener(t, unlock, true)); });
+    };
+    UNLOCK.forEach(t => window.addEventListener(t, unlock, true));
+    /* iOS dapat menangguhkan audio saat aplikasi berpindah; ketukan berikutnya memulihkannya */
+    window.addEventListener('pointerup', () => { Sfx.unlock(); Music.kick(); }, true);
     document.addEventListener('click', ev => { if (ev.target.closest('[data-music]')) { Sfx.click(); toggleMusic(); } });
-    window.addEventListener('resize', () => { if (chart) chart.draw(); closePopover(); });
+    /* Di ponsel, bilah alamat yang muncul dan hilang saat menggulir juga memicu resize. Pop-up hanya
+       ditutup bila lebar layar berubah, misalnya saat perangkat diputar. */
+    let lastW = window.innerWidth;
+    window.addEventListener('resize', () => {
+      if (chart) chart.draw();
+      if (window.innerWidth !== lastW) { lastW = window.innerWidth; closePopover(); }
+      else if (pop && !pop.sheet && pop.anchor && pop.el.isConnected) { const area = $('#pid-area'); if (area) placePopover(pop.el, pop.anchor, area); }
+      repositionBubbles(); updateZoomHint();
+    });
     window.addEventListener('keydown', ev => {
       if (ev.key !== 'Escape') return;
       if ($('.comic-wrap')) { closeComic(); return; }

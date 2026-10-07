@@ -48,6 +48,16 @@ const Sfx = (() => {
   }
   return {
     setEnabled(v) { enabled = !!v; },
+    context: () => getCtx(),
+    /* Dipanggil di dalam interaksi pengguna. Bunyi senyap satu sampel membuka kunci audio
+       di Safari iOS lama; hasilnya true bila konteks audio sudah berjalan. */
+    unlock() {
+      const c = getCtx();
+      if (!c) return Promise.resolve(true);
+      if (c.state === 'running') return Promise.resolve(true);
+      try { const b = c.createBuffer(1, 1, 22050), src = c.createBufferSource(); src.buffer = b; src.connect(c.destination); src.start(0); } catch (e) { /* abaikan */ }
+      return (c.resume ? c.resume() : Promise.resolve()).then(() => c.state === 'running').catch(() => false);
+    },
     click() { tone(520, 0.07, 'triangle', 0.08); },
     place() { tone(660, 0.08, 'triangle', 0.12); tone(880, 0.12, 'triangle', 0.1, 0.07); },
     test() { tone(988, 0.07, 'sine', 0.1); tone(1319, 0.14, 'sine', 0.09, 0.07); },
@@ -70,10 +80,26 @@ const Sfx = (() => {
    mulai setelah interaksi pertama pengguna (kebijakan autoplay peramban),
    diredam saat insiden, dan dijeda ketika tab tidak aktif. Level 0 sampai
    1 dipetakan secara kuadratik agar pengaturan volume rendah lebih halus.
+   Di iOS properti volume elemen audio tidak dapat diubah lewat skrip,
+   sehingga musik dialirkan melalui GainNode WebAudio bila diperlukan.
    --------------------------------------------------------------------- */
 const Music = (() => {
   let a = null, enabled = true, level = 0.45, unlocked = false, raf = 0, duckUntil = 0, duckTimer = 0, resumeOnShow = false;
+  let gainNode = null, fadeInUntil = 0;
   const gain = l => Math.max(0, Math.min(1, l * l));
+  const volumeWritable = (() => { try { const t = document.createElement('audio'); t.volume = 0.5; return Math.abs(t.volume - 0.5) < 0.01; } catch (e) { return true; } })();
+  function ensureGraph() {
+    if (volumeWritable || gainNode || !a || typeof Sfx === 'undefined') return;
+    try {
+      const c = Sfx.context(); if (!c) return;
+      const src = c.createMediaElementSource(a);
+      gainNode = c.createGain();
+      gainNode.gain.value = 0;
+      src.connect(gainNode).connect(c.destination);
+    } catch (e) { gainNode = null; }
+  }
+  const getVol = () => gainNode ? gainNode.gain.value : (a ? a.volume : 0);
+  function setVol(v) { v = Math.max(0, Math.min(1, v)); if (gainNode) gainNode.gain.value = v; else if (a) a.volume = v; }
   function el() {
     if (!a) {
       a = document.createElement('audio');
@@ -85,24 +111,31 @@ const Music = (() => {
     return a;
   }
   function target() { return gain(level) * (Date.now() < duckUntil ? 0.3 : 1); }
+  /* v boleh berupa fungsi agar fade-in mengikuti perubahan volume selama berlangsung */
   function fadeTo(v, ms, done) {
-    const m = el();
+    el();
     cancelAnimationFrame(raf);
-    const from = m.volume, t0 = performance.now();
+    const tv = typeof v === 'function' ? v : () => v;
+    const from = getVol(), t0 = performance.now();
     const step = now => {
       const k = Math.min(1, (now - t0) / Math.max(1, ms));
-      m.volume = Math.max(0, Math.min(1, from + (v - from) * k));
+      setVol(from + (tv() - from) * k);
       if (k < 1) raf = requestAnimationFrame(step); else if (done) done();
     };
     raf = requestAnimationFrame(step);
   }
+  /* hasilnya true bila musik benar-benar berbunyi */
   function play() {
     const m = el();
-    if (!m.paused) { fadeTo(target(), 500); return; }
-    m.volume = 0;
+    ensureGraph();
+    /* satu ketukan memicu beberapa event; fade-in 2,5 detik yang sedang berjalan tidak dimulai ulang */
+    if (!m.paused) { if (Date.now() > fadeInUntil) fadeTo(target(), 500); return Promise.resolve(true); }
+    setVol(0);
+    fadeInUntil = Date.now() + 2600;
     const p = m.play();
-    if (p && p.then) p.then(() => fadeTo(target(), 2500)).catch(() => {});
-    else fadeTo(target(), 2500);
+    if (p && p.then) return p.then(() => { fadeTo(target, 2500); return true; }).catch(() => { fadeInUntil = 0; return false; });
+    fadeTo(target, 2500);
+    return Promise.resolve(true);
   }
   function stop() {
     if (!a || a.paused) return;
@@ -120,7 +153,9 @@ const Music = (() => {
       if (!enabled) stop();
       else if (unlocked) play();
     },
-    unlock() { unlocked = true; if (enabled) play(); },
+    unlock() { unlocked = true; return enabled ? play() : Promise.resolve(true); },
+    /* memulihkan musik yang semestinya berbunyi tetapi terhenti, misalnya setelah iOS menangguhkan audio */
+    kick() { if (enabled && unlocked && a && a.paused && !document.hidden) play(); },
     duck(ms) {
       duckUntil = Date.now() + ms;
       if (!a || a.paused) return;
@@ -128,6 +163,6 @@ const Music = (() => {
       clearTimeout(duckTimer);
       duckTimer = setTimeout(() => { if (a && !a.paused) fadeTo(target(), 2000); }, ms + 50);
     },
-    state() { return { playing: !!a && !a.paused, volume: a ? a.volume : 0, target: target(), enabled, unlocked }; },
+    state() { return { playing: !!a && !a.paused, volume: getVol(), target: target(), enabled, unlocked, webAudio: !!gainNode }; },
   };
 })();

@@ -837,8 +837,139 @@ const PID = (() => {
       return g;
     }
 
+    /* ---------- perbesar dan geser: cubit dua jari, seret saat diperbesar, tombol, ctrl+roda ----------
+       Tampilan diatur lewat viewBox sehingga semua lapisan (efek insiden, pembacaan DCS, titik
+       pemasangan) ikut membesar tanpa perhitungan ulang posisi. */
+    const view = { x: 0, y: 0, w: VB_W, h: VB_H };
+    const MAX_ZOOM = 4;
+    const viewFns = [];
+    const zoomOf = () => VB_W / view.w;
+    const ctl = document.createElement('div');
+    ctl.className = 'pid-zoom';
+    ctl.innerHTML = '<button type="button" data-z="out" aria-label="Perkecil P&amp;ID" title="Perkecil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></button>'
+      + '<button type="button" data-z="fit" aria-label="Tampilkan seluruh P&amp;ID" title="Tampilkan seluruh P&amp;ID"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>'
+      + '<button type="button" data-z="in" aria-label="Perbesar P&amp;ID" title="Perbesar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12"/></svg></button>';
+    container.appendChild(ctl);
+    const hint = document.createElement('div');
+    hint.className = 'pid-hint';
+    hint.setAttribute('aria-hidden', 'true');
+    hint.textContent = 'Cubit atau ketuk + untuk memperbesar';
+    container.appendChild(hint);
+    const zb = { in: ctl.querySelector('[data-z=in]'), out: ctl.querySelector('[data-z=out]'), fit: ctl.querySelector('[data-z=fit]') };
+    function clampView() {
+      view.w = Math.min(VB_W, Math.max(VB_W / MAX_ZOOM, view.w));
+      view.h = view.w * VB_H / VB_W;
+      view.x = Math.min(VB_W - view.w, Math.max(0, view.x));
+      view.y = Math.min(VB_H - view.h, Math.max(0, view.y));
+    }
+    function applyView() {
+      clampView();
+      svg.setAttribute('viewBox', `${view.x.toFixed(2)} ${view.y.toFixed(2)} ${view.w.toFixed(2)} ${view.h.toFixed(2)}`);
+      const z = zoomOf();
+      container.classList.toggle('zoomed', z > 1.01);
+      zb.in.disabled = z >= MAX_ZOOM - 0.01;
+      zb.out.disabled = zb.fit.disabled = z <= 1.01;
+      viewFns.forEach(fn => { try { fn(z); } catch (e) { /* abaikan */ } });
+    }
+    function toSvgPt(cx, cy) {
+      const m = svg.getScreenCTM();
+      if (!m) return { x: view.x + view.w / 2, y: view.y + view.h / 2 };
+      const p = new DOMPoint(cx, cy).matrixTransform(m.inverse());
+      return { x: p.x, y: p.y };
+    }
+    function zoomAt(factor, px, py) {
+      const nw = Math.min(VB_W, Math.max(VB_W / MAX_ZOOM, view.w / factor));
+      const k = nw / view.w;
+      view.x = px - (px - view.x) * k; view.y = py - (py - view.y) * k;
+      view.w = nw; view.h = nw * VB_H / VB_W;
+      applyView();
+    }
+    const zoomCenter = f => zoomAt(f, view.x + view.w / 2, view.y + view.h / 2);
+    function resetView() { view.x = 0; view.y = 0; view.w = VB_W; view.h = VB_H; applyView(); }
+    ctl.addEventListener('click', ev => {
+      const b = ev.target.closest('button'); if (!b || b.disabled) return;
+      ev.stopPropagation();
+      if (b.dataset.z === 'in') zoomCenter(1.6); else if (b.dataset.z === 'out') zoomCenter(1 / 1.6); else resetView();
+    });
+    /* Gestur penunjuk: posisi layar dari pojok kiri atas viewBox (ox, oy) tetap selama rasio aspek
+       viewBox tidak berubah, sehingga titik di bawah jari dapat dijaga tetap di bawah jari. */
+    const pts = new Map();
+    let gest = null, swallow = false, swallowT = 0;
+    function frame() { const m = svg.getScreenCTM(); return m ? { s: m.a, ox: m.a * view.x + m.e, oy: m.d * view.y + m.f } : null; }
+    function startPan(p, moved) { const f = frame(); gest = { type: 'pan', sx: p.x, sy: p.y, vx: view.x, vy: view.y, s: f ? f.s : 1, moved: !!moved }; }
+    function startPinch() {
+      const [a, b] = Array.from(pts.values());
+      const f = frame(); if (!f) { gest = null; return; }
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      gest = { type: 'pinch', d0: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), w0: view.w, fit: f.s * view.w / VB_W, ox: f.ox, oy: f.oy,
+        px: view.x + (mx - f.ox) / f.s, py: view.y + (my - f.oy) / f.s, moved: true };
+    }
+    svg.addEventListener('pointerdown', ev => {
+      if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+      pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pts.size === 1) startPan({ x: ev.clientX, y: ev.clientY });
+      else if (pts.size === 2) startPinch();
+    });
+    svg.addEventListener('pointermove', ev => {
+      const p = pts.get(ev.pointerId); if (!p || !gest) return;
+      p.x = ev.clientX; p.y = ev.clientY;
+      if (gest.type === 'pan') {
+        const dx = p.x - gest.sx, dy = p.y - gest.sy;
+        if (!gest.moved) {
+          if (zoomOf() <= 1.01 || Math.hypot(dx, dy) < 8) return;
+          gest.moved = true; container.classList.add('panning');
+          try { svg.setPointerCapture(ev.pointerId); } catch (e) { /* abaikan */ }
+        }
+        view.x = gest.vx - dx / gest.s; view.y = gest.vy - dy / gest.s;
+        applyView();
+      } else if (pts.size >= 2) {
+        const [a, b] = Array.from(pts.values());
+        const d = Math.max(10, Math.hypot(a.x - b.x, a.y - b.y));
+        const nw = Math.min(VB_W, Math.max(VB_W / MAX_ZOOM, gest.w0 * gest.d0 / d));
+        const s = gest.fit * VB_W / nw;
+        view.w = nw; view.h = nw * VB_H / VB_W;
+        view.x = gest.px - ((a.x + b.x) / 2 - gest.ox) / s;
+        view.y = gest.py - ((a.y + b.y) / 2 - gest.oy) / s;
+        applyView();
+        if (ev.cancelable) ev.preventDefault();
+      }
+    });
+    const endPtr = ev => {
+      if (!pts.has(ev.pointerId)) return;
+      pts.delete(ev.pointerId);
+      if (gest && gest.moved) { swallow = true; clearTimeout(swallowT); swallowT = setTimeout(() => { swallow = false; }, 400); }
+      container.classList.remove('panning');
+      if (pts.size === 1) startPan(Array.from(pts.values())[0], true);
+      else if (!pts.size) gest = null;
+    };
+    svg.addEventListener('pointerup', endPtr);
+    svg.addEventListener('pointercancel', endPtr);
+    /* ketukan yang mengakhiri geseran tidak boleh membuka pop-up peralatan */
+    svg.addEventListener('click', ev => { if (swallow) { swallow = false; ev.stopPropagation(); ev.preventDefault(); } }, true);
+    svg.addEventListener('wheel', ev => {
+      if (!ev.ctrlKey) return;
+      ev.preventDefault();
+      const p = toSvgPt(ev.clientX, ev.clientY);
+      zoomAt(Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.15 : 0.005)), p.x, p.y);
+    }, { passive: false });
+    applyView();
+
     const api = {
       svg,
+      /* tingkat perbesaran dan pengamat perubahan tampilan */
+      zoom: () => zoomOf(),
+      onView: fn => { viewFns.push(fn); },
+      resetView,
+      zoomBy: f => zoomCenter(f),
+      /* bila diperbesar, geser tampilan agar node yang dituju terlihat */
+      focusNode(node) {
+        if (!node || zoomOf() <= 1.01) return;
+        const r = node.getBoundingClientRect(), sr = svg.getBoundingClientRect();
+        if (r.left >= sr.left && r.right <= sr.right && r.top >= sr.top && r.bottom <= sr.bottom) return;
+        const p = toSvgPt(r.left + r.width / 2, r.top + r.height / 2);
+        view.x = p.x - view.w / 2; view.y = p.y - view.h / 2;
+        applyView();
+      },
       eqBounds: id => eqById[id] ? eqBounds(eqById[id]) : null,
       eqAnchor(id) {
         const e = eqById[id]; if (!e) return { x: VB_W / 2, y: VB_H / 2 };

@@ -180,7 +180,8 @@ class TrendChart {
   }
   layout(W, H) {
     const n = this.ids.length;
-    const cols = W >= 720 && n > 1 ? 2 : 1;
+    /* dua kolom bila area lebar, atau cukup lebar tetapi pendek (tablet mendatar) agar kartu tidak gepeng */
+    const cols = n > 1 && (W >= 720 || (W >= 520 && H < 260)) ? 2 : 1;
     const rows = Math.ceil(n / cols);
     const gap = 6;
     const cw = (W - gap * (cols + 1)) / cols, ch = (H - gap * (rows + 1)) / rows;

@@ -79,9 +79,32 @@ Kuis pemahaman berisi lima soal per skenario. Urutan pilihan diacak setiap kali 
 
 Informasi peralatan dan perangkat tampil sebagai pop-up di dekat titik yang diklik pada P&ID. Pop-up memuat deskripsi, nilai proses terkini yang diperbarui langsung, serta status PFD dan program uji pada tahap barier. Pop-up ditutup dengan tombol silang di kanan atas, tombol Escape, klik area kosong, atau otomatis berganti saat peralatan lain diklik.
 
+## Ponsel dan tablet
+
+Tata letak menyesuaikan ukuran dan orientasi layar.
+
+| Kondisi layar | Tata letak |
+|---|---|
+| Lebar mulai 1000 px dan tinggi mulai 600 px, misalnya desktop dan tablet mendatar | P&ID dan tren di kiri, panel tahap di kanan |
+| Ponsel, tablet tegak, dan layar yang pendek | Bertumpuk: P&ID dengan proporsi tetap 1000 x 560, tren, lalu panel tahap |
+| Ponsel tegak | Bertumpuk, ditambah bilah atas dua baris dengan stepper ikon, pop-up sebagai lembar bawah, dan filter sektor berupa strip geser |
+| Ponsel mendatar | Bertumpuk dengan bilah atas satu baris, menu dua kolom, dan modal yang lebih rapat |
+
+P&ID dapat diperbesar sampai 4 kali dengan cubit dua jari atau tombol + di pojok kanan bawah. Saat diperbesar, P&ID digeser dengan satu jari, dan tombol tampilkan seluruh P&ID mengembalikan tampilan semula. Di desktop, Ctrl ditambah roda tetikus atau cubit pada trackpad juga memperbesar P&ID. Pop-up peralatan, balon obrolan, dan efek insiden ikut menyesuaikan posisi.
+
+Pada tata letak bertumpuk, Tahap 2 menampilkan bilah aksi yang melayang di bagian bawah layar. Isinya status proses, jam operasi, lampu alarm, tombol Jalankan atau Laporkan, dan tombol komik obrolan, sehingga pemain dapat melapor tanpa menggulir halaman. Spanduk peringatan lapangan juga menempel di bagian atas layar.
+
+Di layar sentuh, petunjuk memakai kata ketuk, bukan klik. Pemilih perangkat memakai dua ketukan: ketukan pertama menampilkan fungsi perangkat, ketukan kedua memasangnya. Target sentuh dibuat sekitar 44 px, dan isian formulir memakai huruf 16 px agar Safari iOS tidak memperbesar halaman saat mengisi. Efek hover hanya berlaku pada perangkat yang memiliki kursor, sehingga tidak tertinggal setelah diketuk.
+
+Permainan dapat dipasang ke layar utama melalui Tambahkan ke Layar Utama di Safari atau Instal aplikasi di Chrome. Dengan cara ini permainan berjalan layar penuh tanpa bilah alamat peramban.
+
+Tata letak dan fungsi diperiksa dengan emulasi Chromium pada 19 ukuran layar, dari ponsel 360 x 740 sampai tablet 1366 x 1024, dalam posisi tegak dan mendatar, termasuk gestur cubit dan geser. Perilaku khusus Safari iOS, seperti kebijakan audio, sebaiknya tetap dicoba langsung pada iPhone atau iPad.
+
 ## Audio
 
 Musik latar memakai lagu Measured Flow yang diputar berulang. Musik baru berbunyi setelah interaksi pertama pengguna, sesuai kebijakan autoplay peramban, lalu naik perlahan selama sekitar 2,5 detik. Rekaman aslinya memakai efek auto-pan, yaitu sebagian instrumen berpindah dari kanal kiri ke kanan dengan periode sekitar 1,1 detik. Efek ini melelahkan bila didengar lewat earphone, sehingga berkas diubah menjadi mono dengan merata-ratakan kedua kanal, pada 128 kbps dan kekerasan sekitar -14 LUFS. Volume default diatur 45 persen pada kurva kuadratik, setara amplitudo 0,2 atau sekitar 14 dB lebih pelan dari berkas tersebut. Saat insiden terjadi di Tahap 2, musik diredam sementara agar alarm dan peringatan tetap terdengar jelas. Musik juga dijeda saat tab peramban tidak aktif. Musik dapat dimatikan lewat tombol pengeras suara di menu dan bilah atas, atau diatur volumenya di Configuration.
+
+Audio dibuka pada interaksi pertama yang diakui peramban, yaitu ketukan atau klik, dan pembuka kunci tetap aktif sampai efek suara dan musik benar-benar siap. Di iOS, properti volume elemen audio tidak dapat diubah lewat skrip, sehingga musik dialirkan melalui GainNode WebAudio agar pengaturan volume dan peredaman saat insiden tetap berlaku.
 
 ## Credit dan profil perusahaan
 
@@ -116,10 +139,11 @@ Pada skenario fasilitas non-produksi, label tombol menyesuaikan jenis operasinya
 
 ```
 index.html                  halaman utama
+manifest.webmanifest        data aplikasi web untuk pemasangan ke layar utama
 css/style.css               gaya tampilan (tombol 3D, kartu, P&ID, efek insiden, modal)
 js/data.js                  katalog perangkat dan kit, program ITPM, model biaya, sektor, peringatan lapangan, tim, tokoh, jenis kesalahan manusia, credit
 js/scenarios/*.js           satu berkas per skenario, dinamai <sektor>-<unit>.js (12 berkas)
-js/pid.js                   penggambar P&ID SVG (37 jenis simbol), isi cairan, efek insiden, lencana program uji
+js/pid.js                   penggambar P&ID SVG (37 jenis simbol), isi cairan, efek insiden, lencana program uji, perbesar dan geser
 js/sim.js                   mesin simulasi proses, fluktuasi proses, jam operasi, produksi, grafik tren eskalasi
 js/game.js                  alur permainan, pop-up, penilaian, obrolan tim dan komik, avatar tokoh, simpan/lanjutkan, bow-tie
 js/audio.js                 efek suara WebAudio dan pemutar musik latar
@@ -127,6 +151,7 @@ tools/check-scenarios.js    validasi data skenario dengan Node.js tanpa peramban
 assets/psm-logo.png         logo PSM Simulator by Nusa Safety
 assets/psm-emblem.png       emblem untuk bilah atas
 assets/favicon.png          ikon tab peramban
+assets/icon-180.png, icon-192.png, icon-512.png  ikon layar utama
 assets/nusa-safety-logo.png logo Nusa Safety untuk layar Credit
 assets/menu-bg.jpg          foto latar menu (monokrom silver)
 assets/audio/measured-flow.mp3  musik latar
