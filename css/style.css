@@ -974,3 +974,10 @@ body.has-dock .m-bar { display: none !important; }
   .promo-prev { margin-top: 8px; padding-top: 6px; }
 }
 @media (prefers-reduced-motion: reduce) { .promo { animation: none; } }
+
+/* target sentuh tautan kontak minimal 44 px tanpa mengubah tata letak teks */
+@media (pointer: coarse) {
+  .promo-contact a { display: inline-flex; align-items: center; min-height: 44px; }
+  .promo-contact { row-gap: 0; }
+  .company-links .muted a { padding: 14px 2px; }
+}
