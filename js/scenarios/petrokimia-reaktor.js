@@ -117,7 +117,7 @@ const SCN_REACTOR = {
       causes: ['FCV-201 terbuka berlebih (kegagalan katup atau kesalahan set point operator) sehingga umpan melampaui kapasitas pendinginan', 'Air pendingin terlalu dingin', 'Kondensor E-201 terlalu efektif', 'Agitator mati'], causeAns: 0,
       cons: ['Akumulasi monomer, pelepasan panas melebihi pendinginan, reaksi runaway dan overpressure', 'Level reaktor turun', 'Produk tidak memenuhi spesifikasi saja, tanpa dampak keselamatan', 'Pompa umpan rusak'], consAns: 0,
       explain: 'Laju umpan naik lebih dari dua kali normal diikuti kenaikan suhu. Pembatasan laju umpan (FT dengan pembatas) dan TSHH adalah proteksi yang tepat.' },
-    { id: 'e3', threat: 2, effects: [{ var: 'P2', to: 6.9, delay: 2, dur: 22 }, { var: 'T2', to: 98, delay: 8, dur: 14 }],
+    { id: 'e3', threat: 2, effects: [{ var: 'P2', to: 6.9, delay: 1, dur: 18 }, { var: 'T2', to: 98, delay: 8, dur: 14 }],
       warnings: [
         { t: 12, type: 'heat', sev: 'warn', at: 'E-201', text: 'Kondensor E-201 terasa panas dan tidak ada aliran gas yang keluar dari ujung vent.' },
         { t: 19, type: 'leak', sev: 'crit', at: 'R-201', pos: [540, 238], text: 'Uap pelarut bocor dari flens dan gasket bagian atas R-201 dengan suara mendesis keras.' },
