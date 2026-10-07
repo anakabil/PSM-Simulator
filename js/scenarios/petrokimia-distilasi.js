@@ -142,7 +142,7 @@ const SCN_DISTILASI = {
       causes: ['LCV-401 macet tertutup atau transmitter level V-401 membaca rendah palsu sehingga distilat tidak dikeluarkan', 'Uap reboiler berkurang', 'Pompa dasar P-402 berhenti', 'Air pendingin berlebih'], causeAns: 0,
       cons: ['Drum refluks meluap, kondensor terendam, dan cairan terbawa ke flare sebagai hujan cairan menyala', 'Tekanan kolom turun', 'Produk benzena lebih murni', 'Level dasar kolom naik tanpa dampak'], consAns: 0,
       explain: 'Level drum refluks naik terus tanpa perubahan pada reboiler atau umpan, sehingga penyebabnya ada pada aliran keluar drum. Cairan yang terbawa ke header flare berbahaya karena flare dirancang untuk gas. Proteksi yang tepat adalah alarm level tinggi dan trip level tinggi-tinggi yang independen dari LCV-401.' },
-    { id: 'e4', threat: 3, effects: [{ var: 'L4', to: 2, delay: 2, dur: 16 }],
+    { id: 'e4', threat: 3, effects: [{ var: 'L4', to: 2, delay: 1, dur: 14 }],
       warnings: [
         { t: 14, type: 'vibration', sev: 'warn', at: 'P-402', text: 'Pompa P-402 bergetar keras dan berbunyi seperti kerikil (kavitasi).' },
         { t: 20, type: 'leak', sev: 'crit', at: 'P-402', pos: [262, 500], text: 'Seal mekanis P-402 rusak; toluena panas menyembur dan menguap di area pompa.' },
@@ -201,7 +201,7 @@ const SCN_DISTILASI = {
         { t: 26, who: 'dimas', at: 'P-402', mood: 'ragu', text: 'Pompa P-402 mulai berbunyi kasar. Raka, faceplate LIC-402 masih tertulis MAN?' },
         { t: 29, who: 'raka', at: 'CR-400', mood: 'panik', text: 'Benar, masih manual sejak stroke test! Kukembalikan ke otomatis, tapi levelnya sudah hampir habis!' },
       ],
-      effects: [{ var: 'L4', to: 2, delay: 2, dur: 16 }],
+      effects: [{ var: 'L4', to: 2, delay: 1, dur: 14 }],
       warnings: [
         { t: 14, type: 'vibration', sev: 'warn', at: 'P-402', text: 'Pompa P-402 bergetar keras dan berbunyi seperti kerikil. Gejala kavitasi karena cairan di dasar kolom menipis.' },
         { t: 20, type: 'leak', sev: 'crit', at: 'P-402', pos: [262, 500], text: 'Seal mekanis P-402 rusak. Toluena panas menyembur dan menguap di area pompa.' },

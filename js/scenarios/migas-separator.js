@@ -112,7 +112,7 @@ const SCN_SEPARATOR = {
       causes: ['LCV-101 macet tertutup sehingga minyak tidak keluar', 'PCV-101 macet terbuka', 'Choke valve ditutup operator', 'Kompresor K-101 trip'], causeAns: 0,
       cons: ['Cairan terbawa ke jalur gas (carry-over), merusak kompresor K-101 dan berpotensi bocor', 'Tangki T-101 meluap', 'Tekanan sistem air hilir naik', 'Suhu separator naik drastis'], consAns: 0,
       explain: 'Aliran minyak keluar berhenti dan level minyak naik terus. Saat level mencapai ruang gas, cairan terbawa ke K-101 sehingga kompresor bergetar, panas, lalu seal gagal. Proteksi yang tepat: alarm level tinggi dan LSHH yang menutup inlet.' },
-    { id: 'e3', threat: 2, effects: [{ var: 'LI1', to: 2, delay: 2, dur: 14 }, { var: 'PW', to: 4.6, delay: 12, dur: 12 }],
+    { id: 'e3', threat: 2, effects: [{ var: 'LI1', to: 2, delay: 1, dur: 12 }, { var: 'PW', to: 4.6, delay: 12, dur: 12 }],
       warnings: [
         { t: 13, type: 'vibration', sev: 'warn', at: 'LCV-102', text: 'Hentakan aliran (slugging) dan suara gas pada jalur air terproduksi setelah LCV-102.' },
         { t: 19, type: 'toxic', sev: 'crit', at: 'WT-100', pos: [100, 420], text: 'KEBOCORAN GAS BERACUN: gas mengandung H2S keluar dari vent unit pengolahan air. Detektor gas personal pekerja berbunyi.' },
