@@ -1322,6 +1322,8 @@ const Game = (() => {
     b.innerHTML = `<span class="av">${avatarSVG(m.who, m.mood)}</span><div><b>${esc(c.name)}</b><p>${esc(m.text)}</p></div>`;
     wrap.appendChild(b);
     placeBubble(b, bubbleObstacles(b));
+    const mine = rectOf(b);
+    if ($$('#chat-float .cf-bub').some(o => o !== b && o.dataset.placed && !o.classList.contains('out') && overlapArea(mine, rectOf(o)) > 0)) repositionBubbles();
     requestAnimationFrame(() => b.classList.add('show'));
     later(() => {
       b.classList.add('out'); b.classList.remove('show');
@@ -1362,13 +1364,17 @@ const Game = (() => {
   function bubbleObstacles(except) {
     return fixedObstacles(except.dataset.at).concat($$('#chat-float .cf-bub').filter(o => o !== except && o.dataset.placed && !o.classList.contains('out')).map(b => Object.assign(rectOf(b), { wt: 100 })));
   }
-  function placeBubble(b, obs) {
+  /* Kandidat posisi balon beserta biayanya, diurutkan dari yang terbaik. */
+  function bubbleCands(b, obs) {
     const area = $('#pid-area'), pidEl = $('#pid');
-    if (!area || !pidEl || !pid) return;
+    if (!area || !pidEl || !pid) return [];
     const ar = area.getBoundingClientRect(), pr = pidEl.getBoundingClientRect();
     const bw = b.offsetWidth, bh = b.offsetHeight, m = 6, T = 14;
     const R = { x0: pr.left - ar.left + m, y0: pr.top - ar.top + m, x1: pr.right - ar.left - m, y1: pr.bottom - ar.top - m };
     if (isCompact()) R.y1 = Math.max(R.y1, ar.height - m);
+    /* bagian area yang sedang terlihat di layar; di ponsel mendatar P&ID lebih tinggi dari layar,
+       sehingga balon di luar bagian ini tidak terbaca tanpa menggulir */
+    const V = { y0: Math.max(R.y0, m - ar.top), y1: Math.min(R.y1, window.innerHeight - m - ar.top) };
     const node = b.dataset.at && pid.eqNode(b.dataset.at);
     let nr = node ? node.getBoundingClientRect() : null;
     /* peralatan di luar bagian P&ID yang sedang terlihat: balon tanpa ekor di tepi P&ID */
@@ -1386,7 +1392,12 @@ const Game = (() => {
     }
     const mx = (R.x0 + R.x1 - bw) / 2;
     [[mx, R.y0], [R.x0, R.y0], [R.x1 - bw, R.y0], [R.x0, R.y1 - bh], [R.x1 - bw, R.y1 - bh], [mx, R.y1 - bh]].forEach(q => cands.push({ side: 'free', x: q[0], y: q[1] }));
-    let best = null;
+    /* bila hanya sebagian area yang terlihat, sediakan kisi posisi di bagian itu agar dua balon dapat berdampingan */
+    if (V.y1 - V.y0 >= bh && (V.y0 > R.y0 || V.y1 < R.y1)) {
+      const xs = [0, 0.25, 0.5, 0.75, 1].map(f => R.x0 + (R.x1 - R.x0 - bw) * f);
+      [0, 0.5, 1].map(f => V.y0 + (V.y1 - V.y0 - bh) * f).forEach(y => xs.forEach(x => cands.push({ side: 'free', x, y })));
+    }
+    const res = [];
     cands.forEach((c, i) => {
       const x = Math.max(R.x0, Math.min(R.x1 - bw, c.x)), y = Math.max(R.y0, Math.min(R.y1 - bh, c.y));
       const box = { x, y, w: bw, h: bh };
@@ -1394,9 +1405,15 @@ const Game = (() => {
       const cover = anchor ? overlapArea(box, anchor) : 0;
       /* ekor harus tetap menunjuk peralatan setelah balon digeser ke dalam P&ID */
       const lost = (c.side === 'tail-down' && y + bh > anchor.y) || (c.side === 'tail-up' && y < anchor.y + anchor.h) || (c.side === 'tail-left' && x < anchor.x + anchor.w) || (c.side === 'tail-right' && x + bw > anchor.x);
-      const cost = ov + cover * 4 + (lost ? 8000 : 0) + (c.side === 'free' ? 6000 : 0) + (Math.abs(x - c.x) + Math.abs(y - c.y)) * 2 + i * 12;
-      if (!best || cost < best.cost) best = Object.assign({}, c, { x, y, cost });
+      /* bagian balon yang jatuh di luar layar dihitung lebih berat daripada menutup peralatan atau pembacaan DCS */
+      const out = Math.min(bh, Math.max(0, V.y0 - y) + Math.max(0, y + bh - V.y1));
+      const cost = ov + cover * 4 + out * bw * 30 + (lost ? 8000 : 0) + (c.side === 'free' ? 6000 : 0) + (Math.abs(x - c.x) + Math.abs(y - c.y)) * 2 + i * 12;
+      res.push(Object.assign({}, c, { x, y, cost, bw, bh }));
     });
+    return res.sort((p, q) => p.cost - q.cost);
+  }
+  function applyCand(b, best) {
+    const bw = best.bw, bh = best.bh;
     b.classList.remove('tail-down', 'tail-up', 'tail-left', 'tail-right', 'free', 'below');
     b.classList.add(best.side);
     b.style.left = Math.round(best.x) + 'px'; b.style.top = Math.round(best.y) + 'px';
@@ -1409,11 +1426,40 @@ const Game = (() => {
     } else { b.style.setProperty('--ox', '50%'); b.style.setProperty('--oy', '50%'); }
     b.dataset.x = Math.round(best.x); b.dataset.y = Math.round(best.y); b.dataset.placed = '1';
   }
-  /* dipanggil saat ukuran layar, zoom P&ID, atau spanduk berubah: balon disusun ulang dari yang tertua */
-  function repositionBubbles() {
-    const list = $$('#chat-float .cf-bub').filter(b => !b.classList.contains('out'));
+  function placeBubble(b, obs) { const cs = bubbleCands(b, obs); if (cs.length) applyCand(b, cs[0]); }
+  /* Pencarian bersama untuk balon yang tampil bersamaan: beberapa posisi terbaik balon yang lebih lama dicoba,
+     lalu dipilih susunan dengan biaya total terkecil, sehingga balon lama dapat bergeser memberi tempat. */
+  function jointLayout(list) {
+    const K = 12;
+    let best = null;
+    const rec = (i, placed, chosen, cost) => {
+      if (best && cost >= best.cost) return;
+      if (i === list.length) { best = { cost, chosen: chosen.slice() }; return; }
+      const b = list[i];
+      const cs = bubbleCands(b, fixedObstacles(b.dataset.at).concat(placed));
+      (i === list.length - 1 ? cs.slice(0, 1) : cs.slice(0, K)).forEach(c => {
+        chosen.push(c);
+        rec(i + 1, placed.concat([{ x: c.x, y: c.y, w: c.bw, h: c.bh, wt: 100 }]), chosen, cost + c.cost);
+        chosen.pop();
+      });
+    };
+    rec(0, [], [], 0);
+    if (best) list.forEach((b, i) => applyCand(b, best.chosen[i]));
+  }
+  /* susun balon menurut urutan tertentu, lalu kembalikan total luas tumpang tindih antarbalon */
+  function layoutBubbles(list) {
     const placed = [];
     list.forEach(b => { placeBubble(b, fixedObstacles(b.dataset.at).concat(placed)); placed.push(Object.assign(rectOf(b), { wt: 100 })); });
+    let ov = 0;
+    placed.forEach((a, i) => placed.slice(i + 1).forEach(c => { ov += overlapArea(a, c); }));
+    return ov;
+  }
+  /* dipanggil saat ukuran layar, zoom P&ID, spanduk, atau balon baru berubah: balon disusun ulang dari yang
+     tertua. Bila masih ada balon yang saling menutup, misalnya di ponsel mendatar yang sempit, susunan
+     dicari bersama sehingga balon yang lebih lama dapat bergeser memberi tempat. */
+  function repositionBubbles() {
+    const list = $$('#chat-float .cf-bub').filter(b => !b.classList.contains('out'));
+    if (layoutBubbles(list) > 0 && list.length > 1) jointLayout(list);
   }
   let comicResume = false;
   function closeComic() {
