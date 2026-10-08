@@ -8,29 +8,49 @@ const PID = (() => {
   const NS = 'http://www.w3.org/2000/svg';
   const VB_W = 1000, VB_H = 560;
 
-  /* Warna inti fluida (garis tipis di tengah pipa silver). */
-  const FLUIDS = {
-    mix:     { c: '#8a7768', name: 'Fluida sumur (campuran)' },
-    gas:     { c: '#e8b23a', name: 'Gas / uap' },
-    oil:     { c: '#5b4636', name: 'Minyak' },
-    water:   { c: '#29abe2', name: 'Air terproduksi' },
-    cw:      { c: '#8fdcf7', name: 'Air pendingin' },
-    chem:    { c: '#8a6bbf', name: 'Monomer / pelarut' },
-    product: { c: '#4f9d69', name: 'Produk resin' },
-    lpg:     { c: '#e0773a', name: 'LPG cair' },
-    flare:   { c: '#e05a4f', name: 'Jalur flare' },
-    steam:   { c: '#90a4ae', name: 'Uap air (steam)' },
-    coal:    { c: '#3e3a36', name: 'Serbuk batu bara dan udara primer' },
-    air:     { c: '#a5d6a7', name: 'Udara pembakaran' },
-    flue:    { c: '#8d6e63', name: 'Gas buang' },
-    power:   { c: '#f6c344', name: 'Kabel daya listrik' },
-    bulk:    { c: '#c8a165', name: 'Material curah' },
-    agg:     { c: '#9e9e9e', name: 'Agregat batuan' },
-    asphalt: { c: '#1f1f1f', name: 'Aspal panas' },
-    hotoil:  { c: '#ff7043', name: 'Oli termal (hot oil)' },
-    fw:      { c: '#ef5350', name: 'Air pemadam kebakaran' },
-    nh3:     { c: '#9c7ad6', name: 'Amonia cair' },
+  /* Standar warna jalur proses, sama untuk semua misi. Warna menunjukkan kategori bahan, sedangkan pola
+     membedakan bahan di dalam kategori yang sama: cable untuk kabel daya, dash untuk pelepasan darurat,
+     stripe untuk garis putih di tengah pipa, dan dot untuk butiran padatan curah. Garis putus-putus pada
+     pipa yang diberi dashed menandai jalur yang hanya dipakai sesekali. */
+  const FLUID_CATS = {
+    power: { c: '#f2b705', name: 'Listrik' },
+    water: { c: '#1e6fd9', name: 'Air' },
+    steam: { c: '#8e9ba8', name: 'Uap air' },
+    gas: { c: '#8b5a2b', name: 'Gas dan uap mudah terbakar' },
+    toxic: { c: '#d32f2f', name: 'Gas dan uap beracun' },
+    relief: { c: '#d32f2f', name: 'Pelepasan darurat ke flare' },
+    fire: { c: '#c62828', name: 'Air pemadam kebakaran' },
+    flam: { c: '#ef7d00', name: 'Cairan mudah terbakar' },
+    chem: { c: '#7e57c2', name: 'Bahan kimia cair berbahaya' },
+    air: { c: '#3fa34d', name: 'Udara' },
+    solid: { c: '#c49a5a', name: 'Padatan curah' },
+    flue: { c: '#4a5560', name: 'Gas buang' },
+    hot: { c: '#c2185b', name: 'Fluida panas' },
   };
+  const FLUIDS = {
+    power:   { cat: 'power', pat: 'cable', name: 'Kabel daya listrik' },
+    water:   { cat: 'water', name: 'Air proses' },
+    cw:      { cat: 'water', name: 'Air pendingin' },
+    steam:   { cat: 'steam', name: 'Uap air' },
+    gas:     { cat: 'gas', name: 'Gas atau uap hidrokarbon' },
+    toxic:   { cat: 'toxic', name: 'Gas beracun' },
+    flare:   { cat: 'relief', pat: 'dash', name: 'Header flare' },
+    fw:      { cat: 'fire', pat: 'stripe', name: 'Air pemadam kebakaran' },
+    oil:     { cat: 'flam', name: 'Minyak' },
+    lpg:     { cat: 'flam', name: 'LPG cair' },
+    product: { cat: 'flam', name: 'Produk cair' },
+    mix:     { cat: 'flam', pat: 'stripe', name: 'Fluida sumur (minyak, gas, dan air)' },
+    chem:    { cat: 'chem', name: 'Monomer dan pelarut' },
+    nh3:     { cat: 'chem', name: 'Amonia cair' },
+    air:     { cat: 'air', name: 'Udara' },
+    bulk:    { cat: 'solid', pat: 'dot', name: 'Material curah' },
+    coal:    { cat: 'solid', pat: 'dot', name: 'Serbuk batu bara dan udara primer' },
+    agg:     { cat: 'solid', pat: 'dot', name: 'Agregat batuan' },
+    flue:    { cat: 'flue', name: 'Gas buang' },
+    hotoil:  { cat: 'hot', name: 'Oli termal' },
+    asphalt: { cat: 'hot', pat: 'stripe', name: 'Aspal panas' },
+  };
+  Object.keys(FLUIDS).forEach(k => { const f = FLUIDS[k]; f.c = FLUID_CATS[f.cat].c; f.catName = FLUID_CATS[f.cat].name; f.pat = f.pat || 'solid'; });
 
   function el(tag, attrs, parent) {
     const e = document.createElementNS(NS, tag);
@@ -597,26 +617,36 @@ const PID = (() => {
 
   function pathD(pts) { return pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' '); }
 
-  /* Pipa: tabung silver dengan garis inti berwarna sesuai fluida. */
+  /* Pipa: badan pipa berwarna sesuai kategori bahan dengan garis tepi gelap dan kilap tipis, lalu pola
+     pembeda bila ada. Warna penuh pada badan pipa membuat kategori mudah dibedakan pada layar kecil. */
+  function pipeLayers(g, d, w, f, dashed, arrow) {
+    const cap = { 'stroke-linejoin': 'round', 'stroke-linecap': 'round', fill: 'none' };
+    const P = (attrs) => el('path', Object.assign({ d }, cap, attrs), g);
+    if (f.pat === 'dash' || dashed) {
+      P({ stroke: '#ffffff', 'stroke-width': w + 2.5, opacity: 0.9 });
+      P({ stroke: f.c, 'stroke-width': w + 0.5, 'stroke-dasharray': '9 6', 'stroke-linecap': 'butt', 'marker-end': arrow ? 'url(#mArrow)' : null });
+      return;
+    }
+    if (f.pat === 'cable') {
+      P({ stroke: '#1d262e', 'stroke-width': w + 2.5, 'marker-end': arrow ? 'url(#mArrow)' : null });
+      P({ stroke: f.c, 'stroke-width': Math.max(2, w - 1) });
+      P({ stroke: '#fff7cc', 'stroke-width': 1, opacity: 0.7, transform: 'translate(-0.4,-0.9)' });
+      P({ class: 'flow', stroke: '#ffffff', 'stroke-width': 1.8, 'stroke-dasharray': '3 12', opacity: 0 });
+      return;
+    }
+    P({ stroke: '#2b3640', 'stroke-width': w + 3, 'marker-end': arrow ? 'url(#mArrow)' : null });
+    P({ stroke: f.c, 'stroke-width': w + 0.6 });
+    P({ stroke: '#ffffff', 'stroke-width': Math.max(1, w * 0.24), opacity: 0.35, transform: 'translate(-0.5,-1.2)' });
+    if (f.pat === 'dot') P({ stroke: 'rgba(52,36,20,0.6)', 'stroke-width': Math.max(2, w * 0.45), 'stroke-dasharray': '0.1 4.2' });
+    if (f.pat === 'stripe') P({ stroke: '#ffffff', 'stroke-width': Math.max(1.4, w * 0.3), 'stroke-dasharray': '6 5', 'stroke-linecap': 'butt' });
+    P({ class: 'flow', stroke: '#ffffff', 'stroke-width': Math.max(1.4, w * 0.3), 'stroke-dasharray': '5 15', opacity: 0 });
+  }
   function drawPipe(g, p) {
-    const f = FLUIDS[p.fluid] || FLUIDS.mix;
+    const f = FLUIDS[p.fluid] || FLUIDS.oil;
     const d = pathD(p.pts);
     const w = p.w || 6;
-    const grp = el('g', { class: 'pipe', 'data-id': p.id }, g);
-    if (p.dashed) {
-      el('path', { d, fill: 'none', stroke: f.c, 'stroke-width': w * 0.75, 'stroke-dasharray': '8 6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.85 }, grp);
-    } else if (p.fluid === 'power') {
-      el('path', { d, fill: 'none', stroke: '#1d262e', 'stroke-width': w + 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'marker-end': p.arrow ? 'url(#mArrow)' : null }, grp);
-      el('path', { d, fill: 'none', stroke: '#46525e', 'stroke-width': Math.max(1.5, w - 1.5), 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, grp);
-      el('path', { d, fill: 'none', stroke: f.c, 'stroke-width': 1.6, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, grp);
-      el('path', { class: 'flow', d, fill: 'none', stroke: '#fff59d', 'stroke-width': 1.8, 'stroke-dasharray': '3 12', 'stroke-linecap': 'round', opacity: 0 }, grp);
-    } else {
-      el('path', { d, fill: 'none', stroke: '#46525e', 'stroke-width': w + 4, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'marker-end': p.arrow ? 'url(#mArrow)' : null }, grp);
-      el('path', { d, fill: 'none', stroke: '#cfd6dc', 'stroke-width': w + 1, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, grp);
-      el('path', { d, fill: 'none', stroke: '#ffffff', 'stroke-width': Math.max(1, w * 0.28), 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.85, transform: 'translate(-0.6,-1.4)' }, grp);
-      el('path', { d, fill: 'none', stroke: f.c, 'stroke-width': Math.max(1.8, w * 0.42), 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, grp);
-      el('path', { class: 'flow', d, fill: 'none', stroke: '#ffffff', 'stroke-width': Math.max(1.4, w * 0.3), 'stroke-dasharray': '5 15', 'stroke-linecap': 'round', opacity: 0 }, grp);
-    }
+    const grp = el('g', { class: 'pipe', 'data-id': p.id, 'data-cat': f.cat }, g);
+    pipeLayers(grp, d, w, f, p.dashed, p.arrow);
     if (p.label) {
       const last = p.pts[p.pts.length - 1];
       const prev = p.pts[p.pts.length - 2];
@@ -1098,11 +1128,29 @@ const PID = (() => {
     return api;
   }
 
+  /* Legenda jalur: satu butir untuk setiap gaya garis yang dipakai skenario. Bahan dengan gaya yang sama
+     digabung dalam satu butir. Nama bahan memakai legend pada pipa, lalu fluidNames skenario, lalu nama baku. */
   function fluidsIn(scn) {
-    const seen = [];
-    scn.pipes.forEach(p => { if (!seen.includes(p.fluid)) seen.push(p.fluid); });
-    return seen.map(k => Object.assign({ key: k }, FLUIDS[k] || FLUIDS.mix, scn.fluidNames && scn.fluidNames[k] ? { name: scn.fluidNames[k] } : {}));
+    const out = [];
+    scn.pipes.forEach(p => {
+      const f = FLUIDS[p.fluid] || FLUIDS.oil;
+      const style = f.cat + ':' + (p.dashed ? 'dash' : f.pat);
+      const name = p.legend || (scn.fluidNames && scn.fluidNames[p.fluid]) || f.name;
+      let it = out.find(x => x.style === style);
+      if (!it) out.push(it = { style, key: p.fluid, c: f.c, cat: f.cat, catName: f.catName, pat: p.dashed ? 'dash' : f.pat, names: [] });
+      if (!it.names.includes(name)) it.names.push(name);
+    });
+    out.forEach(it => { it.name = it.names.join('; '); });
+    return out;
+  }
+  /* contoh garis untuk legenda, digambar dengan gaya yang sama dengan pipa di P&ID */
+  function swatch(it) {
+    const f = { c: it.c, pat: it.pat };
+    const svg = el('svg', { viewBox: '0 0 34 12', width: 34, height: 12, class: 'sw-svg', 'aria-hidden': 'true' });
+    pipeLayers(svg, 'M4 6 L30 6', 5, f, false, false);
+    svg.querySelectorAll('.flow').forEach(n => n.remove());
+    return svg.outerHTML;
   }
 
-  return { render, fluidsIn, FLUIDS, VB_W, VB_H };
+  return { render, fluidsIn, swatch, FLUIDS, FLUID_CATS, VB_W, VB_H };
 })();

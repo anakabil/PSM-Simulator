@@ -15,6 +15,7 @@ const SCN_SEPARATOR = {
     'Di dalam V-101, gas, minyak, dan air dipisahkan berdasarkan perbedaan densitas. Tekanan bejana dijaga oleh PCV-101 di jalur keluar gas, level minyak oleh LCV-101, dan level antarmuka air oleh LCV-102.',
     'Gas dialirkan ke kompresor K-101 yang sangat sensitif terhadap cairan. Minyak dialirkan ke tangki penampung atmosferik T-101 lalu dipompa P-101 ke jalur ekspor. Air terproduksi dialirkan ke unit pengolahan air yang beroperasi pada tekanan rendah (0,5 barg).',
   ],
+  fluidNames: { mix: 'Fluida sumur (gas, minyak, dan air)', toxic: 'Gas alam mengandung H2S', oil: 'Minyak mentah', water: 'Air terproduksi', flare: 'Header flare' },
   production: { label: 'Minyak terproduksi', unit: 'bbl', var: 'FO', k: 0.1048 },
   equipment: [
     { id: 'MAN-100', type: 'manifold', x: 40, y: 262, w: 60, h: 36, name: 'Manifold Produksi',
@@ -47,8 +48,8 @@ const SCN_SEPARATOR = {
   ],
   pipes: [
     { id: 'in1', fluid: 'mix', w: 7, pts: [[100, 280], [290, 280]] },
-    { id: 'gas1', fluid: 'gas', w: 6, pts: [[420, 225], [420, 140], [740, 140]] },
-    { id: 'gas2', fluid: 'gas', w: 6, pts: [[780, 140], [990, 140]], arrow: true, label: 'Ke Penjualan Gas (40 barg)' },
+    { id: 'gas1', fluid: 'toxic', w: 6, pts: [[420, 225], [420, 140], [740, 140]] },
+    { id: 'gas2', fluid: 'toxic', w: 6, pts: [[780, 140], [990, 140]], arrow: true, label: 'Ke Penjualan Gas (40 barg)' },
     { id: 'oil1', fluid: 'oil', w: 6, pts: [[520, 335], [520, 400], [710, 400], [710, 380]] },
     { id: 'oil2', fluid: 'oil', w: 6, pts: [[760, 470], [760, 510], [840, 510]] },
     { id: 'oil3', fluid: 'oil', w: 6, pts: [[880, 510], [990, 510]], arrow: true, label: 'Ekspor (15 barg)' },

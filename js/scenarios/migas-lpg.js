@@ -15,6 +15,7 @@ const SCN_LPG = {
     'LPG dipompa P-301 (50 m³/jam) melalui loading arm ke truk tangki di loading bay. Uap yang terdesak dari truk dikembalikan ke V-301 oleh kompresor vapor return K-301 agar tidak dilepas ke udara.',
     'LPG adalah gas cair mudah terbakar yang disimpan di atas titik didihnya. Pelepasan cairan menghasilkan awan uap yang lebih berat dari udara, dan tangki yang terpapar api berisiko BLEVE (Boiling Liquid Expanding Vapour Explosion).',
   ],
+  fluidNames: { lpg: 'LPG cair', gas: 'Uap LPG (vapor return)' },
   production: { label: 'LPG tersalurkan', unit: 'm³', var: 'FL', k: 1 / 60 },
   equipment: [
     { id: 'PL-300', type: 'sink', x: 135, y: 200, dir: 'left', name: 'Pipa LPG dari Kilang',

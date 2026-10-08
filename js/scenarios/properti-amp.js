@@ -66,7 +66,7 @@ const SCN_AMP = {
     { id: 'o1', fluid: 'oil', w: 4, pts: [[400, 430], [428, 430]] },
     { id: 'o2', fluid: 'oil', w: 4, pts: [[472, 430], [566, 430], [566, 239]], arrow: true },
     { id: 'b1', fluid: 'asphalt', w: 5, pts: [[735, 370], [735, 340], [672, 340], [672, 160], [690, 160]], arrow: true },
-    { id: 'm1', fluid: 'mix', w: 6, pts: [[750, 243], [750, 312], [760, 312]] },
+    { id: 'm1', fluid: 'agg', legend: 'Campuran beraspal panas', w: 6, pts: [[750, 243], [750, 312], [760, 312]] },
     { id: 'h1', fluid: 'hotoil', w: 4, pts: [[900, 418], [780, 418]], arrow: true },
     { id: 'h2', fluid: 'hotoil', w: 4, pts: [[780, 460], [794, 460], [794, 480], [808, 480]] },
     { id: 'h3', fluid: 'hotoil', w: 4, pts: [[852, 480], [900, 480]], arrow: true },

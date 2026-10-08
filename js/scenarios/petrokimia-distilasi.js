@@ -16,7 +16,7 @@ const SCN_DISTILASI = {
     'Pompa P-401 mengembalikan sebagian kondensat sebagai refluks melalui FCV-401 dan mengirim sisanya sebagai produk benzena melalui LCV-401. Toluena di dasar kolom dipompa P-402 ke tangki melalui LCV-402. Benzena sangat mudah terbakar dengan titik nyala sekitar minus 11 °C dan bersifat karsinogenik, sehingga kebocoran kecil pun berbahaya.',
   ],
   production: { label: 'Benzena terproduksi', unit: 'm³', var: 'FF', k: 0.0075 },
-  fluidNames: { chem: 'Umpan benzena-toluena', gas: 'Uap hidrokarbon', product: 'Kondensat dan produk benzena', oil: 'Toluena panas (dasar kolom)', cw: 'Air pendingin', steam: 'Uap LP 4 barg', flare: 'Header flare' },
+  fluidNames: { gas: 'Uap hidrokarbon', product: 'Kondensat dan produk benzena', oil: 'Toluena panas (dasar kolom)', cw: 'Air pendingin', steam: 'Uap LP 4 barg', flare: 'Header flare' },
   equipment: [
     { id: 'FD-400', type: 'sink', x: 150, y: 300, dir: 'left', name: 'Umpan dari Unit Reaksi',
       desc: 'Campuran cair benzena dan toluena bersuhu sekitar 95 °C dari unit reaksi di hulu.' },
@@ -59,7 +59,7 @@ const SCN_DISTILASI = {
       desc: 'Area berkumpul evakuasi di sisi atas arah angin.' },
   ],
   pipes: [
-    { id: 'f1', fluid: 'chem', w: 6, pts: [[150, 300], [300, 300]] },
+    { id: 'f1', fluid: 'oil', legend: 'Umpan benzena-toluena', w: 6, pts: [[150, 300], [300, 300]] },
     { id: 'ov', fluid: 'gas', w: 6, pts: [[340, 70], [340, 42], [560, 42], [560, 52]] },
     { id: 'cd', fluid: 'product', w: 5, pts: [[560, 108], [560, 160]] },
     { id: 'rd1', fluid: 'product', w: 5, pts: [[630, 216], [630, 270], [638, 270]] },

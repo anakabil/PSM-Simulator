@@ -18,7 +18,7 @@ const SCN_GEDUNG = {
     'Pompa kebakaran FP-101 mengambil air dari tangki TK-201 dan menjaga tekanan pipa tegak. Kebakaran gedung jarang dibahas sebagai keselamatan proses, padahal pola kegagalannya serupa: kebocoran bahan mudah terbakar, panas berlebih, dan barier yang tidak terpelihara. Data Dinas Gulkarmat DKI Jakarta mencatat korsleting listrik sebagai penyebab kebakaran terbanyak.',
   ],
   production: { label: 'Energi listrik tersalurkan', unit: 'kWh', var: 'IP', k: 0.0098 },
-  fluidNames: { lpg: 'LPG (fase gas setelah regulator)', flue: 'Udara exhaust dapur berlemak', oil: 'Solar (bahan bakar genset)', power: 'Kabel daya listrik', fw: 'Air pemadam kebakaran' },
+  fluidNames: { gas: 'LPG fase gas', flue: 'Udara exhaust dapur berlemak', oil: 'Solar (bahan bakar genset)', power: 'Kabel daya listrik', fw: 'Air pemadam kebakaran' },
   ground: 372,
   zones: [
     { style: 'building', x: 150, y: 62, w: 640, h: 470, floors: [168, 270, 372],
@@ -65,8 +65,8 @@ const SCN_GEDUNG = {
       desc: 'Area berkumpul evakuasi di halaman, jauh dari gedung dan rak tabung LPG.' },
   ],
   pipes: [
-    { id: 'lpg1', fluid: 'lpg', w: 4, pts: [[134, 286], [142, 286], [142, 128], [193, 128]], arrow: true },
-    { id: 'lpg2', fluid: 'lpg', w: 4, pts: [[217, 128], [300, 128], [300, 148], [334, 148]], arrow: true },
+    { id: 'lpg1', fluid: 'gas', w: 4, pts: [[134, 286], [142, 286], [142, 128], [193, 128]], arrow: true },
+    { id: 'lpg2', fluid: 'gas', w: 4, pts: [[217, 128], [300, 128], [300, 148], [334, 148]], arrow: true },
     { id: 'duct', fluid: 'flue', w: 8, pts: [[395, 86], [395, 36], [410, 36]] },
     { id: 'fo1', fluid: 'oil', w: 4, pts: [[132, 472], [156, 472]] },
     { id: 'fo2', fluid: 'oil', w: 4, pts: [[200, 472], [210, 472], [210, 426], [222, 426]], arrow: true },

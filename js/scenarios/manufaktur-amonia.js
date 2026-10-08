@@ -18,7 +18,7 @@ const SCN_AMONIA = {
     'Secara berkala, es pada koil evaporator dicairkan dengan gas panas dari discharge kompresor melalui katup XV-1003 (defrost). Amonia adalah refrigeran yang efisien tetapi beracun, dengan nilai ambang batas 25 ppm, dan dapat terbakar pada konsentrasi tinggi di ruang tertutup. Pelepasan besar dapat membahayakan pekerja dan permukiman di sekitar pabrik.',
   ],
   production: { label: 'Energi pendinginan', unit: 'kWh', var: 'QC', k: 1 / 60 },
-  fluidNames: { gas: 'Uap amonia (hisap, discharge, gas panas defrost)', nh3: 'Amonia cair', cw: 'Air kondensor evaporatif' },
+  fluidNames: { toxic: 'Uap amonia (hisap dan discharge)', nh3: 'Amonia cair', cw: 'Air kondensor evaporatif' },
   zones: [
     { x: 190, y: 175, w: 470, h: 345, label: 'Ruang Mesin Amonia', labelPos: 'bottom' },
     { x: 680, y: 300, w: 295, h: 235, label: 'Ruang Beku -25 °C', labelPos: 'bottom' },
@@ -53,14 +53,14 @@ const SCN_AMONIA = {
       desc: 'Area berkumpul pada arah angin yang aman, jauh dari kondensor di atap dan ruang mesin.' },
   ],
   pipes: [
-    { id: 'hg1', fluid: 'gas', w: 6, pts: [[280, 272], [280, 120]], arrow: true },
+    { id: 'hg1', fluid: 'toxic', w: 6, pts: [[280, 272], [280, 120]], arrow: true },
     { id: 'liq1', fluid: 'nh3', w: 5, pts: [[380, 120], [380, 200]], arrow: true },
     { id: 'liq2', fluid: 'nh3', w: 5, pts: [[470, 225], [560, 225], [560, 320]], arrow: true },
-    { id: 'suc', fluid: 'gas', w: 7, pts: [[500, 320], [500, 300], [308, 300]], arrow: true },
+    { id: 'suc', fluid: 'toxic', w: 7, pts: [[500, 320], [500, 300], [308, 300]], arrow: true },
     { id: 'liq3', fluid: 'nh3', w: 5, pts: [[600, 376], [600, 430], [618, 430]] },
     { id: 'liq4', fluid: 'nh3', w: 5, pts: [[662, 430], [740, 430]], arrow: true },
-    { id: 'ret', fluid: 'gas', w: 6, pts: [[748, 382], [748, 340], [640, 340]], arrow: true },
-    { id: 'df', fluid: 'gas', w: 4, dashed: true, pts: [[280, 160], [720, 160], [720, 395], [740, 395]] },
+    { id: 'ret', fluid: 'toxic', w: 6, pts: [[748, 382], [748, 340], [640, 340]], arrow: true },
+    { id: 'df', fluid: 'toxic', w: 4, dashed: true, legend: 'Gas panas defrost (dipakai saat defrost)', pts: [[280, 160], [720, 160], [720, 395], [740, 395]] },
     { id: 'cwp', fluid: 'cw', w: 4, pts: [[192, 95], [230, 95]] },
   ],
   labels: [

@@ -195,6 +195,20 @@ a.btn3d { text-decoration: none; }
 @media (hover: hover) { .eq-list li:hover { background: var(--lb4); border-color: var(--lb3); } }
 .eq-list .dot, .hs-list .dot, .eq-insp .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--sv3); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3); }
 .eq-list li.read .dot { background: var(--lb2); }
+/* daftar periksa Tahap 1: kotak centang per butir */
+.eq-list .chk { width: 16px; height: 16px; border-radius: 4px; border: 2px solid var(--sv4); background: #fff; position: relative; }
+.eq-list li.read .chk { background: var(--lb2); border-color: #126e9c; }
+.eq-list li.read .chk::after { content: ''; position: absolute; left: 4px; top: 0px; width: 4px; height: 9px; border: solid #fff; border-width: 0 2.4px 2.4px 0; transform: rotate(45deg); }
+.eq-list li { grid-template-columns: 16px 64px 1fr; }
+.check-note { margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; background: var(--lb4); border: 1px solid var(--lb3); font-size: 12.5px; color: var(--ink); }
+/* pilihan tingkat kesulitan saat memilih misi */
+.diff-opts { display: grid; gap: 8px; margin-top: 8px; }
+.diff-opt { display: grid; grid-template-columns: 20px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--sv2); background: var(--sv1); cursor: pointer; }
+.diff-opt input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--lb2); }
+.diff-opt b { display: block; color: var(--ink); }
+.diff-opt small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.diff-opt:has(input:checked) { border-color: var(--lb2); background: var(--lb4); }
+.diff-pill { display: inline-block; margin-left: 8px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 800; color: var(--db); background: var(--lb4); border: 1px solid var(--lb3); vertical-align: 1px; }
 .eq-list b { color: var(--ink); }
 .live-wrap { display: grid; gap: 4px; margin-top: 6px; }
 .live { display: flex; justify-content: space-between; padding: 5px 10px; border-radius: 8px; background: var(--lb4); font-size: 12.5px; }
@@ -204,8 +218,11 @@ a.btn3d { text-decoration: none; }
 .sliders { display: grid; gap: 8px; margin-top: 6px; }
 .slider span { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; }
 .slider input { width: 100%; accent-color: var(--lb2); }
-.legend { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 12.5px; font-weight: 700; }
-.legend li { display: flex; align-items: center; gap: 8px; }
+.legend { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; font-size: 12.5px; }
+.legend li { display: flex; align-items: flex-start; gap: 8px; }
+.legend li b { display: block; font-weight: 800; color: var(--ink); line-height: 1.25; }
+.legend li small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+.legend .sw-svg { flex: none; margin-top: 2px; }
 .legend .sw { position: relative; width: 30px; height: 10px; border-radius: 5px; background: #cfd6dc; border: 2px solid #46525e; flex: none; }
 .legend .sw::after { content: ''; position: absolute; left: 2px; right: 2px; top: 1px; height: 4px; border-radius: 2px; background: var(--c); }
 .legend .sw.ro { background: #1d262e; border-color: var(--lb); }

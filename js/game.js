@@ -478,7 +478,7 @@ const Game = (() => {
       Sfx.start();
       const id = ev.currentTarget.closest('.scn-card').dataset.id;
       const existing = loadJSON(SAVE_KEY);
-      const start = () => startScenario(SCENARIOS.find(x => x.id === id));
+      const start = () => chooseDifficulty(SCENARIOS.find(x => x.id === id));
       if (existing && !existing.finished) {
         showModal({ title: 'Permainan tersimpan akan ditimpa', body: '<p>Ada permainan yang belum selesai. Memulai permainan baru akan menghapus progres tersebut. Lanjutkan?</p>',
           buttons: [{ label: 'Ya, mulai baru', cls: 'btn3d primary', onClick: start }, { label: 'Batal', cls: 'btn3d silver' }] });
@@ -532,7 +532,7 @@ const Game = (() => {
         <div class="cfg-row"><label for="cfg-speed">Kecepatan simulasi</label><select id="cfg-speed"><option value="0.5" ${cfg.speed == 0.5 ? 'selected' : ''}>Lambat (0,5x)</option><option value="1" ${cfg.speed == 1 ? 'selected' : ''}>Normal (1x)</option><option value="2" ${cfg.speed == 2 ? 'selected' : ''}>Cepat (2x)</option></select></div>
         <div class="cfg-row"><label for="cfg-cur">Mata uang anggaran<small>Biaya perangkat dan program ditampilkan sebagai nilai indikatif</small></label><select id="cfg-cur"><option value="IDR" ${cfg.currency !== 'USD' ? 'selected' : ''}>Rupiah (Rp)</option><option value="USD" ${cfg.currency === 'USD' ? 'selected' : ''}>Dolar AS (USD)</option></select></div>
         <div class="cfg-row"><label for="cfg-rate">Kurs Rupiah per USD<small>1 satuan biaya setara USD ${num(COST_MODEL.usdPerUnit)} (pengadaan, pemasangan, rekayasa)</small></label><input type="number" id="cfg-rate" min="5000" max="50000" step="50" value="${cfg.rate || COST_MODEL.idrPerUsd}"></div>
-        <div class="cfg-row"><label for="cfg-diff">Tingkat kesulitan</label><select id="cfg-diff"><option value="mudah" ${cfg.difficulty === 'mudah' ? 'selected' : ''}>Mudah (anggaran +3, petunjuk lengkap)</option><option value="normal" ${cfg.difficulty === 'normal' ? 'selected' : ''}>Normal</option><option value="sulit" ${cfg.difficulty === 'sulit' ? 'selected' : ''}>Sulit (anggaran -2, tanpa penjelasan kuis)</option></select></div>
+        <div class="cfg-row"><label for="cfg-diff">Tingkat kesulitan bawaan<small>Menjadi pilihan awal saat memilih misi. Tingkat kesulitan misi yang sedang berjalan tidak berubah.</small></label><select id="cfg-diff"><option value="mudah" ${cfg.difficulty === 'mudah' ? 'selected' : ''}>Mudah (anggaran +3, petunjuk lengkap)</option><option value="normal" ${cfg.difficulty === 'normal' ? 'selected' : ''}>Normal</option><option value="sulit" ${cfg.difficulty === 'sulit' ? 'selected' : ''}>Sulit (anggaran -2, tanpa penjelasan kuis)</option></select></div>
         <div class="cfg-actions">
           <button class="btn3d primary" data-act="save">${ICON.check}<span>Simpan</span></button>
           <button class="btn3d red" data-act="reset">${ICON.x}<span>Hapus Semua Data</span></button>
@@ -619,10 +619,10 @@ const Game = (() => {
     if (!S || !scn) return [];
     return (S.plan || []).map(id => scn.events.find(e => e.id === id)).filter(Boolean);
   }
-  function newSession(s) {
+  function newSession(s, difficulty) {
     const v = pickVariant(s);
     return {
-      scenarioId: s.id, stage: 1, scores: {}, read: [], quizIdx: 0, quizCorrect: 0,
+      scenarioId: s.id, stage: 1, scores: {}, read: [], quizIdx: 0, quizCorrect: 0, difficulty: difficulty || cfg.difficulty || 'normal',
       variant: v.variant, plan: v.plan,
       eventIdx: 0, eventResults: [], placements: { 3: {}, 4: {} }, itpm: { 3: {}, 4: {} }, eqItpm: { 3: {} },
       evalDone: { 3: false, 4: false }, evalRows: {}, finished: false, startedAt: Date.now(),
@@ -639,16 +639,34 @@ const Game = (() => {
     sv.read = sv.read || [];
     sv.scores = sv.scores || {};
     sv.budgetEff = sv.budgetEff || {};
+    sv.difficulty = DIFFS.some(d => d.key === sv.difficulty) ? sv.difficulty : (cfg.difficulty || 'normal');
     return sv;
   }
   function save() { if (S) saveJSON(SAVE_KEY, S); }
-  function startScenario(s) {
-    const p = promoState();
-    if (p.due) { showPromo(p, () => launchScenario(s)); return; }
-    launchScenario(s);
+  /* Tingkat kesulitan dipilih setiap kali misi dimulai dan disimpan pada sesi, sehingga tidak berubah
+     di tengah permainan. Pilihan terakhir menjadi pilihan awal untuk misi berikutnya. */
+  const DIFFS = [
+    { key: 'mudah', name: 'Mudah', desc: 'Anggaran Tahap 3 dan 4 bertambah 3 satuan. Label lengkap titik pemasangan dan kecocokan escalation factor ditampilkan. Petunjuk laporan tidak mengurangi nilai, dan penjelasan kuis ditampilkan.' },
+    { key: 'normal', name: 'Normal', desc: 'Anggaran sesuai rancangan skenario. Penjelasan kuis ditampilkan. Setiap petunjuk laporan mengurangi nilai. Label titik pemasangan mengikuti pengaturan petunjuk.' },
+    { key: 'sulit', name: 'Sulit', desc: 'Anggaran Tahap 3 dan 4 berkurang 2 satuan sehingga perlu kompromi. Penjelasan kuis tidak ditampilkan dan setiap petunjuk laporan mengurangi nilai.' },
+  ];
+  function diff() { return (S && S.difficulty) || cfg.difficulty || 'normal'; }
+  function diffName(k) { return (DIFFS.find(d => d.key === k) || DIFFS[1]).name; }
+  function chooseDifficulty(s) {
+    let sel = DIFFS.some(d => d.key === cfg.difficulty) ? cfg.difficulty : 'normal';
+    showModal({ title: 'Pilih Tingkat Kesulitan', cls: 'diff-pick',
+      body: `<p class="muted">${esc(s.title)}. Tingkat kesulitan berlaku sampai misi selesai dan tidak dapat diubah di tengah permainan.</p>
+        <div class="diff-opts" role="radiogroup" aria-label="Tingkat kesulitan">${DIFFS.map(d => `<label class="diff-opt"><input type="radio" name="diff" value="${d.key}" ${d.key === sel ? 'checked' : ''}><span><b>${esc(d.name)}</b><small>${esc(d.desc)}</small></span></label>`).join('')}</div>`,
+      onMount: m => { $$('input[name=diff]', m).forEach(r => r.addEventListener('change', () => { sel = r.value; Sfx.click(); })); },
+      buttons: [{ label: 'Mulai', cls: 'btn3d primary', onClick: () => { cfg.difficulty = sel; saveJSON(CFG_KEY, cfg); startScenario(s, sel); } }, { label: 'Batal', cls: 'btn3d silver' }] });
   }
-  function launchScenario(s) {
-    scn = s; S = newSession(s); save(); showPlay(); stageIntro();
+  function startScenario(s, difficulty) {
+    const p = promoState();
+    if (p.due) { showPromo(p, () => launchScenario(s, difficulty)); return; }
+    launchScenario(s, difficulty);
+  }
+  function launchScenario(s, difficulty) {
+    scn = s; S = newSession(s, difficulty); save(); showPlay(); stageIntro();
   }
   function continueGame() {
     const sv = loadJSON(SAVE_KEY);
@@ -676,7 +694,7 @@ const Game = (() => {
 
   function budgetFor(stage) {
     const b = scn.budget[stage];
-    return b + (cfg.difficulty === 'mudah' ? 3 : cfg.difficulty === 'sulit' ? -2 : 0);
+    return b + (diff() === 'mudah' ? 3 : diff() === 'sulit' ? -2 : 0);
   }
 
   function showPlay() {
@@ -779,11 +797,11 @@ const Game = (() => {
     const st = STAGES[S.stage - 1];
     renderStage();
     showModal({ title: st.title, cls: 'intro', body: `<div class="intro-ico">${ICON[st.icon]}</div><p>${esc(st.desc)}</p>${stageTips(S.stage)}`,
-      buttons: [{ label: 'Mulai Tahap', cls: 'btn3d primary', onClick: () => { Sfx.start(); } }] });
+      buttons: [{ label: 'Mulai', cls: 'btn3d primary', onClick: () => { Sfx.start(); } }] });
   }
   function stageTips(n) {
     const tips = {
-      1: [`Klik setiap peralatan pada P&ID atau daftar di ${panelName()} untuk membaca fungsinya.`, `Tekan Jalankan ${opName()} dan ubah set point untuk melihat respons proses serta isi cairan di bejana.`, 'Setelah semua peralatan dipelajari, kerjakan kuis pemahaman proses. Urutan pilihan jawaban diacak dan pengecohnya terdengar masuk akal, jadi baca setiap pilihan dengan cermat.'],
+      1: [`Periksa seluruh peralatan dan instrumen melalui Daftar Periksa di ${panelName()} atau langsung pada P&ID. Setiap butir yang sudah dibuka diberi tanda centang, dan kuis pemahaman baru dapat dimulai setelah seluruh butir tercentang.`, `Tekan Jalankan ${opName()} dan ubah set point untuk melihat respons proses serta isi cairan di bejana.`, 'Setelah seluruh butir diperiksa, kerjakan kuis pemahaman proses. Urutan pilihan jawaban diacak dan pengecohnya terdengar masuk akal, jadi baca setiap pilihan dengan cermat.'],
       2: [`Tekan Jalankan ${opName()}, lalu amati tren, pembacaan, dan isi bejana di P&ID.`, 'Saat terjadi kegagalan, peringatan lapangan muncul bertahap: getaran, kebocoran gas, gas beracun, panas berlebih, hingga ledakan.', 'Laporkan sedini mungkin. Laporan sebelum peringatan kritis mendapat bonus, sedangkan laporan setelah insiden terjadi mendapat penalti.', 'Kejadian ke-3 dan ke-5 berawal dari obrolan tim operasi, maintenance, atau pihak lain. Baca balon obrolan di P&ID atau buka Lihat Komik untuk menemukan tindakan manusia yang memicu abnormalitas, lalu tentukan jenis kesalahannya di laporan. Selama obrolan berlangsung, simulasi berjalan pada kecepatan normal agar pesan sempat dibaca.', 'Guideword mengikuti tujuh guideword HAZOP menurut CCPS: No, More, Less, As well as, Part of, Reverse, dan Other than. Makna setiap guideword tampil di formulir laporan.', 'Setiap permainan baru memakai variasi kejadian berikutnya, sehingga jenis dan urutan abnormalitas berbeda saat skenario diulang.'],
       3: ['Klik titik pemasangan (+) pada P&ID untuk memilih perangkat barier langsung dari pop-up. Cara lain, pilih perangkat di Kotak Alat lalu klik titiknya.', 'Setiap barier memiliki escalation factor, yaitu kondisi yang dapat melumpuhkannya tanpa terlihat, misalnya sensor menyimpang atau katup lengket. Setelah perangkat terpasang, pilih escalation factor yang sesuai beserta kontrolnya dari pop-up perangkat.', 'Daftar escalation factor memuat banyak pilihan dari berbagai jenis fasilitas. Pilihan yang keliru tetap memakai anggaran dan baru terungkap saat evaluasi, jadi cocokkan dengan teknologi perangkatnya.', 'Klik bejana, tangki, mesin berputar, atau peralatan lain untuk mengendalikan escalation factor peralatan kritis. Pantau keandalan yang diklaim dan sisa anggaran, yang ditampilkan dalam mata uang pilihan Anda di Configuration.'],
       4: ['Pikirkan apa yang terjadi bila pencegahan gagal: deteksi, isolasi, proteksi kebakaran, dan tanggap darurat.', 'Perhatikan sifat bahan, karena tidak semua media pemadam cocok untuk semua bahan.', 'Klik titik (+) untuk memilih perangkat mitigasi, lalu kendalikan escalation factor-nya, misalnya sensor detektor yang teracuni, nozel tersumbat, katup darurat yang lengket, atau personel yang tidak terlatih.'],
@@ -793,7 +811,7 @@ const Game = (() => {
 
   /* Kepala panel samping: nama tahap dan nama skenario. Bilah atas hanya memuat logo. */
   function sideHead(icon, title) {
-    return `<div class="side-head"><h2>${icon}<span>${esc(title)}</span></h2><p class="side-scn">${esc(scn.title)}</p></div>`;
+    return `<div class="side-head"><h2>${icon}<span>${esc(title)}</span></h2><p class="side-scn">${esc(scn.title)}<span class="diff-pill">${esc(diffName(diff()))}</span></p></div>`;
   }
   function resetPlant() {
     clearTimers();
@@ -843,12 +861,12 @@ const Game = (() => {
         <p class="muted small">Ubah set point dan amati tren, pembacaan, serta isi cairan di bejana.</p>
         <div class="sliders">${scn.controls.map(c => `<label class="slider"><span>${esc(c.label)} <b id="val-${c.id}">${String(c.def).replace('.', ',')} ${esc(c.unit)}</b></span><input type="range" data-ctl="${c.id}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.def}"></label>`).join('')}</div>
       </div>
-      <div class="card"><h4>Peralatan <span class="pill" id="read-count">0/${req.length}</span></h4>
-        <p class="muted small">Klik peralatan di P&amp;ID atau di daftar ini untuk membuka pop-up informasi.</p>
-        <ul class="eq-list">${req.map(e => `<li data-id="${e.id}"><span class="dot"></span><b>${esc(e.id)}</b><span>${esc(e.name)}</span></li>`).join('')}</ul>
+      <div class="card checklist"><h4>Daftar Periksa Peralatan dan Instrumen <span class="pill" id="read-count">0/${req.length}</span></h4>
+        <p class="check-note">Sebelum melanjutkan ke kuis pemahaman, periksa seluruh peralatan dan instrumen pada P&amp;ID. Klik setiap butir pada daftar ini atau simbolnya di P&amp;ID untuk membaca fungsi dan nilai operasinya. Butir yang sudah diperiksa diberi tanda centang, dan tombol kuis aktif setelah seluruh butir tercentang.</p>
+        <ul class="eq-list">${req.map(e => `<li data-id="${e.id}"><span class="chk" aria-hidden="true"></span><b>${esc(e.id)}</b><span>${esc(e.name)}</span></li>`).join('')}</ul>
       </div>
-      <div class="card"><h4>Legenda Jalur</h4><ul class="legend">${PID.fluidsIn(scn).map(f => `<li><span class="sw" style="--c:${f.c}"></span>${esc(f.name)}</li>`).join('')}<li><span class="sw ro"></span>Pembacaan DCS (kuning/merah saat alarm)</li></ul></div>
-      <div class="card action"><button class="btn3d dark wide" id="btn-quiz" disabled>${ICON.check}<span>Mulai Kuis Pemahaman</span></button><p class="muted small" id="quiz-hint">Pelajari semua peralatan terlebih dahulu.</p></div>`);
+      <div class="card"><h4>Legenda Jalur</h4><p class="muted small">Warna jalur mengikuti standar yang sama untuk semua misi: warna menunjukkan kategori bahan, pola garis membedakan bahan di dalam kategori yang sama.</p><ul class="legend">${PID.fluidsIn(scn).map(f => `<li>${PID.swatch(f)}<span><b>${esc(f.pat === 'dash' && f.cat !== 'relief' ? f.catName + ', jalur sesekali' : f.catName)}</b><small>${esc(f.name)}</small></span></li>`).join('')}<li><span class="sw ro"></span><span><b>Pembacaan DCS</b><small>Berubah kuning atau merah saat alarm</small></span></li></ul></div>
+      <div class="card action"><button class="btn3d dark wide" id="btn-quiz" disabled>${ICON.check}<span>Mulai Kuis Pemahaman</span></button><p class="muted small" id="quiz-hint">Centang seluruh butir pada Daftar Periksa Peralatan dan Instrumen terlebih dahulu.</p></div>`);
     S.read.forEach(id => markRead(id, true));
     on(side, '.eq-list li', 'click', ev => { const e = scn.equipment.find(x => x.id === ev.currentTarget.dataset.id); onEquipmentClick(e); });
     $('#btn-run').addEventListener('click', () => {
@@ -877,7 +895,7 @@ const Game = (() => {
     const n = req.filter(e => S.read.includes(e.id)).length;
     const rc = $('#read-count'); if (rc) rc.textContent = `${n}/${req.length}`;
     const b = $('#btn-quiz');
-    if (b) { b.disabled = n < req.length; const hint = $('#quiz-hint'); if (hint) hint.textContent = n < req.length ? `Pelajari ${req.length - n} peralatan lagi.` : 'Semua peralatan telah dipelajari. Silakan mulai kuis.'; }
+    if (b) { b.disabled = n < req.length; const hint = $('#quiz-hint'); if (hint) hint.textContent = n < req.length ? `Masih ada ${req.length - n} butir yang belum diperiksa. Kuis dapat dimulai setelah seluruh butir tercentang.` : 'Seluruh peralatan dan instrumen telah diperiksa. Kuis pemahaman dapat dimulai.'; }
   }
   function onEquipmentClick(e) {
     if (S.stage >= 3) { onEquipmentBarrier(e); return; }
@@ -908,7 +926,7 @@ const Game = (() => {
           $$('.opt', m).forEach(b => { b.disabled = true; if (+b.dataset.i === q.ans) b.classList.add('correct'); });
           if (!ok) ev.currentTarget.classList.add('wrong');
           const fb = $('#quiz-fb'); fb.dataset.done = '1';
-          fb.innerHTML = `<b class="${ok ? 'ok' : 'bad'}">${ok ? 'Benar.' : 'Kurang tepat.'}</b> ${cfg.difficulty === 'sulit' ? '' : esc(q.why)}`;
+          fb.innerHTML = `<b class="${ok ? 'ok' : 'bad'}">${ok ? 'Benar.' : 'Kurang tepat.'}</b> ${diff() === 'sulit' ? '' : esc(q.why)}`;
           S.quizIdx++;
         });
       } });
@@ -1126,7 +1144,7 @@ const Game = (() => {
       <div class="rp-sec"><b>Konsekuensi bila tidak ada proteksi</b>${shuffledOpts(evt.cons, evt.consAns, 'rp-cons')}</div>
       ${evt.hf ? `<div class="rp-sec hf-sec"><b>${ICON.person}Jenis kesalahan manusia pada tindakan pemicu</b><div class="radios">${Object.keys(HF_TYPES).map(k => `<label><input type="radio" name="rp-hf" value="${k}"><span><b>${esc(HF_TYPES[k].name)}.</b> ${esc(HF_TYPES[k].desc)}</span></label>`).join('')}</div></div>` : ''}
       <div class="hint-box">
-        <div class="hint-head"><span class="hint-ico">${ICON.bulb}</span><div><b>Butuh petunjuk?</b><small>${cfg.difficulty === 'mudah' ? 'Mode Mudah: petunjuk tidak mengurangi poin.' : 'Setiap petunjuk mengurangi ' + HINT_COST + ' poin dari laporan ini.'}</small></div><button class="btn3d silver small" id="btn-hint">Buka petunjuk 1 dari 3</button></div>
+        <div class="hint-head"><span class="hint-ico">${ICON.bulb}</span><div><b>Butuh petunjuk?</b><small>${diff() === 'mudah' ? 'Mode Mudah: petunjuk tidak mengurangi poin.' : 'Setiap petunjuk mengurangi ' + HINT_COST + ' poin dari laporan ini.'}</small></div><button class="btn3d silver small" id="btn-hint">Buka petunjuk 1 dari 3</button></div>
         <ol class="hint-list" id="hint-list"></ol>
       </div>
       <p class="muted small min-tip">Lupa detail proses? Tekan tombol perkecil di kanan atas untuk melihat P&amp;ID, tren, dan peringatan lapangan. Isian Anda tidak akan hilang.</p>`;
@@ -1187,7 +1205,7 @@ const Game = (() => {
     else if (ev2.phase === 'late') { mod = -20; modTxt = '<p class="warn"><b>Penalti -20.</b> Insiden telah terjadi sebelum abnormalitas dilaporkan.</p>'; }
     else if (ev2.phase === 'mid') modTxt = '<p class="note">Dilaporkan setelah peringatan kritis. Insiden masih dapat dicegah, tetapi margin waktunya sempit.</p>';
     const hintsUsed = ev2.hintsUsed || 0;
-    const hintPenalty = cfg.difficulty === 'mudah' ? 0 : HINT_COST * hintsUsed;
+    const hintPenalty = diff() === 'mudah' ? 0 : HINT_COST * hintsUsed;
     const hintTxt = hintsUsed ? `<p class="note">Petunjuk dipakai: <b>${hintsUsed}</b>${hintPenalty ? `, pengurangan ${hintPenalty} poin` : ', tanpa pengurangan poin pada Mode Mudah'}.</p>` : '';
     const score = Math.max(0, Math.min(100, base + mod - hintPenalty));
     S.eventResults.push({ id: evt.id, node, param, guide, score, phase: ev2.phase, hints: hintsUsed, hf: evt.hf ? { type: hfIn.value, ok: !!pts.hf } : undefined });
@@ -1627,7 +1645,7 @@ const Game = (() => {
     $('#pid').classList.toggle('placing', !!tool);
     const desc = $('#tool-desc');
     if (!tool) { desc.innerHTML = tt('Pilih alat untuk membaca fungsinya, atau klik titik (+) pada P&amp;ID untuk memilih perangkat lewat pop-up.'); pid.setTargets(null); return; }
-    const easy = cfg.difficulty === 'mudah';
+    const easy = diff() === 'mudah';
     if (tool.kind === 'dev') {
       const d = DEVICES[tool.id];
       desc.innerHTML = `<b>${esc(d.name)}</b><br>${esc(d.desc)}<div class="meta"><span>Biaya ${money(d.cost)}</span><span>PFD desain ${String(d.pfd).replace('.', ',')}</span>${easy ? `<span>Escalation factor utama: ${esc(ITPM[d.itpm].ef)}</span>` : ''}</div>`;
@@ -1644,7 +1662,7 @@ const Game = (() => {
     if (!tool || tool.kind !== 'itpm') { pid.setTargets(null); return; }
     const t = ITPM[tool.id]; const stage = S.stage;
     /* semua sasaran yang mungkin diberi bingkai; hanya Mode Mudah yang menyaring menurut kecocokan */
-    const easy = cfg.difficulty === 'mudah';
+    const easy = diff() === 'mudah';
     if (t.target === 'device') pid.setTargets({ hs: Object.keys(S.placements[stage]).filter(h => !easy || t.fits.includes(S.placements[stage][h])) });
     else pid.setTargets({ eq: eqInspectable(stage).filter(e => !easy || t.fitsEq.includes(e.type)).map(e => e.id) });
   }
@@ -1690,7 +1708,7 @@ const Game = (() => {
   function remaining(stage) { return budgetFor(stage) - spent(stage); }
   /* Nomor dan lokasi titik pemasangan. Nomor sama dengan penanda di P&ID (urutan data sudah mengikuti
      posisi baca), lokasi menyebut peralatan, pipa, atau ruang tempat titik itu tersambung. */
-  function hsHints() { return cfg.hints || cfg.difficulty === 'mudah'; }
+  function hsHints() { return cfg.hints || diff() === 'mudah'; }
   function hsNumber(h) { return scn.hotspots.filter(x => x.stage === h.stage).indexOf(h) + 1; }
   function eqShort(e) { return ['building', 'muster'].includes(e.type) ? e.name : e.id; }
   function pipeEndEq(pt) {
@@ -1872,7 +1890,7 @@ const Game = (() => {
     const st = devState(stage, h.id);
     if (!st) return;
     const it = S.itpm[stage][h.id];
-    const easy = cfg.difficulty === 'mudah';
+    const easy = diff() === 'mudah';
     const done = !!S.evalDone[stage];
     const progs = stagePrograms(stage, 'device');
     const left = remaining(stage) + (it ? ITPM[it].cost : 0);
@@ -1919,7 +1937,7 @@ const Game = (() => {
     const inspectable = eqm && eqInspectable(stage).some(x => x.id === e.id);
     const done = !!S.evalDone[stage];
     const open = inspectable && !done;
-    const easy = cfg.difficulty === 'mudah';
+    const easy = diff() === 'mudah';
     const left = remaining(stage) + (cur ? ITPM[cur].cost : 0);
     const verdict = done && cur ? { ok: ' <span class="ok">(tepat)</span>', extra: ' <span class="muted">(tambahan, tidak dinilai)</span>', wrong: ' <span class="bad">(keliru)</span>' }[eqVerdict(e, cur)] : '';
     scn.equipment.forEach(x => pid.highlight(x.id, false));
@@ -2108,7 +2126,7 @@ const Game = (() => {
     const bw = $('.bowtie-wrap');
     if (bw && bw.scrollWidth > bw.clientWidth + 4) bw.insertAdjacentHTML('beforebegin', `<p class="bt-hint">${ICON.bulb}<span>Geser diagram ke samping untuk melihat seluruh bow-tie.</span></p>`);
     on(app, '[data-act=menu]', 'click', () => { Sfx.click(); showMenu(); });
-    on(app, '[data-act=again]', 'click', () => { Sfx.start(); startScenario(scn); });
+    on(app, '[data-act=again]', 'click', () => { Sfx.start(); chooseDifficulty(scn); });
     on(app, '[data-act=new]', 'click', () => { Sfx.click(); showNewGame(); });
   }
   function bowtieSVG(prev, mit) {
