@@ -312,9 +312,13 @@ td.bad { color: #c62828; font-weight: 800; }
 .placed em.warnc { background: #fff3d6; color: #9a6400; }
 .placed em.efc { background: var(--lb4); color: var(--db); }
 .placed em.badc { background: #ffe1e1; color: #b71c1c; }
-.hs-list .dot { background: #fff; border: 2px dashed var(--lb2); box-shadow: none; }
-.hs-list li.placed .dot { background: var(--sv4); border: 2px solid var(--steel); }
-.hs-list li.placed.tested .dot, .eq-insp li.placed .dot { background: var(--lb2); border: 2px solid #126e9c; }
+.hs-list li { grid-template-columns: 22px 1fr; }
+/* nomor titik pada daftar, sama dengan nomor penanda di P&ID */
+.hs-list .num { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 900; color: var(--ink);
+  background: #fff; border: 2px dashed var(--lb2); }
+.hs-list li.placed .num { background: var(--sv4); border: 2px solid var(--steel); color: #fff; }
+.hs-list li.placed.tested .num { background: var(--lb2); border: 2px solid #126e9c; color: #fff; }
+.eq-insp li.placed .dot { background: var(--lb2); border: 2px solid #126e9c; }
 .hs-list li[data-state=ok] { background: #e7f6ec; }
 .hs-list li[data-state=partial] { background: #fff6e0; }
 .hs-list li[data-state=wrong], .hs-list li[data-state=missing] { background: #ffecec; }
@@ -323,6 +327,20 @@ td.bad { color: #c62828; font-weight: 800; }
 .eval-sum span { display: block; font-size: 11.5px; font-weight: 700; color: var(--muted); }
 .eval-sum b { font-size: 18px; }
 .eval-list { list-style: none; padding: 0; display: grid; gap: 6px; max-height: 42vh; overflow: auto; }
+/* efektivitas penggunaan anggaran */
+.budget-eff { border: 1px solid var(--sv2); border-left: 4px solid var(--steel); border-radius: 10px; padding: 8px 10px; margin: 0 0 8px; background: var(--sv1); }
+.budget-eff p { margin: 0 0 4px; }
+.budget-eff p:last-child { margin-bottom: 0; }
+.budget-eff.ok { border-left-color: var(--green); }
+.budget-eff.mid { border-left-color: var(--amber); }
+.budget-eff.bad { border-left-color: var(--red); }
+.eval-sum .budget-eff-tile.ok b { color: #1e7d45; }
+.eval-sum .budget-eff-tile.mid b { color: #9a6400; }
+.eval-sum .budget-eff-tile.bad b { color: #b71c1c; }
+.budget-eff-line { margin: 6px 0; color: var(--muted); }
+.budget-eff-line.ok b { color: #1e7d45; }
+.budget-eff-line.mid b { color: #9a6400; }
+.budget-eff-line.bad b { color: #b71c1c; }
 .eval-list li { padding: 8px 10px; border-radius: 10px; border-left: 6px solid var(--sv4); background: var(--sv1); font-size: 13px; display: grid; gap: 2px; }
 .eval-list li.ok { border-color: var(--green); background: #e7f6ec; }
 .eval-list li.partial { border-color: var(--amber); background: #fff6e0; }
@@ -355,8 +373,13 @@ body.no-anim .pid-svg.flowing .flow { animation: none; }
 .pid-svg .readout[data-state=hihi] .ro-bg, .pid-svg .readout[data-state=lolo] .ro-bg { fill: #b71c1c; stroke: #ff5252; animation: blink 0.6s steps(2) infinite; }
 .pid-svg .hotspot { cursor: pointer; }
 .pid-svg .hs-pulse { animation: pulse 1.6s ease-out infinite; transform-box: fill-box; transform-origin: center; }
-@keyframes pulse { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
-@media (hover: hover) { .pid-svg .hotspot:hover .hs-core { fill: #cdeefb; } }
+@keyframes pulse { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.7); opacity: 0; } }
+/* garis sambung dan titik sambung tidak menangkap klik agar peralatan di bawahnya tetap dapat diklik */
+.pid-svg .hs-link, .pid-svg .hs-tap { pointer-events: none; }
+.pid-svg .hotspot.hl .hs-core, .pid-svg .device.hl .dev-body { stroke-width: 4; }
+.pid-svg .hotspot.hl .hs-link, .pid-svg .device.hl .hs-link { stroke-width: 2.4; }
+.pid-svg .device.hl .dev-target { opacity: 1; }
+@media (hover: hover) { .pid-svg .hotspot:hover .hs-core { fill: #cdeefb; } .pid-svg .hotspot:hover .hs-link, .pid-svg .device:hover .hs-link { stroke-width: 2.4; } }
 .pid-svg .device { cursor: pointer; }
 .pid-svg .device[data-state=ok] .dev-body { stroke: var(--green); }
 .pid-svg .device[data-state=partial] .dev-body { stroke: var(--amber); }

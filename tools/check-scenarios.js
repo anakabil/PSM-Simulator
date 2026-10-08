@@ -16,7 +16,27 @@ const { DEVICES, ITPM, SCENARIOS, WARN_TYPES, PARAMS, GUIDEWORDS, GUIDE_INFO, SE
 const pidSrc = fs.readFileSync(path.join(root, 'js/pid.js'), 'utf8');
 const drawMap = pidSrc.match(/const DRAW = \{([^}]*)\}/);
 const DRAWN = drawMap ? [...drawMap[1].matchAll(/(\w+)\s*:/g)].map(m => m[1]) : [];
+/* batas peralatan diambil dari fungsi eqBounds di pid.js; titik sambung boleh sedikit di luar batas nominal karena atap tangki, penyangga, dan jaket ikut tergambar */
+const ebStart = pidSrc.indexOf('function eqBounds(e) {');
+let ebEnd = ebStart, depth = 0;
+for (let i = pidSrc.indexOf('{', ebStart); i < pidSrc.length; i++) { if (pidSrc[i] === '{') depth++; else if (pidSrc[i] === '}' && --depth === 0) { ebEnd = i + 1; break; } }
+const eqBounds = vm.runInNewContext('(' + pidSrc.slice(ebStart, ebEnd) + ')');
+/* urutan baca: baris dibentuk dari celah vertikal (baris baru bila celah lebih dari 30 atau tinggi baris lebih dari 90), lalu kiri ke kanan */
+function readingOrder(pts) {
+  const sorted = pts.slice().sort((a, b) => a.y - b.y || a.x - b.x), rows = [];
+  sorted.forEach(p => { const r = rows[rows.length - 1]; if (r && p.y - r[r.length - 1].y <= 30 && p.y - r[0].y <= 90) r.push(p); else rows.push([p]); });
+  return rows.flatMap(r => r.sort((a, b) => a.x - b.x));
+}
 
+function segDist(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+  const t = L2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2)) : 0;
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+}
+function segCross([a, b], [c, d]) {
+  const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+  return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+}
 let errs = 0, warns = 0;
 const err = m => { errs++; console.log('GALAT:', m); };
 const warn = m => { warns++; console.log('PERINGATAN:', m); };
@@ -203,13 +223,40 @@ for (const s of SCENARIOS) {
         if (!visible(a)) err(`${s.id} ${h.id}: perangkat ${a} tidak tampil pada kit ${kits.join(',')}`);
       }
     });
-    if (h.x < 12 || h.x > 988 || h.y < 12 || h.y > 548) warn(`${s.id} ${h.id}: terlalu dekat tepi`);
+    if (h.x < 18 || h.x > 982 || h.y < 18 || h.y > 542) err(`${s.id} ${h.id}: penanda terlalu dekat tepi P&ID`);
+    /* target titik: peralatan, pipa, atau area yang tergambar; titik sambung harus berada pada target */
+    const pipe = s.pipes.find(p => p.id === h.on), area = (s.areas || []).find(a => a.id === h.on);
+    if (!h.on) err(`${s.id} ${h.id}: target (on) belum diisi`);
+    else if (!eq[h.on] && !pipe && !area) err(`${s.id} ${h.id}: target ${h.on} bukan peralatan, pipa, atau area`);
+    if (h.tap) {
+      const L = Math.hypot(h.tap[0] - h.x, h.tap[1] - h.y);
+      if (L < 20 || L > 100) err(`${s.id} ${h.id}: panjang garis sambung ${Math.round(L)} di luar rentang 20 sampai 100`);
+      if (pipe) {
+        let d = Infinity;
+        for (let k = 0; k < pipe.pts.length - 1; k++) d = Math.min(d, segDist(h.tap, pipe.pts[k], pipe.pts[k + 1]));
+        if (d > 3) err(`${s.id} ${h.id}: titik sambung tidak berada pada pipa ${h.on}`);
+      }
+      if (eq[h.on]) {
+        const b = eqBounds(eq[h.on]);
+        if (h.tap[0] < b.x - 22 || h.tap[0] > b.x + b.w + 22 || h.tap[1] < b.y - 22 || h.tap[1] > b.y + b.h + 22) err(`${s.id} ${h.id}: titik sambung berada di luar ${h.on}`);
+      }
+      if (area) {
+        const onEdge = Math.min(Math.abs(h.tap[0] - area.x), Math.abs(h.tap[0] - area.x - area.w), Math.abs(h.tap[1] - area.y), Math.abs(h.tap[1] - area.y - area.h)) <= 3;
+        if (!onEdge) err(`${s.id} ${h.id}: titik sambung area ${h.on} harus berada pada dindingnya`);
+      }
+    } else if (eq[h.on] || pipe) err(`${s.id} ${h.id}: titik pada peralatan atau pipa wajib memiliki titik sambung (tap)`);
+    else if (area && (h.x < area.x || h.x > area.x + area.w || h.y < area.y || h.y > area.y + area.h)) err(`${s.id} ${h.id}: penanda berada di luar area ${h.on}`);
   });
   [3, 4].forEach(st => {
     const pts = s.hotspots.filter(h => h.stage === st);
     for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
-      if (Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y) < 34) warn(`${s.id}: ${pts[i].id} dan ${pts[j].id} terlalu berdekatan`);
+      if (Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y) < 40) err(`${s.id}: penanda ${pts[i].id} dan ${pts[j].id} terlalu berdekatan`);
+      const a = pts[i], b = pts[j];
+      if (a.tap && b.tap && segCross([a.tap, [a.x, a.y]], [b.tap, [b.x, b.y]])) err(`${s.id}: garis sambung ${a.id} dan ${b.id} bersilangan`);
     }
+    /* nomor titik mengikuti urutan data, jadi urutan data harus mengikuti posisi baca pada P&ID */
+    const ro = readingOrder(pts).map(h => h.id), cur = pts.map(h => h.id);
+    if (ro.join() !== cur.join()) warn(`${s.id} tahap ${st}: urutan titik ${cur.join(' ')} tidak mengikuti posisi baca (${ro.join(' ')})`);
   });
   s.inspect.forEach(t => {
     if (!eq[t.id]) err(`${s.id}: peralatan inspeksi ${t.id} tidak ada`);

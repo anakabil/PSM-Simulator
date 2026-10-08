@@ -633,17 +633,36 @@ const PID = (() => {
     return grp;
   }
 
-  function drawHotspot(g, h) {
+  /* Garis sambung titik pemasangan ke peralatan, pipa, atau dinding area tempat perangkat dipasang,
+     bergaya garis sinyal pada gelembung instrumen P&ID. Titik di dalam ruang (tanpa tap) tidak bergaris. */
+  function hsLink(g, h, r, stroke, dot) {
+    if (!h.tap) return;
+    const dx = h.tap[0] - h.x, dy = h.tap[1] - h.y, L = Math.hypot(dx, dy);
+    if (L <= r + 2) return;
+    el('path', { class: 'hs-link', d: `M${dx.toFixed(1)} ${dy.toFixed(1)} L${(dx * r / L).toFixed(1)} ${(dy * r / L).toFixed(1)}`, fill: 'none', stroke, 'stroke-width': 1.5, 'stroke-dasharray': '3 2.2', 'stroke-linecap': 'round' }, g);
+    el('circle', { class: 'hs-tap', cx: dx.toFixed(1), cy: dy.toFixed(1), r: 3.4, fill: dot || stroke, stroke: '#fff', 'stroke-width': 1.2 }, g);
+  }
+  /* nomor titik, sama dengan nomor pada daftar Titik Pemasangan di panel */
+  function hsNum(g, n, ox, oy) {
+    if (!n) return;
+    const b = el('g', { class: 'hs-num', transform: `translate(${ox},${oy})` }, g);
+    el('circle', { r: 7.6, fill: '#1d262e', stroke: '#fff', 'stroke-width': 1.4 }, b);
+    text(b, 0, 0.7, String(n), { 'font-size': n > 9 ? 8 : 9.2, 'font-weight': 900, fill: '#fff' });
+  }
+  function drawHotspot(g, h, n, title) {
     const grp = el('g', { class: 'hotspot', 'data-hs': h.id, transform: `translate(${h.x},${h.y})` }, g);
+    hsLink(grp, h, 13, '#1572a8');
     el('circle', { class: 'hs-pulse', r: 16, fill: 'none', stroke: '#29abe2', 'stroke-width': 2 }, grp);
     el('circle', { class: 'hs-core', r: 13, fill: '#eef9fe', stroke: '#1e9bd7', 'stroke-width': 2.5, 'stroke-dasharray': '4 3', filter: 'url(#fSoft)' }, grp);
     el('path', { d: 'M-6 0 h12 M0 -6 v12', stroke: '#1572a8', 'stroke-width': 3, 'stroke-linecap': 'round' }, grp);
-    el('title', null, grp).textContent = h.label;
+    hsNum(grp, n, -12, -12);
+    el('title', null, grp).textContent = title || h.label;
     return grp;
   }
 
-  function drawDevice(g, h, dev, state) {
+  function drawDevice(g, h, dev, state, n, title) {
     const grp = el('g', { class: 'device', 'data-hs': h.id, transform: `translate(${h.x},${h.y})` }, g);
+    hsLink(grp, h, 18, '#2b3640', dev.color);
     el('circle', { class: 'dev-target', r: 24, fill: 'none', stroke: '#29abe2', 'stroke-width': 3, opacity: 0 }, grp);
     el('circle', { class: 'dev-body', r: 18, fill: 'url(#gBubble)', stroke: dev.color, 'stroke-width': 3.4, filter: 'url(#fShadow)' }, grp);
     el('circle', { r: 14.5, fill: 'none', stroke: '#fff', 'stroke-width': 1, opacity: 0.8 }, grp);
@@ -658,7 +677,8 @@ const PID = (() => {
       el('circle', { r: 7.5, fill: '#f0a500', stroke: '#fff', 'stroke-width': 1.6 }, b);
       text(b, 0, 0.8, '!', { 'font-size': 11, 'font-weight': 900, fill: '#1f2a35' });
     }
-    el('title', null, grp).textContent = dev.name + ' @ ' + h.label + (state === 'tested' ? ' (escalation factor dikendalikan)' : state === 'untested' ? ' (escalation factor belum dikendalikan)' : '');
+    hsNum(grp, n, -15, -14);
+    el('title', null, grp).textContent = dev.name + ' @ ' + (title || h.label) + (state === 'tested' ? ' (escalation factor dikendalikan)' : state === 'untested' ? ' (escalation factor belum dikendalikan)' : '');
     return grp;
   }
 
@@ -1010,17 +1030,19 @@ const PID = (() => {
         gHs.innerHTML = ''; gDev.innerHTML = '';
         if (!stage) return;
         const o = opts || {};
-        scn.hotspots.filter(h => h.stage === stage).forEach(h => {
+        /* nomor titik mengikuti urutan data, yang sudah disusun menurut posisi baca pada P&ID */
+        scn.hotspots.filter(h => h.stage === stage).forEach((h, i) => {
           const placedId = placements && placements[h.id];
+          const title = o.title ? o.title(h) : h.label;
           if (placedId && DEVICES[placedId]) {
             const dev = DEVICES[placedId];
             /* o.credit: status kredit dari game (klaim sebelum evaluasi, hasil verifikasi sesudahnya) */
             const tested = o.credit ? !!o.credit[h.id] : !!(itpmMap && itpmMap[h.id] && itpmMap[h.id] === dev.itpm);
             const state = tested ? 'tested' : (o.flagUntested ? 'untested' : 'none');
-            const d = drawDevice(gDev, h, dev, state);
+            const d = drawDevice(gDev, h, dev, state, i + 1, title);
             d.addEventListener('click', ev => { ev.stopPropagation(); handlers && handlers.onDevice && handlers.onDevice(h, placedId); });
           } else {
-            const hs = drawHotspot(gHs, h);
+            const hs = drawHotspot(gHs, h, i + 1, title);
             hs.addEventListener('click', ev => { ev.stopPropagation(); handlers && handlers.onHotspot && handlers.onHotspot(h); });
           }
         });
@@ -1033,12 +1055,24 @@ const PID = (() => {
         gBadge.innerHTML = '';
         const hs = scn.hotspots.filter(h => h.stage === (stage || 3));
         const taken = [];
+        /* lencana tidak boleh menutup penanda titik maupun garis sambungnya */
+        const hitsHs = (x0, y0, x1, y1) => hs.some(h => {
+          const nx = Math.max(x0, Math.min(h.x, x1)), ny = Math.max(y0, Math.min(h.y, y1));
+          if (Math.hypot(h.x - nx, h.y - ny) < 24) return true;
+          if (!h.tap) return false;
+          const L = Math.hypot(h.tap[0] - h.x, h.tap[1] - h.y);
+          for (let s = 0; s <= L; s += 4) {
+            const px = h.tap[0] + (h.x - h.tap[0]) * s / L, py = h.tap[1] + (h.y - h.tap[1]) * s / L;
+            if (px > x0 - 2 && px < x1 + 2 && py > y0 - 2 && py < y1 + 2) return true;
+          }
+          return false;
+        });
         Object.keys(map || {}).forEach(id => {
           const e = eqById[id]; const it = ITPM[map[id]];
           if (!e || !it) return;
           const b = eqBounds(e);
-          const cands = [[b.x + b.w - 6, b.y - 2], [b.x + 8, b.y - 2], [b.x + b.w + 22, b.y + b.h / 2], [b.x - 22, b.y + b.h / 2], [b.x + b.w - 6, b.y + b.h + 4], [b.x + 8, b.y + b.h + 4]];
-          const free = c => !hs.some(h => Math.abs(h.x - c[0]) < 44 && Math.abs(h.y - c[1]) < 32) && !taken.some(t => Math.abs(t[0] - c[0]) < 50 && Math.abs(t[1] - c[1]) < 24);
+          const cands = [[b.x + b.w - 6, b.y - 2], [b.x + 8, b.y - 2], [b.x + b.w / 2, b.y - 2], [b.x + b.w + 22, b.y + b.h / 2], [b.x - 22, b.y + b.h / 2], [b.x + b.w - 6, b.y + b.h + 4], [b.x + 8, b.y + b.h + 4], [b.x + b.w / 2, b.y + b.h + 4]];
+          const free = c => !hitsHs(c[0] - 22, c[1] - 10, c[0] + 22, c[1] + 10) && !taken.some(t => Math.abs(t[0] - c[0]) < 50 && Math.abs(t[1] - c[1]) < 24);
           const pos = cands.find(free) || cands[0];
           taken.push(pos);
           const tg = el('g', { class: 'eq-badge', transform: `translate(${pos[0]},${pos[1]})` }, gBadge);

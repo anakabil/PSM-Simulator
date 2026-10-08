@@ -638,6 +638,7 @@ const Game = (() => {
     sv.evalRows = sv.evalRows || {};
     sv.read = sv.read || [];
     sv.scores = sv.scores || {};
+    sv.budgetEff = sv.budgetEff || {};
     return sv;
   }
   function save() { if (S) saveJSON(SAVE_KEY, S); }
@@ -662,6 +663,7 @@ const Game = (() => {
   }
   function stopAll() {
     clearTimers();
+    Sfx.stopBeds(0.3);
     ev2 = null;
     closeComic();
     removeActionBar();
@@ -795,6 +797,7 @@ const Game = (() => {
   }
   function resetPlant() {
     clearTimers();
+    Sfx.stopBeds(0.3);
     closePopover();
     runSim(false);
     sim.reset(); sim.clearEvent();
@@ -820,7 +823,7 @@ const Game = (() => {
     pid.showReadouts(S.stage <= 2);
     pid.setTargets(null);
     pid.setEqBadges(S.stage === 3 ? S.eqItpm[3] : {}, S.stage);
-    pid.showHotspots(S.stage >= 3 ? S.stage : 0, S.placements[S.stage], S.itpm[S.stage], { flagUntested: cfg.hints });
+    pid.showHotspots(S.stage >= 3 ? S.stage : 0, S.placements[S.stage], S.itpm[S.stage], { flagUntested: cfg.hints, title: hsLabel });
     $('#pid').classList.remove('placing');
     if (S.stage === 1) renderStage1();
     else if (S.stage === 2) renderStage2();
@@ -1052,9 +1055,9 @@ const Game = (() => {
     pid.fx(w.type, p.x, p.y, { sev: w.sev, at: w.at, big: w.big });
     addWarnLog(w);
     showBanner(w);
-    if (['leak', 'toxic', 'spill', 'dust'].includes(w.type)) Sfx.hiss();
-    else if (['fire', 'smoke', 'arc'].includes(w.type)) Sfx.crackle();
-    if (w.type !== 'explosion') Sfx.warn();
+    /* bunyi khas sesuai isi peringatan (desis, semburan, hentakan, kavitasi, dengung, busur listrik, api)
+       dan bunyi latar yang bertahan sampai laporan dibuka; insiden memiliki bunyinya sendiri */
+    if (w.sev !== 'final') { Sfx.warn(); Sfx.abnormal(w); Music.duck(6500); }
     if (w.sev === 'crit') setStatus('Bahaya', 'crit');
   }
   function triggerIncident(w) {
@@ -1062,10 +1065,8 @@ const Game = (() => {
     sim.halted = true;
     runSim(false);
     Music.duck(8000);
-    if (w.type === 'explosion') {
-      Sfx.boom();
-      if (fxOn()) { const pw = $('#pid'); pw.classList.remove('boom'); void pw.offsetWidth; pw.classList.add('boom'); }
-    } else Sfx.siren();
+    Sfx.incident(w);
+    if (w.type === 'explosion' && fxOn()) { const pw = $('#pid'); pw.classList.remove('boom'); void pw.offsetWidth; pw.classList.add('boom'); }
     setStatus('INSIDEN', 'crit');
     setAlarm('INSIDEN: produksi terhenti', true);
     $('#btn-report').disabled = true;
@@ -1101,6 +1102,7 @@ const Game = (() => {
     ev2.reportOpen = true;
     ev2.reported = true;
     runSim(false);
+    Sfx.stopBeds();
     const evt = ev2.evt;
     ev2.phase = !ev2.started ? 'pre' : ev2.incident ? 'late' : (!ev2.crit ? 'early' : 'mid');
     ev2.reportClock = sim.clock();
@@ -1526,6 +1528,36 @@ const Game = (() => {
     Object.values((S.eqItpm && S.eqItpm[stage]) || {}).forEach(k => { if (ITPM[k]) s += ITPM[k].cost; });
     return s;
   }
+  /* Efektivitas penggunaan anggaran, mengikuti prinsip value for money (ekonomis, efisien, efektif)
+     pada pemeriksaan kinerja BPK. Belanja tepat guna adalah biaya perangkat yang tepat di titik yang
+     memerlukan, kontrol escalation factor yang sesuai pada perangkat itu, dan kontrol yang tepat pada
+     peralatan kritis. Tingkat perlindungan memberi nilai 1 untuk barier tepat dengan escalation factor
+     terkendali, 0,5 untuk barier tepat tanpa kontrol yang sesuai, dan 1 untuk peralatan kritis yang
+     kontrolnya tepat. Indeks = tingkat perlindungan x porsi belanja tepat guna. */
+  const BUDGET_LEVELS = [
+    { min: 0.95, name: 'Sangat efektif', bonus: 10, cls: 'ok' },
+    { min: 0.85, name: 'Efektif', bonus: 6, cls: 'ok' },
+    { min: 0.7, name: 'Cukup efektif', bonus: 3, cls: 'mid' },
+    { min: 0, name: 'Kurang efektif', bonus: 0, cls: 'bad' },
+  ];
+  function budgetEff(stage) {
+    const hs = scn.hotspots.filter(h => h.stage === stage && h.accept.length);
+    const targets = stage === 3 ? (scn.inspect || []) : [];
+    const eqm = (S.eqItpm && S.eqItpm[stage]) || {};
+    let useful = 0, prot = 0;
+    hs.forEach(h => {
+      const st = devState(stage, h.id);
+      if (!st || !h.accept.includes(st.dev)) return;
+      useful += st.d.cost;
+      if (st.tested) { useful += ITPM[st.ef].cost; prot += 1; } else prot += 0.5;
+    });
+    targets.forEach(t => { if (eqm[t.id] === t.itpm) { useful += ITPM[t.itpm].cost; prot += 1; } });
+    const total = spent(stage), need = hs.length + targets.length;
+    const share = total ? useful / total : 0, cover = need ? prot / need : 0;
+    const idx = Math.round(share * cover * 100) / 100;
+    const lv = BUDGET_LEVELS.find(l => idx >= l.min);
+    return { useful, total, waste: total - useful, share, cover, idx, level: lv.name, bonus: lv.bonus, cls: lv.cls };
+  }
   /* Peralatan yang dapat diberi kontrol escalation factor: semua peralatan di dalam batas unit.
      Sengaja tidak disaring menurut kecocokan agar pemain menilai sendiri peralatan yang kritis. */
   const NO_EF_TYPES = ['muster', 'building', 'sink'];
@@ -1546,7 +1578,7 @@ const Game = (() => {
     const done = S.evalDone[stage];
     const side = $('#side');
     side.innerHTML = tt(`${sideHead(ICON[stage === 3 ? 'shield' : 'fire'], `Tahap ${stage}: Barier ${stage === 3 ? 'Pencegahan' : 'Mitigasi'}`)}
-      <div class="card budget"><div class="budget-row"><span>${ICON.coin} Anggaran</span><b id="budget-val"></b></div><div class="budget-bar"><div id="budget-fill"></div></div><p class="muted small budget-note" id="budget-note"></p><p class="muted small">${stage === 3 ? 'Pasang instrumen deteksi dan proteksi yang memutus rantai kejadian sebelum kehilangan kontainmen, lalu jaga keandalannya.' : 'Pasang perangkat yang membatasi dampak bila kehilangan kontainmen tetap terjadi, lalu jaga keandalannya.'}</p></div>
+      <div class="card budget"><div class="budget-row"><span>${ICON.coin} Anggaran</span><b id="budget-val"></b></div><div class="budget-bar"><div id="budget-fill"></div></div><p class="muted small budget-note" id="budget-note"></p><p class="small budget-eff-line" id="budget-eff"></p><p class="muted small">${stage === 3 ? 'Pasang instrumen deteksi dan proteksi yang memutus rantai kejadian sebelum kehilangan kontainmen, lalu jaga keandalannya.' : 'Pasang perangkat yang membatasi dampak bila kehilangan kontainmen tetap terjadi, lalu jaga keandalannya.'}</p></div>
       <div class="card rel"><h4>${ICON.gauge}<span>Keandalan Sistem Proteksi</span><small id="rel-kind"></small></h4>
         <div class="rel-row"><b id="rel-val">0%</b><span id="rel-sub">Belum ada barier terpasang</span></div>
         <div class="rel-bar"><div id="rel-fill"></div></div>
@@ -1559,7 +1591,8 @@ const Game = (() => {
         <div class="tool-desc" id="tool-desc">Pilih alat untuk membaca fungsinya, atau klik titik (+) pada P&amp;ID untuk memilih perangkat lewat pop-up.</div>
       </div>
       <div class="card"><h4>Titik Pemasangan <span class="pill" id="hs-count"></span></h4>
-        <ul class="hs-list" id="hs-list">${hs.map(h => `<li data-hs="${h.id}"><span class="dot"></span><div><b>${cfg.hints || cfg.difficulty === 'mudah' ? esc(h.label) : 'Titik ' + esc(h.id.toUpperCase())}</b><small class="placed"></small></div></li>`).join('')}</ul>
+        <p class="muted small">Nomor sama dengan penanda di P&amp;ID. Garis putus-putus menunjukkan peralatan atau pipa tempat perangkat dipasang. Titik tanpa garis berada di dalam ruang.</p>
+        <ul class="hs-list" id="hs-list">${hs.map((h, i) => `<li data-hs="${h.id}"><span class="num">${i + 1}</span><div><b>${hsHints() ? esc(h.label) : esc('Titik ' + hsWhere(h))}</b><small class="placed"></small></div></li>`).join('')}</ul>
       </div>
       ${insp.length ? `<div class="card"><h4>Escalation Factor Peralatan <span class="pill" id="eq-count"></span></h4><p class="muted small">Kegagalan integritas peralatan, misalnya korosi dinding atau keausan bantalan, juga merupakan escalation factor. Klik peralatan di P&amp;ID atau di daftar ini untuk memilih kontrolnya. Tentukan sendiri peralatan yang kritis.</p><ul class="eq-insp" id="eq-insp">${insp.map(e => `<li data-eq="${e.id}"><span class="dot"></span><div><b>${esc(e.id)}</b> <span>${esc(e.name)}</span><small class="placed"></small></div></li>`).join('')}</ul></div>` : ''}
       <div class="card action"><button class="btn3d ${done ? 'primary' : 'dark'} wide" id="btn-eval">${ICON.check}<span>${done ? 'Lanjut' : 'Evaluasi Pemasangan'}</span></button></div>`);
@@ -1569,6 +1602,10 @@ const Game = (() => {
       const h = scn.hotspots.find(x => x.id === ev.currentTarget.dataset.hs);
       if (S.placements[stage][h.id]) onDeviceClick(h, S.placements[stage][h.id]); else onHotspotClick(h);
     });
+    /* menyorot penanda yang sesuai di P&ID saat butir daftar disentuh kursor */
+    const hlHs = (id, v) => { const n = pid.hsNode(id) || pid.devNode(id); if (n) n.classList.toggle('hl', v); };
+    on(side, '.hs-list li', 'mouseenter', ev => hlHs(ev.currentTarget.dataset.hs, true));
+    on(side, '.hs-list li', 'mouseleave', ev => hlHs(ev.currentTarget.dataset.hs, false));
     on(side, '.eq-insp li', 'click', ev => onEquipmentBarrier(scn.equipment.find(x => x.id === ev.currentTarget.dataset.eq)));
     $('#btn-eval').addEventListener('click', () => { Sfx.click(); if (S.evalDone[stage]) afterEval(stage); else confirmEvaluate(stage); });
     setTab(toolTab);
@@ -1617,6 +1654,12 @@ const Game = (() => {
     const bv = $('#budget-val'); if (bv) bv.textContent = `${money(b - sp)} / ${money(b)}`;
     const bn = $('#budget-note'); if (bn) bn.textContent = `Terpakai ${money(sp)}. ${costNote()}`;
     const bf = $('#budget-fill'); if (bf) { bf.style.width = Math.min(100, sp / b * 100) + '%'; bf.classList.toggle('low', b - sp <= 2); }
+    const be = $('#budget-eff');
+    if (be) {
+      const ev = S.evalDone[stage] && S.budgetEff && S.budgetEff[stage];
+      be.className = 'small budget-eff-line' + (ev ? ' ' + (BUDGET_LEVELS.find(l => l.name === ev.level) || {}).cls : '');
+      be.innerHTML = ev ? `Efektivitas anggaran: <b>${esc(ev.level)}</b>, indeks ${num(ev.idx, 2)}, bonus +${ev.bonus} poin.` : 'Efektivitas anggaran dinilai saat evaluasi dan dapat menambah hingga 10 poin. Belanjakan anggaran hanya untuk barier dan kontrol yang menurunkan risiko.';
+    }
     const r = reliability(stage);
     const done = !!S.evalDone[stage];
     const rk = $('#rel-kind'); if (rk) rk.textContent = done ? 'terverifikasi' : 'diklaim';
@@ -1640,12 +1683,37 @@ const Game = (() => {
       li.querySelector('.placed').textContent = k ? `${ITPM[k].code} · ${ITPM[k].name}` : 'belum ada kontrol escalation factor';
     });
     const ec = $('#eq-count'); if (ec) ec.textContent = `${Object.keys(eqm).length}`;
-    pid.showHotspots(stage, S.placements[stage], S.itpm[stage], { flagUntested: cfg.hints, credit: creditMap(stage) });
+    pid.showHotspots(stage, S.placements[stage], S.itpm[stage], { flagUntested: cfg.hints, credit: creditMap(stage), title: h => S.evalDone[stage] ? hsTitle(h) : hsLabel(h) });
     pid.setEqBadges(eqm, stage);
     updateTargets();
   }
   function remaining(stage) { return budgetFor(stage) - spent(stage); }
-  function hsLabel(h) { return cfg.hints || cfg.difficulty === 'mudah' ? h.label : 'Titik ' + h.id.toUpperCase(); }
+  /* Nomor dan lokasi titik pemasangan. Nomor sama dengan penanda di P&ID (urutan data sudah mengikuti
+     posisi baca), lokasi menyebut peralatan, pipa, atau ruang tempat titik itu tersambung. */
+  function hsHints() { return cfg.hints || cfg.difficulty === 'mudah'; }
+  function hsNumber(h) { return scn.hotspots.filter(x => x.stage === h.stage).indexOf(h) + 1; }
+  function eqShort(e) { return ['building', 'muster'].includes(e.type) ? e.name : e.id; }
+  function pipeEndEq(pt) {
+    let best = null, ba = Infinity;
+    scn.equipment.forEach(e => {
+      const b = pid.eqBounds(e.id);
+      if (!b || pt[0] < b.x - 6 || pt[0] > b.x + b.w + 6 || pt[1] < b.y - 6 || pt[1] > b.y + b.h + 6) return;
+      if (b.w * b.h < ba) { ba = b.w * b.h; best = e; }
+    });
+    return best && best.type !== 'sink' ? best : null;
+  }
+  function hsWhere(h) {
+    const e = scn.equipment.find(x => x.id === h.on);
+    if (e) return e.type === 'sink' && /^ke /i.test(e.name) ? 'pada jalur ' + e.name.charAt(0).toLowerCase() + e.name.slice(1) : 'pada ' + (e.type === 'sink' ? e.name : eqShort(e));
+    const a = (scn.areas || []).find(x => x.id === h.on);
+    if (a) return 'di ' + a.name;
+    const p = scn.pipes.find(x => x.id === h.on);
+    if (!p) return '';
+    const f = pipeEndEq(p.pts[0]), t = pipeEndEq(p.pts[p.pts.length - 1]);
+    return f && t ? `pada jalur ${eqShort(f)} ke ${eqShort(t)}` : f ? `pada jalur keluar ${eqShort(f)}` : t ? `pada jalur masuk ${eqShort(t)}` : 'pada jalur pipa';
+  }
+  function hsLabel(h) { return hsHints() ? `Titik ${hsNumber(h)}: ${h.label}` : `Titik ${hsNumber(h)} ${hsWhere(h)}`; }
+  function hsTitle(h) { return `Titik ${hsNumber(h)}: ${h.label}`; }
   /* Kit perangkat: setiap skenario hanya menampilkan perangkat yang relevan
      dengan sektornya, termasuk pengecoh yang masuk akal. */
   function kitOk(d) { const ks = scn.kits || ['proses']; return (d.kit || ['proses']).some(k => ks.includes(k)); }
@@ -1707,7 +1775,7 @@ const Game = (() => {
   }
   function onHotspotClick(h) {
     const stage = S.stage;
-    if (S.evalDone[stage]) { showToast(h.label + ': ' + h.why); return; }
+    if (S.evalDone[stage]) { showToast(hsTitle(h) + '. ' + h.why); return; }
     if (tool && tool.kind === 'itpm') { showToast('Pasang perangkat barier di titik ini terlebih dahulu, lalu kendalikan escalation factor-nya.'); return; }
     if (tool) { placeDevice(stage, h, tool.id); return; }
     if (pop && pop.pickHs === h.id) { closePopover(); return; }
@@ -1718,7 +1786,7 @@ const Game = (() => {
     const stage = S.stage;
     if (S.evalDone[stage]) {
       if (pop && pop.devHs === h.id) { closePopover(); return; }
-      Sfx.click(); openDevicePop(stage, h); showToast(h.label + ': ' + h.why); return;
+      Sfx.click(); openDevicePop(stage, h); showToast(hsTitle(h) + '. ' + h.why); return;
     }
     if (tool && tool.kind === 'itpm') { applyProgram(stage, h, tool.id); return; }
     if (tool && tool.kind === 'dev') { placeDevice(stage, h, tool.id); return; }
@@ -1914,7 +1982,12 @@ const Game = (() => {
     const eqOk = eqRows.filter(r => r.st === 'ok').length;
     const hw = correct / needed.length, cov = tested / needed.length, eqc = targets.length ? eqOk / targets.length : 0;
     const raw = stage === 3 ? 55 * hw + 25 * cov + 20 * eqc : 65 * hw + 35 * cov;
-    const score = Math.max(0, Math.min(100, Math.round(raw - 8 * (wrong + unnecessary) - 4 * efWrong)));
+    const base = Math.max(0, Math.min(100, Math.round(raw - 8 * (wrong + unnecessary) - 4 * efWrong)));
+    /* bonus efektivitas anggaran menambah nilai tahap, paling tinggi 100 */
+    const bud = budgetEff(stage);
+    const score = Math.min(100, base + bud.bonus);
+    S.budgetEff = S.budgetEff || {};
+    S.budgetEff[stage] = { idx: bud.idx, level: bud.level, bonus: bud.bonus, share: bud.share, cover: bud.cover };
     S.evalDone[stage] = true;
     const rel = reliability(stage);
     S.evalRows[stage] = rows.map(r => ({ id: r.h.id, st: r.st }));
@@ -1934,12 +2007,19 @@ const Game = (() => {
           <div><span>Kontrol EF keliru</span><b>${efWrong}</b></div>
           <div><span>Keandalan diklaim / terverifikasi</span><b>${claimed.n ? pct(claimed.avg) : '0%'} / ${rel.n ? pct(rel.avg) : '0%'}</b></div>
           <div><span>Anggaran terpakai</span><b>${money(spent(stage))} dari ${money(budgetFor(stage))}</b></div>
+          <div class="budget-eff-tile ${bud.cls}"><span>Efektivitas anggaran</span><b>${esc(bud.level)} (+${bud.bonus})</b></div>
         </div>
-        <p class="muted small">Bobot nilai: ${stage === 3 ? 'ketepatan barier 55%, escalation factor barier terkendali 25%, escalation factor peralatan kritis 20%' : 'ketepatan barier 65%, escalation factor barier terkendali 35%'}, dikurangi 8 poin untuk setiap barier keliru atau tidak perlu dan 4 poin untuk setiap kontrol escalation factor yang keliru.</p>
-        <ul class="eval-list">${rows.map(r => `<li class="${r.st}"><b>${esc(r.h.label)}</b><span>${esc(r.msg)}</span><em>${esc(r.h.why)}</em></li>`).join('')}</ul>
+        ${budgetEffHTML(bud)}
+        <p class="muted small">Bobot nilai: ${stage === 3 ? 'ketepatan barier 55%, escalation factor barier terkendali 25%, escalation factor peralatan kritis 20%' : 'ketepatan barier 65%, escalation factor barier terkendali 35%'}, dikurangi 8 poin untuk setiap barier keliru atau tidak perlu dan 4 poin untuk setiap kontrol escalation factor yang keliru, lalu ditambah bonus efektivitas anggaran. Nilai dasar ${base}, bonus ${bud.bonus}, nilai tahap ${score} (paling tinggi 100).</p>
+        <ul class="eval-list">${rows.map(r => `<li class="${r.st}"><b>${esc(hsTitle(r.h))}</b><span>${esc(r.msg)}</span><em>${esc(r.h.why)}</em></li>`).join('')}</ul>
         ${eqRows.length ? `<h4 class="chain-h">Escalation factor peralatan kritis</h4><ul class="eval-list">${eqRows.map(r => `<li class="${r.st}"><b>${esc(r.e.id)} · ${esc(r.e.name)}</b><span>${esc(r.msg)}</span><em>${esc(r.t.why)}</em></li>`).join('')}</ul>` : ''}
         ${extraRows.length ? `<h4 class="chain-h">Kontrol escalation factor pada peralatan lain</h4><ul class="eval-list">${extraRows.map(r => `<li class="${r.st}"><b>${esc(r.e.id)} · ${esc(r.e.name)}</b><span>${esc(r.msg)}</span></li>`).join('')}</ul>` : ''}`,
       buttons: [{ label: 'Lihat P&ID', cls: 'btn3d silver' }, { label: 'Lanjut', cls: 'btn3d primary', onClick: () => finishStage(stage, score, '') }] });
+  }
+  function budgetEffHTML(b) {
+    const p = x => Math.round(x * 100) + '%';
+    return `<div class="budget-eff ${b.cls}"><p><b>Efektivitas anggaran: ${esc(b.level)}</b>, indeks ${num(b.idx, 2)}. Belanja tepat guna ${money(b.useful)} dari ${money(b.total)} (${p(b.share)})${b.waste > 0 ? `, belanja yang tidak menurunkan risiko ${money(b.waste)}` : ''}. Tingkat perlindungan yang tercapai ${p(b.cover)}.</p>
+      <p class="muted small">Indeks = tingkat perlindungan x porsi belanja tepat guna, mengikuti prinsip value for money (ekonomis, efisien, efektif). Bonus: Sangat efektif (indeks 0,95 ke atas) +10, Efektif (0,85 ke atas) +6, Cukup efektif (0,70 ke atas) +3, Kurang efektif +0. Anggaran yang sengaja tidak dipakai dengan melewatkan barier yang diperlukan menurunkan tingkat perlindungan, sehingga tidak menaikkan indeks.</p></div>`;
   }
   function showEvalMarks(stage) {
     const rows = (S.evalRows && S.evalRows[stage]) || [];
@@ -1992,6 +2072,9 @@ const Game = (() => {
     const efChips = [...efMap.values()];
     const relAll = [...prev, ...mit];
     const relAvg = relAll.length ? relAll.reduce((s, x) => s + x.rel, 0) / relAll.length : 0;
+    const be = S.budgetEff || {}, beSt = [3, 4].filter(st => be[st]);
+    const budIdx = beSt.length ? beSt.reduce((s, st) => s + be[st].idx, 0) / beSt.length : null;
+    const budTxt = beSt.map(st => `${st === 3 ? 'pencegahan' : 'mitigasi'} ${be[st].level.toLowerCase()} (indeks ${num(be[st].idx, 2)}, bonus +${be[st].bonus} poin)`).join(', ');
     app.innerHTML = `<div class="screen sub result">
       ${bgPhoto()}
       <div class="panel wide">
@@ -1999,7 +2082,8 @@ const Game = (() => {
         <div class="result-top">
           <div class="score-big ${g}">${total}<small>${g} · ${gradeLabel(g)}</small></div>
           <div class="score-grid">${STAGES.map(st => `<div class="score-item"><span class="ico">${ICON[st.icon]}</span><span>${esc(st.short)}</span><b>${S.scores[st.n] !== undefined ? S.scores[st.n] : '-'}</b></div>`).join('')}
-            <div class="score-item rel"><span class="ico">${ICON.gauge}</span><span>Keandalan barier</span><b>${pct(relAvg)}</b></div></div>
+            <div class="score-item rel"><span class="ico">${ICON.gauge}</span><span>Keandalan barier</span><b>${pct(relAvg)}</b></div>
+            ${budIdx !== null ? `<div class="score-item rel"><span class="ico">${ICON.coin}</span><span>Efektivitas anggaran</span><b>${Math.round(budIdx * 100)}%</b></div>` : ''}</div>
         </div>
         ${cfg.name ? `<p class="muted">Pemain: <b>${esc(cfg.name)}</b></p>` : ''}
         <h4>Diagram Bow-Tie Anda</h4>
@@ -2011,6 +2095,7 @@ const Game = (() => {
           <li>Barier pencegahan yang terpasang: ${prev.length ? prev.map(x => esc(x.d.name) + (x.tested ? '' : x.ef ? ' (kontrol EF keliru)' : ' (EF belum dikendalikan)')).join('; ') : 'tidak ada'}.</li>
           <li>Barier mitigasi yang terpasang: ${mit.length ? mit.map(x => esc(x.d.name) + (x.tested ? '' : x.ef ? ' (kontrol EF keliru)' : ' (EF belum dikendalikan)')).join('; ') : 'tidak ada'}.</li>
           <li>Investasi barier dan kontrol escalation factor: pencegahan ${money(spent(3))}, mitigasi ${money(spent(4))}, total ${money(spent(3) + spent(4))}. ${esc(costNote())}</li>
+          ${budTxt ? `<li>Efektivitas penggunaan anggaran: ${esc(budTxt)}. Anggaran yang efektif dibelanjakan untuk barier dan kontrol escalation factor yang benar-benar memutus rantai kejadian, bukan untuk perangkat yang tidak menurunkan risiko.</li>` : ''}
           <li>Lapisan proteksi harus independen, efektif, dan dapat diaudit. Setiap ancaman pada bow-tie idealnya dipotong oleh lebih dari satu barier dengan mekanisme berbeda (instrumen, mekanis, dan prosedural).</li>
           <li>Barier hanya seandal pengendalian escalation factor-nya. Kontrol harus sesuai dengan cara barier itu dapat gagal; inspeksi yang salah sasaran memakai anggaran tanpa mengungkap kegagalan tersembunyi.</li>
           ${planEvents().some(e => e.hf) ? `<li>Faktor manusia pada diagram bow-tie menunjukkan bahwa barier teknis dapat dilumpuhkan oleh pekerjaan di luar kewenangan, bypass, kelalaian, atau keputusan yang keliru. Kontrolnya adalah sistem izin kerja, manajemen perubahan, pengelolaan bypass, serah terima yang jelas, kompetensi, dan budaya berani menghentikan pekerjaan.${(() => { const r = S.eventResults.filter(x => x.hf); return r.length ? ` Anda mengklasifikasikan ${r.filter(x => x.hf.ok).length} dari ${r.length} jenis kesalahan manusia dengan tepat.` : ''; })()}</li>` : ''}
