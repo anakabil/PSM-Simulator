@@ -181,6 +181,31 @@ Bilah atas permainan memakai logo PSM Simulator by Nusa Safety berlatar transpar
 
 Ikon tombol menu digambar sebagai SVG bervolume dengan gradien, bevel, dan kilap, sehingga tetap tajam di layar beresolusi tinggi. Halaman menu memiliki animasi ringan berupa partikel cahaya, sinar latar yang berputar pelan, kilau yang melintas di logo, dan tombol yang muncul berurutan. Semua animasi ini ikut mati bila efek animasi dinonaktifkan atau sistem operasi meminta pengurangan gerak.
 
+### Ikon skenario di layar Pilih Skenario
+
+Setiap kartu skenario memakai ilustrasi fasilitas yang digambar ulang agar menyerupai bentuk peralatan sebenarnya, bukan simbol abstrak. Ilustrasi berupa SVG dengan bidang gambar 160 x 100, bergradien dan berbayang, dengan tanah atau landasan sebagai alas, sehingga tetap tajam di layar beresolusi tinggi dan di ponsel. Simbol P&ID di dalam studi kasus tidak diubah.
+
+| Skenario | Isi ilustrasi |
+|---|---|
+| Separator Produksi Migas | Separator tiga fasa di atas skid, PSV, gelas penduga level, keluaran air dan minyak dengan LCV, tangki minyak, jalur gas ke kompresor dan flare |
+| Penyimpanan dan Pengisian LPG | Tangki bullet di atas sadel beton dengan cincin semprot air, PSV, pompa pengisian, kanopi loading bay, lengan pengisian, truk tangki |
+| Reaktor Batch Eksotermik | Reaktor berjaket di atas platform baja, penggerak agitator, cakram pecah dan vent, jalur uap ke kondensor refluks |
+| Kolom Distilasi Aromatik | Kolom dengan platform dan tangga berkurungan, kondensor, drum refluks, pompa refluks, reboiler |
+| Boiler PLTU Batu Bara | Gedung turbin, galeri konveyor, bunker, struktur boiler dengan drum uap, coal mill, ESP, cerobong |
+| Trafo Daya Gardu Induk | Gantry kisi, rantai isolator dan konduktor, trafo terendam minyak dengan radiator dan kipas ONAF |
+| PLT Biogas POME | Kolam digester tertutup membran HDPE, flare, kontainer gas engine |
+| PLTS dengan BESS | Meja panel surya miring dan kontainer baterai dengan unit HVAC |
+| Lini Produksi Pakan Ternak | Silo jagung, bucket elevator, gedung hammer mill, dust collector, kipas dan cerobong |
+| Refrigerasi Amonia Cold Storage | Kondensor evaporatif di atap, paket kompresor screw, receiver tekanan tinggi |
+| Proteksi Kebakaran Gedung Komersial | Gedung tiga lantai dengan restoran di lantai atas, rak LPG, tangki air kebakaran, hidran |
+| Asphalt Mixing Plant | Cold bin, drum pengering miring dengan burner, hot elevator, menara pencampur, baghouse, cerobong |
+
+Gambar ikon tersimpan di `js/scnicons.js` pada objek `SCN_ICONS`. Bila sebuah skenario belum memiliki ilustrasi atau berkas tersebut gagal dimuat, kartu memakai ikon sederhana bawaan `js/game.js`.
+
+### Bahasa
+
+Seluruh teks permainan, mulai dari narasi, obrolan tim, peringatan lapangan, kuis, sampai label tombol, memakai bahasa Indonesia baku dan profesional. Istilah teknis yang lazim dipakai di industri dan belum memiliki padanan yang mapan, misalnya escalation factor, bow-tie, carry-over, dan loading arm, tetap ditulis dalam bahasa aslinya. Istilah yang dipakai secara seragam antara lain Ruang Kendali untuk control room, Tim Pemeliharaan untuk maintenance, jendela untuk pop-up, Pengaturan untuk settings, dan Kredit untuk credits. Tombol pada menu utama adalah Permainan Baru, Lanjutkan Permainan, Pengaturan, dan Kredit, sedangkan tombol pembuka setiap tahap cukup bertuliskan Mulai.
+
 Grafik tren memakai latar abu-abu terang dengan teks hitam dan biru tua, sesuai prinsip HMI berperforma tinggi. Setiap kartu tren menampilkan rentang 60 menit operasi, garis nilai normal, pita batas alarm L, LL, H, dan HH, serta indikator arah perubahan, misalnya naik 0,8 bar/mnt atau stabil. Arah perubahan dihitung dengan regresi linear atas 6 menit terakhir. Skala sumbu tegak menyesuaikan nilai yang tampil dengan rentang minimum tertentu, sehingga eskalasi kecil tetap terlihat tanpa membesar-besarkan derau. Simulasi menambahkan fluktuasi proses yang wajar dengan simpangan baku paling besar sepersepuluh jarak ke batas alarm terdekat, sehingga kondisi normal tidak memicu alarm palsu.
 
 Kuis pemahaman berisi lima soal per skenario. Urutan pilihan diacak setiap kali soal tampil, dan pengecoh disusun dari miskonsepsi yang lazim ditemui di lapangan dengan panjang kalimat yang seimbang, sehingga jawaban tidak dapat ditebak dari posisi atau panjangnya.
@@ -277,7 +302,8 @@ manifest.webmanifest        data aplikasi web untuk pemasangan ke layar utama
 css/style.css               gaya tampilan (tombol 3D, kartu, P&ID, efek insiden, modal)
 js/data.js                  katalog perangkat dan kit, escalation factor dan kontrolnya, guideword CCPS, model biaya, sektor, peringatan lapangan, tim, tokoh, jenis kesalahan manusia, pesan jeda iklan, credit
 js/scenarios/*.js           satu berkas per skenario, dinamai <sektor>-<unit>.js (12 berkas)
-js/pid.js                   penggambar P&ID SVG (37 jenis simbol), isi cairan, efek insiden, lencana escalation factor, perbesar dan geser
+js/pid.js                   penggambar P&ID SVG (37 jenis simbol), isi cairan, efek insiden, lencana escalation factor, perbesar dan geser, standar warna jalur dan legenda
+js/scnicons.js              ilustrasi fasilitas untuk kartu di layar Pilih Skenario
 js/sim.js                   mesin simulasi proses, fluktuasi proses, jam operasi, produksi, grafik tren eskalasi
 js/game.js                  alur permainan, variasi kejadian, jendela informasi, penilaian, obrolan tim, penempatan balon dan komik, avatar tokoh, jeda iklan, simpan/lanjutkan, bow-tie
 js/audio.js                 efek suara WebAudio dan pemutar musik latar

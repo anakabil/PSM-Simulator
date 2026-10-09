@@ -1,7 +1,7 @@
 {
   "name": "PSM Simulator by Nusa Safety",
   "short_name": "PSM Simulator",
-  "description": "Permainan simulasi Process Safety Management: memahami proses, mengenali abnormalitas, dan merancang barier keselamatan beserta program inspeksi dan pengujiannya.",
+  "description": "Permainan simulasi Process Safety Management untuk memahami proses, mengenali abnormalitas, dan merancang barier keselamatan beserta pengendalian escalation factor-nya.",
   "lang": "id",
   "start_url": "./",
   "scope": "./",

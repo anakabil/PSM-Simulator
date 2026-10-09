@@ -107,8 +107,8 @@ body.no-anim .menu-rays, body.no-anim .menu-card::after, body.no-anim .icon3d *,
 }
 @media (hover: hover) { .scn-card:hover { transform: translateY(-4px); } }
 .scn-badge { position: absolute; top: 12px; right: 12px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; }
-.scn-icon { width: 100px; height: 72px; }
-.scn-icon svg { width: 100%; height: 100%; }
+.scn-icon { width: min(168px, calc(100% - 96px)); aspect-ratio: 160 / 100; }
+.scn-icon svg { display: block; width: 100%; height: 100%; }
 .scn-card h3 { font-size: 20px; color: var(--ink); }
 .scn-card p { color: var(--muted); font-size: 13.5px; flex: 1; }
 .scn-meta { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--steel); margin-bottom: 6px; }
